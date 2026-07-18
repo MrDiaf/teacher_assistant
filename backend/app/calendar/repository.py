@@ -1,0 +1,185 @@
+import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import Select, select
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType
+from app.core.errors import (
+    CalendarNotFoundError,
+    CalendarReadOnlyError,
+    CalendarSourceProtectedError,
+    EventNotFoundError,
+    InvalidRecurrenceParentError,
+)
+
+READ_ONLY_CALENDAR_FIELDS = {"name", "description", "color"}
+
+
+def _translate_database_protection(exc: DBAPIError) -> None:
+    database_message = str(exc.orig)
+    if "calendar_read_only" in database_message:
+        raise CalendarReadOnlyError() from exc
+    if "calendar_source_protected" in database_message:
+        raise CalendarSourceProtectedError() from exc
+
+
+class CalendarRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list(self) -> list[Calendar]:
+        statement = select(Calendar).order_by(Calendar.created_at, Calendar.name)
+        result = await self.session.scalars(statement)
+        return list(result)
+
+    async def get(self, calendar_id: uuid.UUID, *, for_update: bool = False) -> Calendar:
+        statement = select(Calendar).where(Calendar.id == calendar_id)
+        if for_update:
+            statement = statement.with_for_update()
+        calendar = await self.session.scalar(statement)
+        if calendar is None:
+            raise CalendarNotFoundError()
+        return calendar
+
+    async def create(self, values: dict[str, Any]) -> Calendar:
+        calendar = Calendar(**values)
+        self.session.add(calendar)
+        try:
+            await self.session.flush()
+        except DBAPIError as exc:
+            _translate_database_protection(exc)
+            raise
+        return calendar
+
+    async def update(self, calendar_id: uuid.UUID, changes: dict[str, Any]) -> Calendar:
+        calendar = await self.get(calendar_id, for_update=True)
+        self._ensure_update_allowed(calendar, changes)
+        for field, value in changes.items():
+            setattr(calendar, field, value)
+        try:
+            await self.session.flush()
+        except DBAPIError as exc:
+            _translate_database_protection(exc)
+            raise
+        return calendar
+
+    async def delete(self, calendar_id: uuid.UUID) -> None:
+        calendar = await self.get(calendar_id, for_update=True)
+        if calendar.is_read_only:
+            raise CalendarReadOnlyError()
+        if calendar.source_type != CalendarSourceType.LOCAL:
+            raise CalendarSourceProtectedError()
+        await self.session.delete(calendar)
+        try:
+            await self.session.flush()
+        except DBAPIError as exc:
+            _translate_database_protection(exc)
+            raise
+
+    @staticmethod
+    def _ensure_update_allowed(calendar: Calendar, changes: dict[str, Any]) -> None:
+        if (
+            changes.get("is_read_only") is False
+            and calendar.source_type != CalendarSourceType.LOCAL
+        ):
+            raise CalendarSourceProtectedError()
+        if calendar.is_read_only and READ_ONLY_CALENDAR_FIELDS.intersection(changes):
+            raise CalendarReadOnlyError()
+
+
+class EventRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list(
+        self,
+        *,
+        calendar_id: uuid.UUID | None = None,
+        starts_before: datetime | None = None,
+        ends_after: datetime | None = None,
+    ) -> list[CalendarEvent]:
+        statement: Select[tuple[CalendarEvent]] = select(CalendarEvent).order_by(
+            CalendarEvent.start_at, CalendarEvent.id
+        )
+        if calendar_id is not None:
+            statement = statement.where(CalendarEvent.calendar_id == calendar_id)
+        if starts_before is not None:
+            statement = statement.where(CalendarEvent.start_at < starts_before)
+        if ends_after is not None:
+            statement = statement.where(CalendarEvent.end_at > ends_after)
+        return list(await self.session.scalars(statement))
+
+    async def get(self, event_id: uuid.UUID, *, for_update: bool = False) -> CalendarEvent:
+        statement = select(CalendarEvent).where(CalendarEvent.id == event_id)
+        if for_update:
+            statement = statement.with_for_update()
+        event = await self.session.scalar(statement)
+        if event is None:
+            raise EventNotFoundError()
+        return event
+
+    async def create(self, values: dict[str, Any]) -> CalendarEvent:
+        calendar = await self._get_writable_calendar(values["calendar_id"])
+        await self._validate_recurrence_parent(
+            values.get("recurrence_parent_id"), calendar.id, event_id=None
+        )
+        event = CalendarEvent(**values)
+        self.session.add(event)
+        await self._flush_with_protection()
+        return event
+
+    async def update(self, event_id: uuid.UUID, changes: dict[str, Any]) -> CalendarEvent:
+        event = await self.get(event_id, for_update=True)
+        await self._get_writable_calendar(event.calendar_id)
+        target_calendar_id = changes.get("calendar_id", event.calendar_id)
+        if target_calendar_id != event.calendar_id:
+            await self._get_writable_calendar(target_calendar_id)
+        recurrence_parent_id = changes.get("recurrence_parent_id", event.recurrence_parent_id)
+        await self._validate_recurrence_parent(
+            recurrence_parent_id, target_calendar_id, event_id=event.id
+        )
+        for field, value in changes.items():
+            setattr(event, field, value)
+        await self._flush_with_protection()
+        return event
+
+    async def delete(self, event_id: uuid.UUID) -> None:
+        event = await self.get(event_id, for_update=True)
+        await self._get_writable_calendar(event.calendar_id)
+        await self.session.delete(event)
+        await self._flush_with_protection()
+
+    async def _get_writable_calendar(self, calendar_id: uuid.UUID) -> Calendar:
+        calendar = await self.session.scalar(
+            select(Calendar).where(Calendar.id == calendar_id).with_for_update()
+        )
+        if calendar is None:
+            raise CalendarNotFoundError()
+        if calendar.is_read_only:
+            raise CalendarReadOnlyError()
+        return calendar
+
+    async def _validate_recurrence_parent(
+        self,
+        recurrence_parent_id: uuid.UUID | None,
+        calendar_id: uuid.UUID,
+        *,
+        event_id: uuid.UUID | None,
+    ) -> None:
+        if recurrence_parent_id is None:
+            return
+        parent = await self.session.scalar(
+            select(CalendarEvent).where(CalendarEvent.id == recurrence_parent_id)
+        )
+        if parent is None or parent.calendar_id != calendar_id or parent.id == event_id:
+            raise InvalidRecurrenceParentError()
+
+    async def _flush_with_protection(self) -> None:
+        try:
+            await self.session.flush()
+        except DBAPIError as exc:
+            _translate_database_protection(exc)
+            raise

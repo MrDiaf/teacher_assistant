@@ -788,15 +788,15 @@ Do not begin the next milestone automatically.
 
 ## M1 — Calendar backend foundation
 
-- [ ] Inspect and preserve the existing application shell.
-- [ ] Add Calendar database model.
-- [ ] Add Event database model.
-- [ ] Add migrations.
-- [ ] Add calendar CRUD service.
-- [ ] Add event CRUD service.
-- [ ] Add API schemas and routes.
-- [ ] Enforce read-only calendars in the backend.
-- [ ] Add backend tests.
+- [x] Inspect and preserve the existing application shell.
+- [x] Add Calendar database model.
+- [x] Add Event database model.
+- [x] Add migrations.
+- [x] Add calendar CRUD service.
+- [x] Add event CRUD service.
+- [x] Add API schemas and routes.
+- [x] Enforce read-only calendars in the backend.
+- [x] Add backend tests.
 
 Acceptance:
 
@@ -809,15 +809,15 @@ Acceptance:
 
 ## M2 — Calendar interface
 
-- [ ] Build the Calendar page inside the existing design.
-- [ ] Add month view.
-- [ ] Add week view.
-- [ ] Add day view.
-- [ ] Add Today, Previous, and Next controls.
-- [ ] Add calendar visibility controls.
-- [ ] Add create and edit event forms.
-- [ ] Add loading, empty, and error states.
-- [ ] Add frontend tests where practical.
+- [x] Build the Calendar page inside the existing design.
+- [x] Add month view.
+- [x] Add week view.
+- [x] Add day view.
+- [x] Add Today, Previous, and Next controls.
+- [x] Add calendar visibility controls.
+- [x] Add create and edit event forms.
+- [x] Add loading, empty, and error states.
+- [x] Add frontend tests where practical.
 
 Acceptance:
 
@@ -937,7 +937,7 @@ Everything else later
 The next development session should implement:
 
 ```text
-M1 — Calendar backend foundation
+M3 — Complete calendar interactions
 ```
 
 Do not ask Codex to implement every milestone in one session.

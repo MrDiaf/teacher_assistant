@@ -1,0 +1,22 @@
+services:
+  database:
+    environment:
+      POSTGRES_DB: teacher_assistant_test
+      POSTGRES_USER: teacher_assistant_test
+      POSTGRES_PASSWORD: teacher_assistant_test
+    volumes:
+      - test-database-data:/var/lib/postgresql/data
+
+  backend:
+    environment:
+      DATABASE_URL: postgresql+asyncpg://teacher_assistant_test:teacher_assistant_test@database:5432/teacher_assistant_test
+      LOG_LEVEL: warning
+    ports: []
+    restart: "no"
+
+  frontend:
+    ports: []
+    restart: "no"
+
+volumes:
+  test-database-data:
