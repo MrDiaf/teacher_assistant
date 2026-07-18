@@ -139,3 +139,25 @@ async def test_database_trigger_blocks_moving_event_out_of_read_only_calendar(
                 text("UPDATE events SET calendar_id = :target WHERE id = :event_id"),
                 {"target": target.id, "event_id": event_id},
             )
+
+
+async def test_database_rejects_unfinalized_import_calendar(
+    session: AsyncSession,
+) -> None:
+    calendar_id = uuid.uuid4()
+    await session.execute(
+        text(
+            """
+            INSERT INTO calendars (
+                id, name, color, is_visible, is_read_only, is_importing, source_type
+            ) VALUES (
+                :calendar_id, 'Incomplete import', '#5b7fa3', true, false, true,
+                'ics_import'
+            )
+            """
+        ),
+        {"calendar_id": calendar_id},
+    )
+
+    with pytest.raises(DBAPIError, match="calendar_import_not_finalized"):
+        await session.commit()

@@ -114,8 +114,9 @@ export function CalendarDialog({
           <div className="read-only-notice">
             <Icon name="lock" size={17} />
             <span>
-              Unlock this local calendar before changing its name, description,
-              or color.
+              {isImported
+                ? "Imported calendar details are protected; visibility can still be changed."
+                : "Unlock this local calendar before changing its name, description, or color."}
             </span>
           </div>
         )}

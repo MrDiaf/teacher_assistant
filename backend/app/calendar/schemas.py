@@ -41,6 +41,10 @@ class CalendarResponse(BaseModel):
     is_visible: bool
     is_read_only: bool
     source_type: CalendarSourceType
+    is_subscribed: bool
+    subscription_last_synced_at: datetime | None
+    subscription_next_sync_at: datetime | None
+    subscription_error: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -109,6 +113,7 @@ class EventResponse(BaseModel):
     title: str
     description: str | None
     location: str | None
+    external_uid: str | None
     start_at: datetime
     end_at: datetime
     all_day: bool

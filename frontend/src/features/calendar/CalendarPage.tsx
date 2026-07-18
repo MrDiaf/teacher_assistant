@@ -14,6 +14,7 @@ import {
   startOfDay,
 } from "./dateUtils";
 import { EventDialog } from "./EventDialog";
+import { IcsImportDialog } from "./IcsImportDialog";
 import { MonthView } from "./MonthView";
 import { expandCalendarEvents } from "./recurrence";
 import { TimeGridView } from "./TimeGridView";
@@ -84,6 +85,7 @@ export function CalendarPage() {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [calendarDialog, setCalendarDialog] =
     useState<CalendarDialogState | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   const days = useMemo(() => getViewDays(anchor, view), [anchor, view]);
   const [rangeStart, rangeEnd] = useMemo(
@@ -427,6 +429,7 @@ export function CalendarPage() {
           isLoading={isLoading && calendars.length === 0}
           onBootstrap={handleBootstrap}
           onCreate={() => setCalendarDialog({ calendar: null })}
+          onImport={() => setIsImportOpen(true)}
           onManage={(calendar) => setCalendarDialog({ calendar })}
           onVisibilityChange={handleVisibilityChange}
         />
@@ -520,6 +523,14 @@ export function CalendarPage() {
           onClose={() => setCalendarDialog(null)}
           onDelete={handleCalendarDelete}
           onSave={handleCalendarSave}
+        />
+      )}
+
+      {isImportOpen && (
+        <IcsImportDialog
+          calendars={calendars}
+          onClose={() => setIsImportOpen(false)}
+          onImported={() => setReloadVersion((version) => version + 1)}
         />
       )}
     </main>

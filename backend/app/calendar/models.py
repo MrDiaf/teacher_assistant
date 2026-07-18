@@ -43,6 +43,13 @@ class Calendar(TimestampMixin, Base):
     color: Mapped[str] = mapped_column(String(7), nullable=False, default="#29584c")
     is_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_importing: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    subscription_url: Mapped[str | None] = mapped_column(Text)
+    subscription_last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    subscription_next_sync_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
+    subscription_error: Mapped[str | None] = mapped_column(Text)
     source_type: Mapped[CalendarSourceType] = mapped_column(
         Enum(
             CalendarSourceType,
@@ -60,6 +67,10 @@ class Calendar(TimestampMixin, Base):
         back_populates="calendar", cascade="all, delete-orphan", passive_deletes=True
     )
 
+    @property
+    def is_subscribed(self) -> bool:
+        return self.subscription_url is not None
+
 
 class CalendarEvent(TimestampMixin, Base):
     __tablename__ = "events"
@@ -74,6 +85,7 @@ class CalendarEvent(TimestampMixin, Base):
             "recurrence_original_start_at",
             name="uq_events_recurrence_exception",
         ),
+        UniqueConstraint("calendar_id", "external_uid", name="uq_events_calendar_external_uid"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -83,6 +95,7 @@ class CalendarEvent(TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(240), nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(String(500))
+    external_uid: Mapped[str | None] = mapped_column(String(500))
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     all_day: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

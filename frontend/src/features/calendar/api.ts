@@ -4,6 +4,10 @@ import type {
   CalendarMutation,
   EventMutation,
   EventUpdateMutation,
+  IcsImportOptions,
+  IcsImportResult,
+  IcsPreview,
+  IcsSubscriptionOptions,
 } from "./types";
 
 interface ApiErrorPayload {
@@ -31,6 +35,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
 
+  return parseResponse<T>(response);
+}
+
+async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     let payload: ApiErrorPayload | undefined;
     try {
@@ -53,6 +61,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return undefined as T;
   }
   return (await response.json()) as T;
+}
+
+async function icsRequest<T>(
+  path: string,
+  file: File,
+  query: URLSearchParams,
+): Promise<T> {
+  const response = await fetch(`/api/v1${path}?${query.toString()}`, {
+    method: "POST",
+    headers: { "Content-Type": file.type || "text/calendar" },
+    body: file,
+  });
+  return parseResponse<T>(response);
 }
 
 export const calendarApi = {
@@ -176,6 +197,45 @@ export const calendarApi = {
   deleteEventSeries(seriesId: string) {
     return request<void>(`/events/${seriesId}?recurrence_scope=series`, {
       method: "DELETE",
+    });
+  },
+
+  previewIcs(file: File) {
+    return icsRequest<IcsPreview>(
+      "/calendar-imports/ics/preview",
+      file,
+      new URLSearchParams({ file_name: file.name }),
+    );
+  },
+
+  importIcs(file: File, options: IcsImportOptions) {
+    const query = new URLSearchParams({
+      file_name: file.name,
+      calendar_color: options.calendarColor,
+    });
+    if (options.destinationCalendarId) {
+      query.set("destination_calendar_id", options.destinationCalendarId);
+    } else {
+      query.set("calendar_name", options.calendarName);
+    }
+    return icsRequest<IcsImportResult>("/calendar-imports/ics", file, query);
+  },
+
+  previewIcsSubscription(url: string) {
+    return request<IcsPreview>("/calendar-subscriptions/ics/preview", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    });
+  },
+
+  createIcsSubscription(options: IcsSubscriptionOptions) {
+    return request<IcsImportResult>("/calendar-subscriptions/ics", {
+      method: "POST",
+      body: JSON.stringify({
+        url: options.url,
+        calendar_name: options.calendarName,
+        calendar_color: options.calendarColor,
+      }),
     });
   },
 };

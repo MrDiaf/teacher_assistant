@@ -7,6 +7,7 @@ interface CalendarListProps {
   isLoading: boolean;
   onBootstrap: () => void;
   onCreate: () => void;
+  onImport: () => void;
   onManage: (calendar: CalendarModel) => void;
   onVisibilityChange: (calendar: CalendarModel, visible: boolean) => void;
 }
@@ -17,6 +18,7 @@ export function CalendarList({
   isLoading,
   onBootstrap,
   onCreate,
+  onImport,
   onManage,
   onVisibilityChange,
 }: CalendarListProps) {
@@ -85,7 +87,11 @@ export function CalendarList({
                 <span className="calendar-option-copy">
                   <strong>{calendar.name}</strong>
                   <small>
-                    {calendar.source_type === "local" ? "Local" : "Imported"}
+                    {calendar.source_type === "local"
+                      ? "Local"
+                      : calendar.is_subscribed
+                        ? "Subscribed · Daily refresh"
+                        : "Imported"}
                     {calendar.is_read_only ? " · Read-only" : ""}
                   </small>
                 </span>
@@ -107,6 +113,14 @@ export function CalendarList({
           ))}
         </div>
       )}
+
+      <button
+        className="import-calendar-button"
+        onClick={onImport}
+        type="button"
+      >
+        <Icon name="calendar" size={16} /> Import or subscribe .ics
+      </button>
 
       <div className="calendar-list-note">
         <Icon name="lock" size={15} />

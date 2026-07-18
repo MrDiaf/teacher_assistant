@@ -847,13 +847,14 @@ Acceptance:
 
 ## M4 — ICS import
 
-- [ ] Add `.ics` upload.
-- [ ] Add import preview.
-- [ ] Preserve external UIDs.
-- [ ] Prevent obvious duplicate imports.
-- [ ] Default imported calendars to read-only.
-- [ ] Report malformed imports.
-- [ ] Add import tests.
+- [x] Add `.ics` upload.
+- [x] Add subscription to `.ics` that updates the calender daily
+- [x] Add import preview.
+- [x] Preserve external UIDs.
+- [x] Prevent obvious duplicate imports.
+- [x] Default imported calendars to read-only.
+- [x] Report malformed imports.
+- [x] Add import tests.
 
 Acceptance:
 
@@ -937,7 +938,7 @@ Everything else later
 The next development session should implement:
 
 ```text
-M4 — ICS import
+M5 — Assistant chat, read-only first
 ```
 
 Do not ask Codex to implement every milestone in one session.

@@ -10,6 +10,7 @@ function event(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     title: "Weekly planning",
     description: null,
     location: null,
+    external_uid: null,
     start_at: "2026-07-20T08:00:00.000Z",
     end_at: "2026-07-20T09:00:00.000Z",
     all_day: false,

@@ -1,13 +1,40 @@
+import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.calendar.import_routes import router as calendar_import_router
 from app.calendar.routes import router as calendar_router
+from app.calendar.subscription_routes import router as calendar_subscription_router
+from app.calendar.subscription_scheduler import subscription_scheduler
 from app.core.errors import ApplicationError
 from app.database.session import session_factory
 
-app = FastAPI(title="Teacher Assistant API", version="1.0.0")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    stop = asyncio.Event()
+    task = asyncio.create_task(subscription_scheduler(stop))
+    try:
+        yield
+    finally:
+        stop.set()
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
+app = FastAPI(title="Teacher Assistant API", version="1.0.0", lifespan=lifespan)
 app.include_router(calendar_router, prefix="/api/v1", tags=["calendar"])
+app.include_router(calendar_import_router, prefix="/api/v1", tags=["calendar-import"])
+app.include_router(
+    calendar_subscription_router,
+    prefix="/api/v1",
+    tags=["calendar-subscription"],
+)
 
 
 @app.exception_handler(ApplicationError)

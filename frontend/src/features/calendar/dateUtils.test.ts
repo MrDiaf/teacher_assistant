@@ -17,6 +17,7 @@ function eventBetween(start: Date, end: Date): CalendarEvent {
     title: "Planning session",
     description: null,
     location: null,
+    external_uid: null,
     start_at: start.toISOString(),
     end_at: end.toISOString(),
     all_day: false,

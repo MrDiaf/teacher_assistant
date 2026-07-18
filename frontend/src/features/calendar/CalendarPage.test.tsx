@@ -28,6 +28,10 @@ const writableCalendar: CalendarModel = {
   is_visible: true,
   is_read_only: false,
   source_type: "local",
+  is_subscribed: false,
+  subscription_last_synced_at: null,
+  subscription_next_sync_at: null,
+  subscription_error: null,
   created_at: now.toISOString(),
   updated_at: now.toISOString(),
 };
@@ -38,6 +42,7 @@ const planningEvent: CalendarEvent = {
   title: "Planning session",
   description: "Prepare the week",
   location: "Home office",
+  external_uid: null,
   start_at: eventStart.toISOString(),
   end_at: eventEnd.toISOString(),
   all_day: false,
@@ -70,6 +75,144 @@ function installApiMock(options?: {
     async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       const method = init?.method ?? "GET";
+
+      if (
+        url.includes("/api/v1/calendar-imports/ics/preview?") &&
+        method === "POST"
+      ) {
+        return jsonResponse({
+          file_name: "schedule.ics",
+          suggested_calendar_name: "School Schedule",
+          total_events: 2,
+          importable_events: 1,
+          skipped_events: 1,
+          events: [
+            {
+              index: 1,
+              uid: "lesson-1@example.test",
+              title: "Imported lesson",
+              start_at: eventStart.toISOString(),
+              end_at: eventEnd.toISOString(),
+              all_day: false,
+              timezone: "Europe/Stockholm",
+              status: "confirmed",
+              recurrence_rule: null,
+              is_importable: true,
+              issues: [],
+            },
+            {
+              index: 2,
+              uid: "unsupported@example.test",
+              title: "Unsupported event",
+              start_at: null,
+              end_at: null,
+              all_day: false,
+              timezone: "Europe/Stockholm",
+              status: "confirmed",
+              recurrence_rule: null,
+              is_importable: false,
+              issues: [
+                { severity: "error", message: "Missing required DTSTART." },
+              ],
+            },
+          ],
+        });
+      }
+      if (
+        url.endsWith("/api/v1/calendar-subscriptions/ics/preview") &&
+        method === "POST"
+      ) {
+        return jsonResponse({
+          file_name: "Subscribed calendar.ics",
+          suggested_calendar_name: "School Schedule",
+          total_events: 1,
+          importable_events: 1,
+          skipped_events: 0,
+          events: [
+            {
+              index: 1,
+              uid: "lesson-1@example.test",
+              title: "Subscribed lesson",
+              start_at: eventStart.toISOString(),
+              end_at: eventEnd.toISOString(),
+              all_day: false,
+              timezone: "Europe/Stockholm",
+              status: "confirmed",
+              recurrence_rule: null,
+              is_importable: true,
+              issues: [],
+            },
+          ],
+        });
+      }
+      if (
+        url.endsWith("/api/v1/calendar-subscriptions/ics") &&
+        method === "POST"
+      ) {
+        const subscribedCalendar: CalendarModel = {
+          ...writableCalendar,
+          id: "calendar-subscribed",
+          name: "School Schedule",
+          is_read_only: true,
+          source_type: "ics_import",
+          is_subscribed: true,
+          subscription_last_synced_at: now.toISOString(),
+          subscription_next_sync_at: new Date(
+            now.getTime() + 86_400_000,
+          ).toISOString(),
+        };
+        const subscribedEvent: CalendarEvent = {
+          ...planningEvent,
+          id: "event-subscribed",
+          calendar_id: subscribedCalendar.id,
+          title: "Subscribed lesson",
+          external_uid: "lesson-1@example.test",
+        };
+        calendar = subscribedCalendar;
+        events = [subscribedEvent];
+        return jsonResponse({
+          calendar: subscribedCalendar,
+          imported_count: 1,
+          duplicate_count: 0,
+          skipped_count: 0,
+          errors: [],
+          imported_events: [subscribedEvent],
+          destination_calendar_id: subscribedCalendar.id,
+        });
+      }
+      if (url.includes("/api/v1/calendar-imports/ics?") && method === "POST") {
+        const importedCalendar: CalendarModel = {
+          ...writableCalendar,
+          id: "calendar-imported",
+          name: "School Schedule",
+          is_read_only: true,
+          source_type: "ics_import",
+        };
+        const importedEvent: CalendarEvent = {
+          ...planningEvent,
+          id: "event-imported",
+          calendar_id: importedCalendar.id,
+          title: "Imported lesson",
+          external_uid: "lesson-1@example.test",
+        };
+        calendar = importedCalendar;
+        events = [importedEvent];
+        return jsonResponse({
+          calendar: importedCalendar,
+          imported_count: 1,
+          duplicate_count: 0,
+          skipped_count: 1,
+          errors: [
+            {
+              index: 2,
+              uid: "unsupported@example.test",
+              message: "Missing required DTSTART.",
+            },
+          ],
+          imported_events: [importedEvent],
+          destination_calendar_id: importedCalendar.id,
+        });
+      }
 
       if (url.endsWith("/api/v1/calendars") && method === "GET") {
         return jsonResponse(calendar ? [calendar] : []);
@@ -522,5 +665,101 @@ describe("CalendarPage", () => {
         ),
       ).toBe(true),
     );
+  });
+
+  it("previews an ICS file and imports valid events into a protected calendar", async () => {
+    const fetchMock = installApiMock();
+    render(<CalendarPage />);
+    await screen.findByRole("checkbox", { name: "Show Personal" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import or subscribe .ics" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    const file = new File(["BEGIN:VCALENDAR\nEND:VCALENDAR"], "schedule.ics", {
+      type: "text/calendar",
+    });
+    fireEvent.change(within(dialog).getByLabelText("ICS file"), {
+      target: { files: [file] },
+    });
+
+    expect(
+      await within(dialog).findByText("Imported lesson"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText("Missing required DTSTART."),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Import destination")).toHaveValue(
+      "new",
+    );
+    expect(within(dialog).getByLabelText("Imported calendar name")).toHaveValue(
+      "School Schedule",
+    );
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Import 1 event" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Import complete"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/new imported calendar is read-only/i),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("checkbox", { name: "Show School Schedule" }),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).includes("/api/v1/calendar-imports/ics?") &&
+          String(url).includes("calendar_name=School+Schedule") &&
+          init?.method === "POST" &&
+          init.body === file,
+      ),
+    ).toBe(true);
+  });
+
+  it("previews and creates a daily read-only ICS subscription", async () => {
+    const fetchMock = installApiMock();
+    render(<CalendarPage />);
+    await screen.findByRole("checkbox", { name: "Show Personal" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Import or subscribe .ics" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(
+      within(dialog).getByRole("tab", { name: "Subscribe by URL" }),
+    );
+    fireEvent.change(within(dialog).getByLabelText("ICS subscription URL"), {
+      target: { value: "https://example.test/private.ics" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Preview subscription" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Subscribed lesson"),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Import destination")).toBeDisabled();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Subscribe to 1 event" }),
+    );
+
+    expect(
+      await within(dialog).findByText("Subscription added"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/refreshes from its source daily/i),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith("/api/v1/calendar-subscriptions/ics") &&
+          init?.method === "POST" &&
+          String(init.body).includes("https://example.test/private.ics"),
+      ),
+    ).toBe(true);
   });
 });
