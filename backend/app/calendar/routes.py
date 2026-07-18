@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from http import HTTPStatus
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +15,7 @@ from app.calendar.schemas import (
     EventUpdate,
 )
 from app.calendar.service import CalendarService
+from app.core.errors import InvalidRecurrenceError
 from app.database.session import get_session
 
 router = APIRouter()
@@ -63,11 +64,13 @@ async def list_events(
     calendar_id: uuid.UUID | None = None,
     starts_before: Annotated[datetime | None, Query()] = None,
     ends_after: Annotated[datetime | None, Query()] = None,
+    search: Annotated[str | None, Query(min_length=1, max_length=240)] = None,
 ) -> list[EventResponse]:
     events = await CalendarService(session).list_events(
         calendar_id=calendar_id,
         starts_before=starts_before,
         ends_after=ends_after,
+        search=search,
     )
     return [EventResponse.model_validate(event) for event in events]
 
@@ -89,14 +92,42 @@ async def update_event(
     event_id: uuid.UUID,
     payload: EventUpdate,
     session: SessionDependency,
+    recurrence_scope: Annotated[
+        Literal["single", "occurrence", "series"], Query()
+    ] = "single",
+    occurrence_start_at: Annotated[datetime | None, Query()] = None,
 ) -> EventResponse:
-    event = await CalendarService(session).update_event(
-        event_id, payload.model_dump(exclude_unset=True)
-    )
+    service = CalendarService(session)
+    changes = payload.model_dump(exclude_unset=True)
+    if recurrence_scope == "occurrence":
+        if occurrence_start_at is None:
+            raise InvalidRecurrenceError("An occurrence start time is required.")
+        event = await service.update_event_occurrence(
+            event_id, occurrence_start_at, changes
+        )
+    elif recurrence_scope == "series":
+        event = await service.update_event_series(event_id, changes)
+    else:
+        event = await service.update_event(event_id, changes)
     return EventResponse.model_validate(event)
 
 
 @router.delete("/events/{event_id}", status_code=HTTPStatus.NO_CONTENT)
-async def delete_event(event_id: uuid.UUID, session: SessionDependency) -> Response:
-    await CalendarService(session).delete_event(event_id)
+async def delete_event(
+    event_id: uuid.UUID,
+    session: SessionDependency,
+    recurrence_scope: Annotated[
+        Literal["single", "occurrence", "series"], Query()
+    ] = "single",
+    occurrence_start_at: Annotated[datetime | None, Query()] = None,
+) -> Response:
+    service = CalendarService(session)
+    if recurrence_scope == "occurrence":
+        if occurrence_start_at is None:
+            raise InvalidRecurrenceError("An occurrence start time is required.")
+        await service.delete_event_occurrence(event_id, occurrence_start_at)
+    elif recurrence_scope == "series":
+        await service.delete_event_series(event_id)
+    else:
+        await service.delete_event(event_id)
     return Response(status_code=HTTPStatus.NO_CONTENT)

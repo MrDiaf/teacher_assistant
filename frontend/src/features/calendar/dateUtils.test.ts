@@ -23,6 +23,7 @@ function eventBetween(start: Date, end: Date): CalendarEvent {
     timezone: "Europe/Stockholm",
     recurrence_rule: null,
     recurrence_parent_id: null,
+    recurrence_original_start_at: null,
     status: "confirmed",
     created_at: start.toISOString(),
     updated_at: start.toISOString(),

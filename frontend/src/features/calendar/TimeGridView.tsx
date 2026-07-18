@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef } from "react";
 
 import {
@@ -9,14 +9,24 @@ import {
   HOUR_HEIGHT,
   isSameDay,
 } from "./dateUtils";
-import type { CalendarEvent, CalendarModel, CalendarView } from "./types";
+import type {
+  CalendarModel,
+  CalendarView,
+  DisplayCalendarEvent,
+} from "./types";
 
 interface TimeGridViewProps {
   calendars: Map<string, CalendarModel>;
   days: Date[];
-  events: CalendarEvent[];
+  events: DisplayCalendarEvent[];
   onCreate: (day: Date) => void;
-  onSelectEvent: (event: CalendarEvent) => void;
+  onMove: (
+    event: DisplayCalendarEvent,
+    target: Date,
+    useTargetTime: boolean,
+  ) => void;
+  onResize: (event: DisplayCalendarEvent, endAt: Date) => void;
+  onSelectEvent: (event: DisplayCalendarEvent) => void;
   view: Exclude<CalendarView, "month">;
 }
 
@@ -27,6 +37,8 @@ export function TimeGridView({
   days,
   events,
   onCreate,
+  onMove,
+  onResize,
   onSelectEvent,
   view,
 }: TimeGridViewProps) {
@@ -38,6 +50,38 @@ export function TimeGridView({
       scrollRef.current.scrollTop = HOUR_HEIGHT * 7.5;
     }
   }, [view]);
+
+  function draggedEvent(dataTransfer: DataTransfer) {
+    const displayId = dataTransfer.getData("text/calendar-event-id");
+    return events.find((event) => event.display_id === displayId);
+  }
+
+  function beginResize(
+    pointerEvent: ReactPointerEvent<HTMLSpanElement>,
+    event: DisplayCalendarEvent,
+  ) {
+    pointerEvent.preventDefault();
+    pointerEvent.stopPropagation();
+    const startY = Number.isFinite(pointerEvent.clientY)
+      ? pointerEvent.clientY
+      : 0;
+    const originalEnd = new Date(event.end_at);
+
+    function finishResize(endEvent: PointerEvent) {
+      document.removeEventListener("pointerup", finishResize);
+      const endY = Number.isFinite(endEvent.clientY)
+        ? endEvent.clientY
+        : startY;
+      const minuteDelta = Math.round(((endY - startY) / HOUR_HEIGHT) * 4) * 15;
+      const resizedEnd = new Date(originalEnd.getTime() + minuteDelta * 60_000);
+      const minimumEnd = new Date(
+        new Date(event.start_at).getTime() + 15 * 60_000,
+      );
+      onResize(event, resizedEnd < minimumEnd ? minimumEnd : resizedEnd);
+    }
+
+    document.addEventListener("pointerup", finishResize, { once: true });
+  }
 
   return (
     <section
@@ -66,6 +110,63 @@ export function TimeGridView({
         ))}
       </div>
 
+      <div
+        className="all-day-grid"
+        style={{ "--day-count": days.length } as CSSProperties}
+      >
+        <span className="all-day-label">All day</span>
+        {days.map((day) => {
+          const allDayEvents = eventsForDay(events, day).filter(
+            (event) => event.all_day,
+          ) as DisplayCalendarEvent[];
+          return (
+            <div
+              className="all-day-column"
+              key={dateKey(day)}
+              onDragOver={(dragEvent) => dragEvent.preventDefault()}
+              onDrop={(dragEvent) => {
+                const dragged = draggedEvent(dragEvent.dataTransfer);
+                if (dragged) onMove(dragged, day, false);
+              }}
+            >
+              {allDayEvents.map((event) => {
+                const calendar = calendars.get(event.calendar_id);
+                const isReadOnly = calendar?.is_read_only ?? true;
+                return (
+                  <button
+                    className={`all-day-event-chip status-${event.status}${
+                      isReadOnly ? " protected-event" : ""
+                    }`}
+                    draggable={!isReadOnly}
+                    key={`${dateKey(day)}:${event.display_id}`}
+                    onClick={() => onSelectEvent(event)}
+                    onDragStart={(dragEvent) => {
+                      dragEvent.dataTransfer.effectAllowed = "move";
+                      dragEvent.dataTransfer.setData(
+                        "text/calendar-event-id",
+                        event.display_id,
+                      );
+                    }}
+                    style={
+                      {
+                        "--event-color": calendar?.color ?? "#29584c",
+                      } as CSSProperties
+                    }
+                    type="button"
+                  >
+                    {isReadOnly && <span aria-hidden="true">🔒</span>}
+                    <span>{event.title}</span>
+                    {(event.series_id || event.recurrence_rule) && (
+                      <span aria-label="Recurring event">↻</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+
       <div className="time-grid-scroll" ref={scrollRef}>
         <div
           className="time-grid-body"
@@ -83,7 +184,9 @@ export function TimeGridView({
           </div>
 
           {days.map((day) => {
-            const dayEvents = eventsForDay(events, day);
+            const dayEvents = eventsForDay(events, day).filter(
+              (event) => !event.all_day,
+            ) as DisplayCalendarEvent[];
             const currentMinutes = today.getHours() * 60 + today.getMinutes();
             return (
               <div
@@ -111,6 +214,12 @@ export function TimeGridView({
                       className="hour-slot"
                       key={hour}
                       onClick={() => onCreate(slotDate)}
+                      onDragOver={(dragEvent) => dragEvent.preventDefault()}
+                      onDrop={(dragEvent) => {
+                        dragEvent.preventDefault();
+                        const dragged = draggedEvent(dragEvent.dataTransfer);
+                        if (dragged) onMove(dragged, slotDate, true);
+                      }}
                       type="button"
                     />
                   );
@@ -127,6 +236,7 @@ export function TimeGridView({
 
                 {dayEvents.map((event) => {
                   const calendar = calendars.get(event.calendar_id);
+                  const isReadOnly = calendar?.is_read_only ?? true;
                   const position = clampEventToDay(event, day);
                   const style = {
                     "--event-color": calendar?.color ?? "#29584c",
@@ -135,15 +245,41 @@ export function TimeGridView({
                   } as CSSProperties;
                   return (
                     <button
-                      className={`time-event status-${event.status}`}
-                      key={event.id}
+                      aria-label={`${event.title}, ${formatEventTime(event)}${
+                        isReadOnly ? ", read-only" : ""
+                      }`}
+                      className={`time-event status-${event.status}${
+                        isReadOnly ? " protected-event" : ""
+                      }`}
+                      draggable={!isReadOnly}
+                      key={`${dateKey(day)}:${event.display_id}`}
                       onClick={() => onSelectEvent(event)}
+                      onDragStart={(dragEvent) => {
+                        dragEvent.dataTransfer.effectAllowed = "move";
+                        dragEvent.dataTransfer.setData(
+                          "text/calendar-event-id",
+                          event.display_id,
+                        );
+                      }}
                       style={style}
                       type="button"
                     >
-                      <strong>{event.title}</strong>
+                      <strong>
+                        {event.title}
+                        {(event.series_id || event.recurrence_rule) && " ↻"}
+                      </strong>
                       <span>{formatEventTime(event)}</span>
                       {event.location && <small>{event.location}</small>}
+                      {!isReadOnly && (
+                        <span
+                          aria-label={`Resize ${event.title}`}
+                          className="event-resize-handle"
+                          onPointerDown={(pointerEvent) =>
+                            beginResize(pointerEvent, event)
+                          }
+                          title="Drag to resize"
+                        />
+                      )}
                     </button>
                   );
                 })}

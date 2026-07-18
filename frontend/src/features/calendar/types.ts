@@ -26,6 +26,7 @@ export interface CalendarEvent {
   timezone: string;
   recurrence_rule: string | null;
   recurrence_parent_id: string | null;
+  recurrence_original_start_at: string | null;
   status: EventStatus;
   created_at: string;
   updated_at: string;
@@ -38,6 +39,33 @@ export interface EventMutation {
   location: string | null;
   start_at: string;
   end_at: string;
+  all_day: boolean;
   timezone: string;
+  recurrence_rule: string | null;
   status: EventStatus;
+}
+
+export type EventUpdateMutation = Partial<EventMutation>;
+export type RecurrenceScope = "occurrence" | "series";
+
+export interface DisplayCalendarEvent extends CalendarEvent {
+  display_id: string;
+  occurrence_start_at: string | null;
+  series_id: string | null;
+  is_virtual_occurrence: boolean;
+}
+
+export interface CalendarMutation {
+  name: string;
+  description: string | null;
+  color: string;
+  is_visible: boolean;
+  is_read_only: boolean;
+}
+
+export interface EventFilters {
+  search: string;
+  calendarId: string;
+  dateFrom: string;
+  dateTo: string;
 }

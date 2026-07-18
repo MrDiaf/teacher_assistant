@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, select
+from sqlalchemy import Select, and_, delete, or_, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -106,10 +108,19 @@ class EventRepository:
         )
         if calendar_id is not None:
             statement = statement.where(CalendarEvent.calendar_id == calendar_id)
+        range_conditions = []
         if starts_before is not None:
-            statement = statement.where(CalendarEvent.start_at < starts_before)
+            range_conditions.append(CalendarEvent.start_at < starts_before)
         if ends_after is not None:
-            statement = statement.where(CalendarEvent.end_at > ends_after)
+            range_conditions.append(CalendarEvent.end_at > ends_after)
+        if range_conditions:
+            statement = statement.where(
+                or_(
+                    and_(*range_conditions),
+                    CalendarEvent.recurrence_rule.is_not(None),
+                    CalendarEvent.recurrence_parent_id.is_not(None),
+                )
+            )
         return list(await self.session.scalars(statement))
 
     async def get(self, event_id: uuid.UUID, *, for_update: bool = False) -> CalendarEvent:
@@ -151,6 +162,45 @@ class EventRepository:
         await self._get_writable_calendar(event.calendar_id)
         await self.session.delete(event)
         await self._flush_with_protection()
+
+    async def get_exception(
+        self,
+        recurrence_parent_id: uuid.UUID,
+        recurrence_original_start_at: datetime,
+        *,
+        for_update: bool = False,
+    ) -> CalendarEvent | None:
+        statement = select(CalendarEvent).where(
+            CalendarEvent.recurrence_parent_id == recurrence_parent_id,
+            CalendarEvent.recurrence_original_start_at == recurrence_original_start_at,
+        )
+        if for_update:
+            statement = statement.with_for_update()
+        return await self.session.scalar(statement)
+
+    async def list_exceptions(self, recurrence_parent_id: uuid.UUID) -> list[CalendarEvent]:
+        statement = select(CalendarEvent).where(
+            CalendarEvent.recurrence_parent_id == recurrence_parent_id
+        )
+        return list(await self.session.scalars(statement))
+
+    async def delete_series(self, recurrence_parent_id: uuid.UUID) -> None:
+        parent = await self.get(recurrence_parent_id, for_update=True)
+        await self._get_writable_calendar(parent.calendar_id)
+        await self.session.execute(
+            delete(CalendarEvent).where(
+                CalendarEvent.recurrence_parent_id == recurrence_parent_id
+            )
+        )
+        await self.session.delete(parent)
+        await self._flush_with_protection()
+
+    async def delete_exceptions(self, recurrence_parent_id: uuid.UUID) -> None:
+        await self.session.execute(
+            delete(CalendarEvent).where(
+                CalendarEvent.recurrence_parent_id == recurrence_parent_id
+            )
+        )
 
     async def _get_writable_calendar(self, calendar_id: uuid.UUID) -> Calendar:
         calendar = await self.session.scalar(

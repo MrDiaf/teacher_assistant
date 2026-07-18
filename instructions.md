@@ -828,15 +828,15 @@ Acceptance:
 
 ## M3 — Complete calendar interactions
 
-- [ ] Add drag-and-drop movement.
-- [ ] Add event resizing.
-- [ ] Add all-day events.
-- [ ] Add recurring events.
-- [ ] Add occurrence-versus-series editing.
-- [ ] Add search and filters.
-- [ ] Add manual calendar management.
-- [ ] Add read-only visual states.
-- [ ] Prevent every UI edit against read-only calendars.
+- [x] Add drag-and-drop movement.
+- [x] Add event resizing.
+- [x] Add all-day events.
+- [x] Add recurring events.
+- [x] Add occurrence-versus-series editing.
+- [x] Add search and filters.
+- [x] Add manual calendar management.
+- [x] Add read-only visual states.
+- [x] Prevent every UI edit against read-only calendars.
 
 Acceptance:
 
@@ -937,7 +937,7 @@ Everything else later
 The next development session should implement:
 
 ```text
-M3 — Complete calendar interactions
+M4 — ICS import
 ```
 
 Do not ask Codex to implement every milestone in one session.

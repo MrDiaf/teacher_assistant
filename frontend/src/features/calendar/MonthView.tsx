@@ -7,15 +7,16 @@ import {
   isSameDay,
   WEEKDAY_LABELS,
 } from "./dateUtils";
-import type { CalendarEvent, CalendarModel } from "./types";
+import type { CalendarModel, DisplayCalendarEvent } from "./types";
 
 interface MonthViewProps {
   anchor: Date;
   calendars: Map<string, CalendarModel>;
   days: Date[];
-  events: CalendarEvent[];
+  events: DisplayCalendarEvent[];
   onCreate: (day: Date) => void;
-  onSelectEvent: (event: CalendarEvent) => void;
+  onMove: (event: DisplayCalendarEvent, day: Date) => void;
+  onSelectEvent: (event: DisplayCalendarEvent) => void;
 }
 
 export function MonthView({
@@ -24,6 +25,7 @@ export function MonthView({
   days,
   events,
   onCreate,
+  onMove,
   onSelectEvent,
 }: MonthViewProps) {
   const today = new Date();
@@ -46,6 +48,16 @@ export function MonthView({
               }`}
               data-date={dateKey(day)}
               key={dateKey(day)}
+              onDragOver={(dragEvent) => dragEvent.preventDefault()}
+              onDrop={(dragEvent) => {
+                const draggedId = dragEvent.dataTransfer.getData(
+                  "text/calendar-event-id",
+                );
+                const dragged = events.find(
+                  (candidate) => candidate.display_id === draggedId,
+                );
+                if (dragged) onMove(dragged, day);
+              }}
             >
               <button
                 aria-label={`Create event on ${day.toLocaleDateString("en", {
@@ -61,14 +73,25 @@ export function MonthView({
               <div className="month-events">
                 {dayEvents.slice(0, 3).map((event) => {
                   const calendar = calendars.get(event.calendar_id);
+                  const isReadOnly = calendar?.is_read_only ?? true;
                   const style = {
                     "--event-color": calendar?.color ?? "#29584c",
                   } as CSSProperties;
                   return (
                     <button
-                      className={`month-event status-${event.status}`}
-                      key={event.id}
+                      className={`month-event status-${event.status}${
+                        event.all_day ? " all-day-event" : ""
+                      }${isReadOnly ? " protected-event" : ""}`}
+                      draggable={!isReadOnly}
+                      key={event.display_id}
                       onClick={() => onSelectEvent(event)}
+                      onDragStart={(dragEvent) => {
+                        dragEvent.dataTransfer.effectAllowed = "move";
+                        dragEvent.dataTransfer.setData(
+                          "text/calendar-event-id",
+                          event.display_id,
+                        );
+                      }}
                       style={style}
                       title={`${formatEventTime(event)} ${event.title}`}
                       type="button"
@@ -77,6 +100,14 @@ export function MonthView({
                         {formatEventTime(event)}
                       </span>
                       <span>{event.title}</span>
+                      {(event.series_id || event.recurrence_rule) && (
+                        <span
+                          aria-label="Recurring event"
+                          className="recurrence-mark"
+                        >
+                          ↻
+                        </span>
+                      )}
                     </button>
                   );
                 })}

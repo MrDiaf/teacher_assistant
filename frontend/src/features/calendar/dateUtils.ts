@@ -81,10 +81,10 @@ export function dateKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function eventsForDay(
-  events: CalendarEvent[],
+export function eventsForDay<EventType extends CalendarEvent>(
+  events: EventType[],
   day: Date,
-): CalendarEvent[] {
+): EventType[] {
   const dayStart = startOfDay(day).getTime();
   const dayEnd = addDays(startOfDay(day), 1).getTime();
   return events

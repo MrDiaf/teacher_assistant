@@ -2,7 +2,17 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Enum, ForeignKey, String, Text, Uuid
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base, TimestampMixin
@@ -53,7 +63,18 @@ class Calendar(TimestampMixin, Base):
 
 class CalendarEvent(TimestampMixin, Base):
     __tablename__ = "events"
-    __table_args__ = (CheckConstraint("end_at > start_at", name="ck_events_valid_time_range"),)
+    __table_args__ = (
+        CheckConstraint("end_at > start_at", name="ck_events_valid_time_range"),
+        CheckConstraint(
+            "recurrence_original_start_at IS NULL OR recurrence_parent_id IS NOT NULL",
+            name="ck_events_recurrence_exception_parent",
+        ),
+        UniqueConstraint(
+            "recurrence_parent_id",
+            "recurrence_original_start_at",
+            name="uq_events_recurrence_exception",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     calendar_id: Mapped[uuid.UUID] = mapped_column(
@@ -69,6 +90,9 @@ class CalendarEvent(TimestampMixin, Base):
     recurrence_rule: Mapped[str | None] = mapped_column(Text)
     recurrence_parent_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("events.id", ondelete="SET NULL"), index=True
+    )
+    recurrence_original_start_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
     )
     status: Mapped[EventStatus] = mapped_column(
         Enum(

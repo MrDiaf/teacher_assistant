@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType
+from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType, EventStatus
 from app.calendar.repository import (
     READ_ONLY_CALENDAR_FIELDS,
     CalendarRepository,
@@ -14,7 +14,11 @@ from app.core.errors import (
     CalendarReadOnlyError,
     CalendarSourceProtectedError,
     InvalidEventTimeError,
+    InvalidRecurrenceError,
 )
+
+ALLOWED_RECURRENCE_FREQUENCIES = {"DAILY", "WEEKLY", "MONTHLY"}
+ALLOWED_RECURRENCE_PARTS = {"FREQ", "INTERVAL", "COUNT", "UNTIL"}
 
 
 class CalendarService:
@@ -62,14 +66,30 @@ class CalendarService:
         calendar_id: uuid.UUID | None = None,
         starts_before: datetime | None = None,
         ends_after: datetime | None = None,
+        search: str | None = None,
     ) -> list[CalendarEvent]:
         if calendar_id is not None:
             await self.calendars.get(calendar_id)
-        return await self.events.list(
+        events = await self.events.list(
             calendar_id=calendar_id,
             starts_before=starts_before,
             ends_after=ends_after,
         )
+        if not search:
+            return events
+        query = search.casefold().strip()
+        matching_series_ids = {
+            event.recurrence_parent_id or event.id
+            for event in events
+            if self._event_matches(event, query)
+            and (event.recurrence_rule or event.recurrence_parent_id)
+        }
+        return [
+            event
+            for event in events
+            if self._event_matches(event, query)
+            or (event.recurrence_parent_id or event.id) in matching_series_ids
+        ]
 
     async def get_event(self, event_id: uuid.UUID) -> CalendarEvent:
         return await self.events.get(event_id)
@@ -78,6 +98,7 @@ class CalendarService:
         calendar = await self.calendars.get(values["calendar_id"], for_update=True)
         self._ensure_writable(calendar)
         self._validate_event_times(values["start_at"], values["end_at"])
+        self._validate_recurrence_rule(values.get("recurrence_rule"))
         event = await self.events.create(values)
         await self.session.commit()
         await self.session.refresh(event)
@@ -94,6 +115,7 @@ class CalendarService:
         start_at = changes.get("start_at", event.start_at)
         end_at = changes.get("end_at", event.end_at)
         self._validate_event_times(start_at, end_at)
+        self._validate_recurrence_rule(changes.get("recurrence_rule", event.recurrence_rule))
         event = await self.events.update(event_id, changes)
         await self.session.commit()
         await self.session.refresh(event)
@@ -105,6 +127,117 @@ class CalendarService:
         self._ensure_writable(calendar)
         await self.events.delete(event_id)
         await self.session.commit()
+
+    async def update_event_occurrence(
+        self,
+        event_id: uuid.UUID,
+        occurrence_start_at: datetime,
+        changes: dict[str, Any],
+    ) -> CalendarEvent:
+        self._require_timezone(occurrence_start_at)
+        parent = await self._get_series_parent(event_id)
+        calendar = await self.calendars.get(parent.calendar_id, for_update=True)
+        self._ensure_writable(calendar)
+        if changes.get("calendar_id", parent.calendar_id) != parent.calendar_id:
+            raise InvalidRecurrenceError(
+                "One occurrence cannot move to another calendar; move the complete series instead."
+            )
+
+        existing = await self.events.get_exception(
+            parent.id, occurrence_start_at, for_update=True
+        )
+        duration = parent.end_at - parent.start_at
+        source = existing or parent
+        values: dict[str, Any] = {
+            "calendar_id": parent.calendar_id,
+            "title": source.title,
+            "description": source.description,
+            "location": source.location,
+            "start_at": existing.start_at if existing else occurrence_start_at,
+            "end_at": existing.end_at if existing else occurrence_start_at + duration,
+            "all_day": source.all_day,
+            "timezone": source.timezone,
+            "recurrence_rule": None,
+            "recurrence_parent_id": parent.id,
+            "recurrence_original_start_at": occurrence_start_at,
+            "status": source.status,
+        }
+        values.update(changes)
+        values["calendar_id"] = parent.calendar_id
+        values["recurrence_rule"] = None
+        values["recurrence_parent_id"] = parent.id
+        values["recurrence_original_start_at"] = occurrence_start_at
+        self._validate_event_times(values["start_at"], values["end_at"])
+
+        if existing is None:
+            occurrence = await self.events.create(values)
+        else:
+            occurrence = await self.events.update(existing.id, values)
+        await self.session.commit()
+        await self.session.refresh(occurrence)
+        return occurrence
+
+    async def update_event_series(
+        self, event_id: uuid.UUID, changes: dict[str, Any]
+    ) -> CalendarEvent:
+        parent = await self._get_series_parent(event_id)
+        self._validate_recurrence_rule(changes.get("recurrence_rule", parent.recurrence_rule))
+        source_calendar_id = parent.calendar_id
+        original_start_at = parent.start_at
+        original_recurrence_rule = parent.recurrence_rule
+        source_calendar = await self.calendars.get(source_calendar_id, for_update=True)
+        self._ensure_writable(source_calendar)
+        target_calendar_id = changes.get("calendar_id", parent.calendar_id)
+        if target_calendar_id != parent.calendar_id:
+            target = await self.calendars.get(target_calendar_id, for_update=True)
+            self._ensure_writable(target)
+
+        start_at = changes.get("start_at", parent.start_at)
+        end_at = changes.get("end_at", parent.end_at)
+        self._validate_event_times(start_at, end_at)
+        updated = await self.events.update(parent.id, changes)
+        resets_exceptions = (
+            changes.get("start_at", original_start_at) != original_start_at
+            or (
+                "recurrence_rule" in changes
+                and changes["recurrence_rule"] != original_recurrence_rule
+            )
+        )
+        if resets_exceptions:
+            await self.events.delete_exceptions(parent.id)
+        elif target_calendar_id != source_calendar_id:
+            for exception in await self.events.list_exceptions(parent.id):
+                await self.events.update(exception.id, {"calendar_id": target_calendar_id})
+        await self.session.commit()
+        await self.session.refresh(updated)
+        return updated
+
+    async def delete_event_occurrence(
+        self, event_id: uuid.UUID, occurrence_start_at: datetime
+    ) -> None:
+        self._require_timezone(occurrence_start_at)
+        parent = await self._get_series_parent(event_id)
+        await self.update_event_occurrence(
+            parent.id,
+            occurrence_start_at,
+            {"status": EventStatus.CANCELLED},
+        )
+
+    async def delete_event_series(self, event_id: uuid.UUID) -> None:
+        parent = await self._get_series_parent(event_id)
+        await self.events.delete_series(parent.id)
+        await self.session.commit()
+
+    async def _get_series_parent(self, event_id: uuid.UUID) -> CalendarEvent:
+        event = await self.events.get(event_id, for_update=True)
+        parent = (
+            await self.events.get(event.recurrence_parent_id, for_update=True)
+            if event.recurrence_parent_id
+            else event
+        )
+        if not parent.recurrence_rule:
+            raise InvalidRecurrenceError("The requested event is not a recurring series.")
+        return parent
 
     @staticmethod
     def _ensure_writable(calendar: Calendar) -> None:
@@ -131,3 +264,47 @@ class CalendarService:
             or end_at <= start_at
         ):
             raise InvalidEventTimeError()
+
+    @staticmethod
+    def _require_timezone(value: datetime) -> None:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise InvalidRecurrenceError("Occurrence time must include a timezone offset.")
+
+    @staticmethod
+    def _validate_recurrence_rule(rule: str | None) -> None:
+        if rule is None:
+            return
+        parts: dict[str, str] = {}
+        for segment in rule.split(";"):
+            key, separator, value = segment.partition("=")
+            if not separator or not value or key in parts or key not in ALLOWED_RECURRENCE_PARTS:
+                raise InvalidRecurrenceError("The recurrence rule is malformed or unsupported.")
+            parts[key] = value
+        if parts.get("FREQ") not in ALLOWED_RECURRENCE_FREQUENCIES:
+            raise InvalidRecurrenceError("Only daily, weekly, and monthly recurrence is supported.")
+        for key, maximum in (("INTERVAL", 365), ("COUNT", 999)):
+            if key in parts:
+                try:
+                    value = int(parts[key])
+                except ValueError as exc:
+                    raise InvalidRecurrenceError(
+                        f"Recurrence {key.lower()} must be a number."
+                    ) from exc
+                if value < 1 or value > maximum:
+                    raise InvalidRecurrenceError(
+                        f"Recurrence {key.lower()} is outside the supported range."
+                    )
+        if "UNTIL" in parts:
+            try:
+                datetime.strptime(parts["UNTIL"], "%Y%m%dT%H%M%SZ")
+            except ValueError as exc:
+                raise InvalidRecurrenceError(
+                    "Recurrence until must use UTC format YYYYMMDDTHHMMSSZ."
+                ) from exc
+
+    @staticmethod
+    def _event_matches(event: CalendarEvent, query: str) -> bool:
+        return any(
+            query in (value or "").casefold()
+            for value in (event.title, event.description, event.location)
+        )

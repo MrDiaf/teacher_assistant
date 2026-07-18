@@ -6,6 +6,8 @@ interface CalendarListProps {
   isBootstrapping: boolean;
   isLoading: boolean;
   onBootstrap: () => void;
+  onCreate: () => void;
+  onManage: (calendar: CalendarModel) => void;
   onVisibilityChange: (calendar: CalendarModel, visible: boolean) => void;
 }
 
@@ -14,6 +16,8 @@ export function CalendarList({
   isBootstrapping,
   isLoading,
   onBootstrap,
+  onCreate,
+  onManage,
   onVisibilityChange,
 }: CalendarListProps) {
   return (
@@ -23,7 +27,17 @@ export function CalendarList({
           <p className="eyebrow">Calendars</p>
           <h2>My calendars</h2>
         </div>
-        <span className="calendar-count">{calendars.length}</span>
+        <div className="calendar-list-heading-actions">
+          <span className="calendar-count">{calendars.length}</span>
+          <button
+            aria-label="Create calendar"
+            className="calendar-add-button"
+            onClick={onCreate}
+            type="button"
+          >
+            <Icon name="plus" size={15} />
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -51,31 +65,45 @@ export function CalendarList({
       ) : (
         <div className="calendar-options">
           {calendars.map((calendar) => (
-            <label className="calendar-option" key={calendar.id}>
-              <input
-                aria-label={`Show ${calendar.name}`}
-                checked={calendar.is_visible}
-                onChange={(event) =>
-                  onVisibilityChange(calendar, event.target.checked)
-                }
-                type="checkbox"
-              />
-              <span
-                className="calendar-color"
-                style={{ backgroundColor: calendar.color }}
-              />
-              <span className="calendar-option-copy">
-                <strong>{calendar.name}</strong>
-                <small>
-                  {calendar.source_type === "local" ? "Local" : "Imported"}
-                </small>
-              </span>
+            <div
+              className={`calendar-option${calendar.is_read_only ? " protected" : ""}`}
+              key={calendar.id}
+            >
+              <label>
+                <input
+                  aria-label={`Show ${calendar.name}`}
+                  checked={calendar.is_visible}
+                  onChange={(event) =>
+                    onVisibilityChange(calendar, event.target.checked)
+                  }
+                  type="checkbox"
+                />
+                <span
+                  className="calendar-color"
+                  style={{ backgroundColor: calendar.color }}
+                />
+                <span className="calendar-option-copy">
+                  <strong>{calendar.name}</strong>
+                  <small>
+                    {calendar.source_type === "local" ? "Local" : "Imported"}
+                    {calendar.is_read_only ? " · Read-only" : ""}
+                  </small>
+                </span>
+              </label>
               {calendar.is_read_only && (
                 <span className="read-only-icon" title="Read-only calendar">
                   <Icon name="lock" size={14} />
                 </span>
               )}
-            </label>
+              <button
+                aria-label={`Manage ${calendar.name}`}
+                className="calendar-manage-button"
+                onClick={() => onManage(calendar)}
+                type="button"
+              >
+                <Icon name="settings" size={15} />
+              </button>
+            </div>
           ))}
         </div>
       )}

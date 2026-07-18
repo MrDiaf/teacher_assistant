@@ -1,4 +1,10 @@
-import type { CalendarEvent, CalendarModel, EventMutation } from "./types";
+import type {
+  CalendarEvent,
+  CalendarModel,
+  CalendarMutation,
+  EventMutation,
+  EventUpdateMutation,
+} from "./types";
 
 interface ApiErrorPayload {
   code?: string;
@@ -65,6 +71,24 @@ export const calendarApi = {
     });
   },
 
+  createCalendar(payload: CalendarMutation) {
+    return request<CalendarModel>("/calendars", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateCalendar(calendarId: string, payload: Partial<CalendarMutation>) {
+    return request<CalendarModel>(`/calendars/${calendarId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  deleteCalendar(calendarId: string) {
+    return request<void>(`/calendars/${calendarId}`, { method: "DELETE" });
+  },
+
   updateCalendarVisibility(calendarId: string, isVisible: boolean) {
     return request<CalendarModel>(`/calendars/${calendarId}`, {
       method: "PATCH",
@@ -72,12 +96,28 @@ export const calendarApi = {
     });
   },
 
-  listEvents(startsBefore: Date, endsAfter: Date, signal?: AbortSignal) {
+  listEvents(
+    startsBefore: Date,
+    endsAfter: Date,
+    options?: {
+      calendarId?: string;
+      search?: string;
+      signal?: AbortSignal;
+    },
+  ) {
     const query = new URLSearchParams({
       starts_before: startsBefore.toISOString(),
       ends_after: endsAfter.toISOString(),
     });
-    return request<CalendarEvent[]>(`/events?${query.toString()}`, { signal });
+    if (options?.calendarId) {
+      query.set("calendar_id", options.calendarId);
+    }
+    if (options?.search) {
+      query.set("search", options.search);
+    }
+    return request<CalendarEvent[]>(`/events?${query.toString()}`, {
+      signal: options?.signal,
+    });
   },
 
   createEvent(payload: EventMutation) {
@@ -87,14 +127,55 @@ export const calendarApi = {
     });
   },
 
-  updateEvent(eventId: string, payload: EventMutation) {
+  updateEvent(eventId: string, payload: EventUpdateMutation) {
     return request<CalendarEvent>(`/events/${eventId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     });
   },
 
+  updateEventOccurrence(
+    seriesId: string,
+    occurrenceStartAt: string,
+    payload: EventUpdateMutation,
+  ) {
+    const query = new URLSearchParams({
+      recurrence_scope: "occurrence",
+      occurrence_start_at: occurrenceStartAt,
+    });
+    return request<CalendarEvent>(`/events/${seriesId}?${query.toString()}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  updateEventSeries(seriesId: string, payload: EventUpdateMutation) {
+    return request<CalendarEvent>(
+      `/events/${seriesId}?recurrence_scope=series`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    );
+  },
+
   deleteEvent(eventId: string) {
     return request<void>(`/events/${eventId}`, { method: "DELETE" });
+  },
+
+  deleteEventOccurrence(seriesId: string, occurrenceStartAt: string) {
+    const query = new URLSearchParams({
+      recurrence_scope: "occurrence",
+      occurrence_start_at: occurrenceStartAt,
+    });
+    return request<void>(`/events/${seriesId}?${query.toString()}`, {
+      method: "DELETE",
+    });
+  },
+
+  deleteEventSeries(seriesId: string) {
+    return request<void>(`/events/${seriesId}?recurrence_scope=series`, {
+      method: "DELETE",
+    });
   },
 };

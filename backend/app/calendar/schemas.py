@@ -115,6 +115,7 @@ class EventResponse(BaseModel):
     timezone: str
     recurrence_rule: str | None
     recurrence_parent_id: uuid.UUID | None
+    recurrence_original_start_at: datetime | None
     status: EventStatus
     created_at: datetime
     updated_at: datetime

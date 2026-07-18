@@ -57,3 +57,10 @@ class InvalidRecurrenceParentError(ApplicationError):
 
     def __init__(self) -> None:
         super().__init__("The recurrence parent must exist in the same calendar.")
+
+
+class InvalidRecurrenceError(ApplicationError):
+    code = "invalid_recurrence"
+
+    def __init__(self, message: str = "The recurrence request is not valid.") -> None:
+        super().__init__(message)
