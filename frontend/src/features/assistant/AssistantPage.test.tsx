@@ -12,6 +12,7 @@ import type {
   AssistantConversation,
   AssistantJob,
   AssistantMessage,
+  AssistantProposal,
 } from "./types";
 
 const now = new Date().toISOString();
@@ -42,6 +43,61 @@ const connectedAuth = {
   auth_type: "chatgpt",
   email: "owner@example.test",
   plan_type: "plus",
+};
+
+const awaitingProposal: AssistantProposal = {
+  id: "proposal-1",
+  job_id: "job-1",
+  conversation_id: conversation.id,
+  status: "awaiting_confirmation",
+  summary: "Move the planning session",
+  actions: [
+    {
+      operation: "update_event",
+      calendar_id: "calendar-1",
+      event_id: "event-1",
+    },
+  ],
+  review_items: [
+    {
+      operation: "update_event",
+      title: "Update event “Planning session”",
+      calendar_id: "calendar-1",
+      calendar_name: "Personal",
+      event_id: "event-1",
+      event_title: "Planning session",
+      previous: { start_at: "2026-07-20T08:00:00Z" },
+      proposed: { start_at: "2026-07-20T10:00:00Z" },
+      recurrence_scope: null,
+      occurrence_start_at: null,
+      affected_events: 1,
+      warnings: [],
+    },
+  ],
+  warnings: [],
+  affected_events: 1,
+  expires_at: "2026-07-20T12:00:00Z",
+  confirmed_at: null,
+  rejected_at: null,
+  executed_at: null,
+  result: null,
+  safe_error: null,
+  created_at: now,
+  updated_at: now,
+  action_records: [
+    {
+      id: "action-1",
+      position: 0,
+      operation: "update_event",
+      target_calendar_id: "calendar-1",
+      target_event_id: "event-1",
+      requested_at: now,
+      confirmed_at: null,
+      executed_at: null,
+      result: null,
+      safe_error: null,
+    },
+  ],
 };
 
 function job(
@@ -128,7 +184,7 @@ describe("AssistantPage", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
-    expect(await screen.findByText("Read-only mode")).toBeInTheDocument();
+    expect(await screen.findByText("Confirmation mode")).toBeInTheDocument();
     expect(
       screen.getByText("What would you like to know?"),
     ).toBeInTheDocument();
@@ -243,6 +299,80 @@ describe("AssistantPage", () => {
         ),
       ).toBe(true),
     );
+  });
+
+  it("shows a change review and executes it only after confirmation", async () => {
+    const completedProposal: AssistantProposal = {
+      ...awaitingProposal,
+      status: "completed",
+      confirmed_at: now,
+      executed_at: now,
+      result: { actions: [{ status: "completed" }] },
+    };
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/v1/assistant/auth") && method === "GET") {
+          return response(connectedAuth);
+        }
+        if (
+          url.endsWith("/api/v1/assistant/conversations") &&
+          method === "GET"
+        ) {
+          return response([conversation]);
+        }
+        if (
+          url.endsWith(`/api/v1/assistant/conversations/${conversation.id}`) &&
+          method === "GET"
+        ) {
+          return response({
+            ...conversation,
+            messages: [ownerMessage, assistantMessage],
+            jobs: [job("awaiting_confirmation")],
+            proposals: [awaitingProposal],
+          });
+        }
+        if (
+          url.endsWith(
+            `/api/v1/assistant/proposals/${awaitingProposal.id}/confirm`,
+          ) &&
+          method === "POST"
+        ) {
+          return response(completedProposal);
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    expect(
+      await screen.findByRole("region", {
+        name: "Calendar proposal: Move the planning session",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Personal")).toBeInTheDocument();
+    expect(screen.getByText("1 affected event")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reject" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revise" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm changes" }));
+
+    expect(
+      await screen.findByText(
+        "Confirmed and completed by the calendar service.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith(
+            `/api/v1/assistant/proposals/${awaitingProposal.id}/confirm`,
+          ) && init?.method === "POST",
+      ),
+    ).toBe(true);
   });
 
   it("offers a safe ChatGPT subscription device-login link when signed out", async () => {

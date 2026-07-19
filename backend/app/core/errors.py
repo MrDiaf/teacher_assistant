@@ -173,3 +173,18 @@ class AssistantJobNotRetryableError(ApplicationError):
 
     def __init__(self) -> None:
         super().__init__("Only a failed assistant job can be retried.")
+
+
+class AssistantProposalNotFoundError(ResourceNotFoundError):
+    code = "assistant_proposal_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested assistant proposal does not exist.")
+
+
+class AssistantProposalStateError(ApplicationError):
+    code = "assistant_proposal_state_conflict"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self, message: str = "This proposal can no longer be changed.") -> None:
+        super().__init__(message)

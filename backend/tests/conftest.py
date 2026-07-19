@@ -24,7 +24,8 @@ async def clean_database() -> AsyncIterator[None]:
             )
         await connection.execute(
             text(
-                "TRUNCATE TABLE assistant_jobs, assistant_messages, "
+                "TRUNCATE TABLE assistant_proposal_actions, assistant_proposals, "
+                "assistant_jobs, assistant_messages, "
                 "assistant_conversations, events, calendars CASCADE"
             )
         )

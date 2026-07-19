@@ -2,7 +2,7 @@
 
 Each assistant job gets a mode `0700` temporary root outside the source
 repository. The job workspace contains only the runtime policy, the current
-request, bounded calendar context, and the read-only response schema.
+request, bounded calendar context, and the structured answer/proposal schema.
 
 The Codex app-server receives an allowlisted process environment. Its tool
 subprocesses inherit no secrets. A named read-only permission profile allows
@@ -23,5 +23,6 @@ refresh tokens. `OPENAI_API_KEY` remains an optional usage-billed fallback.
 
 Runtime workspaces are deleted immediately after every job, whether it
 completes, fails validation, times out, or raises an exception. Conversation
-messages, final validated answers, job state, and safe error messages remain in
-PostgreSQL; temporary context files and model reasoning do not.
+messages, final validated answers, validated proposals, confirmation state,
+execution results, job state, and safe error messages remain in PostgreSQL;
+temporary context files and model reasoning do not.

@@ -887,17 +887,17 @@ Acceptance:
 
 ## M6 — Codex calendar proposals
 
-- [ ] Add structured proposal schemas.
-- [ ] Add create-calendar proposals.
-- [ ] Add update-calendar proposals.
-- [ ] Add create-event proposals.
-- [ ] Add update-event proposals.
-- [ ] Add delete-one-event proposals.
-- [ ] Add confirmation and rejection UI.
-- [ ] Revalidate before execution.
-- [ ] Enforce read-only restrictions.
-- [ ] Add idempotency.
-- [ ] Add proposal safety tests.
+- [x] Add structured proposal schemas.
+- [x] Add create-calendar proposals.
+- [x] Add update-calendar proposals.
+- [x] Add create-event proposals.
+- [x] Add update-event proposals.
+- [x] Add delete-one-event proposals.
+- [x] Add confirmation and rejection UI.
+- [x] Revalidate before execution.
+- [x] Enforce read-only restrictions.
+- [x] Add idempotency.
+- [x] Add proposal safety tests.
 
 Acceptance:
 
@@ -939,7 +939,7 @@ Everything else later
 The next development session should implement:
 
 ```text
-M6 — Codex calendar proposals
+M7 — Final calendar hardening
 ```
 
 Do not ask Codex to implement every milestone in one session.

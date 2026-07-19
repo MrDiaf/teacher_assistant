@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -14,11 +15,13 @@ import type {
   AssistantDeviceLogin,
   AssistantJob,
   AssistantMessage,
+  AssistantProposal,
+  ProposalReviewItem,
 } from "./types";
 
 const SUGGESTIONS = [
   "What do I have tomorrow?",
-  "Which calendars are read-only?",
+  "Create a dentist appointment next Tuesday at 14:00.",
   "Find a free hour after 16:00 this week.",
 ];
 
@@ -37,6 +40,174 @@ function friendlyJobError(message: string | null): string {
   return message;
 }
 
+const REVIEW_FIELD_LABELS: Record<string, string> = {
+  all_day: "All day",
+  calendar_id: "Calendar",
+  color: "Color",
+  description: "Description",
+  end_at: "Ends",
+  location: "Location",
+  name: "Name",
+  recurrence_rule: "Repeats",
+  start_at: "Starts",
+  status: "Status",
+  timezone: "Timezone",
+  title: "Title",
+};
+
+function proposalStatusLabel(status: AssistantProposal["status"]): string {
+  return status.replaceAll("_", " ");
+}
+
+function reviewValue(field: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "Not set";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (
+    typeof value === "string" &&
+    (field === "start_at" || field === "end_at")
+  ) {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Intl.DateTimeFormat("en", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(parsed);
+    }
+  }
+  return String(value);
+}
+
+function reviewChanges(item: ProposalReviewItem) {
+  const previous = item.previous ?? {};
+  const proposed = item.proposed ?? {};
+  const fields = new Set([...Object.keys(previous), ...Object.keys(proposed)]);
+  if (item.operation === "delete_event") {
+    return ["title", "start_at", "end_at"].map((field) => ({
+      field,
+      before: previous[field],
+      after: "Will be deleted",
+    }));
+  }
+  return [...fields]
+    .filter(
+      (field) =>
+        JSON.stringify(previous[field]) !== JSON.stringify(proposed[field]),
+    )
+    .map((field) => ({
+      field,
+      before: item.previous ? previous[field] : undefined,
+      after: proposed[field],
+    }));
+}
+
+interface ProposalCardProps {
+  proposal: AssistantProposal;
+  busy: boolean;
+  onConfirm: () => void;
+  onReject: () => void;
+  onRevise: () => void;
+}
+
+function ProposalCard({
+  proposal,
+  busy,
+  onConfirm,
+  onReject,
+  onRevise,
+}: ProposalCardProps) {
+  const awaiting = proposal.status === "awaiting_confirmation";
+  return (
+    <section
+      aria-label={`Calendar proposal: ${proposal.summary}`}
+      className={`assistant-proposal-card ${proposal.status}`}
+    >
+      <header className="assistant-proposal-header">
+        <span className="assistant-proposal-icon">
+          <Icon name="checklist" size={18} />
+        </span>
+        <div>
+          <small>Calendar change</small>
+          <h3>{proposal.summary}</h3>
+        </div>
+        <span className="assistant-proposal-status">
+          {proposalStatusLabel(proposal.status)}
+        </span>
+      </header>
+
+      <div className="assistant-proposal-items">
+        {proposal.review_items.map((item, index) => (
+          <article
+            key={`${item.operation}-${item.event_id ?? item.calendar_id}-${index}`}
+          >
+            <div className="assistant-proposal-item-heading">
+              <strong>{item.title}</strong>
+              <span>{item.calendar_name}</span>
+            </div>
+            <dl>
+              {reviewChanges(item).map((change) => (
+                <div key={change.field}>
+                  <dt>{REVIEW_FIELD_LABELS[change.field] ?? change.field}</dt>
+                  <dd>
+                    {change.before !== undefined && (
+                      <span>{reviewValue(change.field, change.before)}</span>
+                    )}
+                    {change.before !== undefined && <b aria-hidden="true">→</b>}
+                    <strong>{reviewValue(change.field, change.after)}</strong>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="assistant-proposal-item-meta">
+              {item.recurrence_scope && (
+                <span>
+                  Recurrence: {item.recurrence_scope.replaceAll("_", " ")}
+                </span>
+              )}
+              {item.affected_events > 0 && (
+                <span>
+                  {item.affected_events} affected event
+                  {item.affected_events === 1 ? "" : "s"}
+                </span>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {proposal.warnings.length > 0 && (
+        <ul className="assistant-proposal-warnings">
+          {proposal.warnings.map((warning) => (
+            <li key={warning}>{warning}</li>
+          ))}
+        </ul>
+      )}
+      {proposal.safe_error && (
+        <p className="assistant-proposal-error" role="alert">
+          {proposal.safe_error}
+        </p>
+      )}
+      {awaiting && (
+        <footer className="assistant-proposal-actions">
+          <button disabled={busy} onClick={onConfirm} type="button">
+            {busy ? "Working safely…" : "Confirm changes"}
+          </button>
+          <button disabled={busy} onClick={onRevise} type="button">
+            Revise
+          </button>
+          <button disabled={busy} onClick={onReject} type="button">
+            Reject
+          </button>
+        </footer>
+      )}
+      {!awaiting && proposal.status === "completed" && (
+        <p className="assistant-proposal-result" role="status">
+          Confirmed and completed by the calendar service.
+        </p>
+      )}
+    </section>
+  );
+}
+
 export function AssistantPage() {
   const [conversations, setConversations] = useState<AssistantConversation[]>(
     [],
@@ -44,8 +215,12 @@ export function AssistantPage() {
   const [activeConversation, setActiveConversation] =
     useState<AssistantConversation | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [proposals, setProposals] = useState<AssistantProposal[]>([]);
   const [draft, setDraft] = useState("");
   const [failedJob, setFailedJob] = useState<AssistantJob | null>(null);
+  const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
+  const [revisionProposal, setRevisionProposal] =
+    useState<AssistantProposal | null>(null);
   const [authStatus, setAuthStatus] = useState<AssistantAuthStatus | null>(
     null,
   );
@@ -59,6 +234,7 @@ export function AssistantPage() {
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const scrollAnchor = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
   const isAuthenticated = authStatus?.authenticated === true;
 
   useEffect(() => {
@@ -74,6 +250,7 @@ export function AssistantPage() {
           );
           setActiveConversation(detail);
           setMessages(detail.messages);
+          setProposals(detail.proposals ?? []);
           setFailedJob(
             [...detail.jobs].reverse().find((job) => job.status === "failed") ??
               null,
@@ -166,16 +343,18 @@ export function AssistantPage() {
 
   useEffect(() => {
     scrollAnchor.current?.scrollIntoView?.({ behavior: "smooth" });
-  }, [messages, isSending, failedJob]);
+  }, [messages, proposals, isSending, failedJob]);
 
   async function loadConversation(conversation: AssistantConversation) {
     setError(null);
     setFailedJob(null);
+    setRevisionProposal(null);
     setActiveConversation(conversation);
     try {
       const detail = await assistantApi.getConversation(conversation.id);
       setActiveConversation(detail);
       setMessages(detail.messages);
+      setProposals(detail.proposals ?? []);
       setFailedJob(
         [...detail.jobs].reverse().find((job) => job.status === "failed") ??
           null,
@@ -193,11 +372,13 @@ export function AssistantPage() {
     if (isSending) return;
     setError(null);
     setFailedJob(null);
+    setRevisionProposal(null);
     try {
       const created = await assistantApi.createConversation();
       setConversations((current) => [created, ...current]);
       setActiveConversation(created);
       setMessages([]);
+      setProposals([]);
       setDraft("");
     } catch (createError) {
       setError(
@@ -238,9 +419,13 @@ export function AssistantPage() {
         created_at: new Date().toISOString(),
       };
       setMessages((current) => [...current, optimisticMessage]);
-      const turn = await assistantApi.sendMessage(conversation.id, normalized);
+      const turn = revisionProposal
+        ? await assistantApi.reviseProposal(revisionProposal.id, normalized)
+        : await assistantApi.sendMessage(conversation.id, normalized);
       const detail = await assistantApi.getConversation(conversation.id);
       setMessages(detail.messages);
+      setProposals(detail.proposals ?? []);
+      setRevisionProposal(null);
       setActiveConversation(turn.conversation);
       setConversations((current) => [
         turn.conversation,
@@ -273,6 +458,7 @@ export function AssistantPage() {
       const turn = await assistantApi.retryJob(failedJob.id);
       const detail = await assistantApi.getConversation(turn.conversation.id);
       setMessages(detail.messages);
+      setProposals(detail.proposals ?? []);
       setFailedJob(turn.job.status === "failed" ? turn.job : null);
     } catch (retryError) {
       setError(
@@ -283,6 +469,54 @@ export function AssistantPage() {
     } finally {
       setIsSending(false);
     }
+  }
+
+  function replaceProposal(updated: AssistantProposal) {
+    setProposals((current) =>
+      current.map((proposal) =>
+        proposal.id === updated.id ? updated : proposal,
+      ),
+    );
+  }
+
+  async function confirmProposal(proposal: AssistantProposal) {
+    if (busyProposalId) return;
+    setBusyProposalId(proposal.id);
+    setError(null);
+    try {
+      replaceProposal(await assistantApi.confirmProposal(proposal.id));
+    } catch (proposalError) {
+      setError(
+        proposalError instanceof Error
+          ? proposalError.message
+          : "The proposal could not be confirmed safely.",
+      );
+    } finally {
+      setBusyProposalId(null);
+    }
+  }
+
+  async function rejectProposal(proposal: AssistantProposal) {
+    if (busyProposalId) return;
+    setBusyProposalId(proposal.id);
+    setError(null);
+    try {
+      replaceProposal(await assistantApi.rejectProposal(proposal.id));
+    } catch (proposalError) {
+      setError(
+        proposalError instanceof Error
+          ? proposalError.message
+          : "The proposal could not be rejected safely.",
+      );
+    } finally {
+      setBusyProposalId(null);
+    }
+  }
+
+  function reviseProposal(proposal: AssistantProposal) {
+    setRevisionProposal(proposal);
+    setDraft("");
+    window.setTimeout(() => composer.current?.focus(), 0);
   }
 
   function submit(event: FormEvent) {
@@ -341,10 +575,10 @@ export function AssistantPage() {
           <p>Ask about your schedule and availability in plain language.</p>
         </div>
         <div className="assistant-mode-badge">
-          <Icon name="lock" size={15} />
+          <Icon name="checklist" size={15} />
           <span>
-            <strong>Read-only mode</strong>
-            <small>Answers cannot change calendar data</small>
+            <strong>Confirmation mode</strong>
+            <small>Nothing changes without your approval</small>
           </span>
         </div>
       </header>
@@ -431,7 +665,8 @@ export function AssistantPage() {
           <div className="assistant-context-note">
             <Icon name="calendar" size={16} />
             <span>
-              Answers use calendar context from this private installation.
+              Answers and proposals use calendar context from this private
+              installation.
             </span>
           </div>
         </aside>
@@ -515,8 +750,8 @@ export function AssistantPage() {
                 <h2>What would you like to know?</h2>
                 <p>
                   I can explain your schedule, identify protected calendars, and
-                  help find free time. Calendar changes arrive in a later
-                  milestone.
+                  propose safe calendar changes. Every change waits for your
+                  confirmation.
                 </p>
                 <div className="assistant-suggestions">
                   {SUGGESTIONS.map((suggestion) => (
@@ -534,31 +769,46 @@ export function AssistantPage() {
 
             {(messages.length > 0 || isSending || failedJob) && (
               <div className="assistant-message-list">
-                {messages.map((message) => (
-                  <article
-                    className={`assistant-message ${message.role}`}
-                    key={message.id}
-                  >
-                    <div className="assistant-message-avatar">
-                      {message.role === "assistant" ? (
-                        <Icon name="assistant" size={17} />
-                      ) : (
-                        "You"
+                {messages.map((message) => {
+                  const proposal = proposals.find(
+                    (item) => item.job_id === message.job_id,
+                  );
+                  return (
+                    <Fragment key={message.id}>
+                      <article className={`assistant-message ${message.role}`}>
+                        <div className="assistant-message-avatar">
+                          {message.role === "assistant" ? (
+                            <Icon name="assistant" size={17} />
+                          ) : (
+                            "You"
+                          )}
+                        </div>
+                        <div>
+                          <header>
+                            <strong>
+                              {message.role === "assistant"
+                                ? "Assistant"
+                                : "You"}
+                            </strong>
+                            <time dateTime={message.created_at}>
+                              {messageTime(message.created_at)}
+                            </time>
+                          </header>
+                          <p>{message.content}</p>
+                        </div>
+                      </article>
+                      {proposal && (
+                        <ProposalCard
+                          busy={busyProposalId === proposal.id}
+                          onConfirm={() => void confirmProposal(proposal)}
+                          onReject={() => void rejectProposal(proposal)}
+                          onRevise={() => reviseProposal(proposal)}
+                          proposal={proposal}
+                        />
                       )}
-                    </div>
-                    <div>
-                      <header>
-                        <strong>
-                          {message.role === "assistant" ? "Assistant" : "You"}
-                        </strong>
-                        <time dateTime={message.created_at}>
-                          {messageTime(message.created_at)}
-                        </time>
-                      </header>
-                      <p>{message.content}</p>
-                    </div>
-                  </article>
-                ))}
+                    </Fragment>
+                  );
+                })}
                 {isSending && (
                   <div className="assistant-thinking" role="status">
                     <span />
@@ -601,6 +851,20 @@ export function AssistantPage() {
           )}
 
           <form className="assistant-composer" onSubmit={submit}>
+            {revisionProposal && (
+              <div className="assistant-revision-notice">
+                <span>
+                  Revising: <strong>{revisionProposal.summary}</strong>
+                </span>
+                <button
+                  aria-label="Cancel proposal revision"
+                  onClick={() => setRevisionProposal(null)}
+                  type="button"
+                >
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+            )}
             <label className="sr-only" htmlFor="assistant-message">
               Message the calendar assistant
             </label>
@@ -612,9 +876,12 @@ export function AssistantPage() {
               onKeyDown={handleComposerKeyDown}
               placeholder={
                 isAuthenticated
-                  ? "Ask about your calendar…"
+                  ? revisionProposal
+                    ? "Describe what should change in the proposal…"
+                    : "Ask about your calendar…"
                   : "Sign in with ChatGPT to ask about your calendar"
               }
+              ref={composer}
               rows={2}
               value={draft}
             />
@@ -627,7 +894,9 @@ export function AssistantPage() {
             </button>
             <small>
               {isAuthenticated
-                ? "Enter to send · Shift+Enter for a new line"
+                ? revisionProposal
+                  ? "Sending this will reject the old proposal and request a revised one"
+                  : "Enter to send · Shift+Enter for a new line"
                 : "Connect ChatGPT above to enable the assistant"}
             </small>
           </form>

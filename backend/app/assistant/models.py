@@ -1,7 +1,18 @@
 import enum
 import uuid
+from datetime import datetime
 
-from sqlalchemy import Enum, ForeignKey, String, Text, Uuid
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.calendar.models import enum_values
@@ -18,8 +29,19 @@ class AssistantJobStatus(str, enum.Enum):
     PREPARING_CONTEXT = "preparing_context"
     RUNNING = "running"
     VALIDATING = "validating"
+    AWAITING_CONFIRMATION = "awaiting_confirmation"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class AssistantProposalStatus(str, enum.Enum):
+    AWAITING_CONFIRMATION = "awaiting_confirmation"
+    CONFIRMED = "confirmed"
+    REJECTED = "rejected"
+    EXECUTING = "executing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    EXPIRED = "expired"
 
 
 class AssistantConversation(TimestampMixin, Base):
@@ -35,6 +57,11 @@ class AssistantConversation(TimestampMixin, Base):
         order_by="AssistantMessage.created_at",
     )
     jobs: Mapped[list["AssistantJob"]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    proposals: Mapped[list["AssistantProposal"]] = relationship(
         back_populates="conversation",
         cascade="all, delete-orphan",
         passive_deletes=True,
@@ -104,3 +131,85 @@ class AssistantJob(TimestampMixin, Base):
     safe_error: Mapped[str | None] = mapped_column(Text)
 
     conversation: Mapped[AssistantConversation] = relationship(back_populates="jobs")
+    proposal: Mapped["AssistantProposal | None"] = relationship(
+        back_populates="job", uselist=False
+    )
+
+
+class AssistantProposal(TimestampMixin, Base):
+    __tablename__ = "assistant_proposals"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("assistant_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("assistant_conversations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[AssistantProposalStatus] = mapped_column(
+        Enum(
+            AssistantProposalStatus,
+            values_callable=enum_values,
+            native_enum=False,
+            create_constraint=True,
+            length=32,
+            name="assistant_proposal_status",
+        ),
+        nullable=False,
+        default=AssistantProposalStatus.AWAITING_CONFIRMATION,
+    )
+    summary: Mapped[str] = mapped_column(String(240), nullable=False)
+    actions: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    baselines: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    review_items: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    warnings: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    affected_events: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict | None] = mapped_column(JSON)
+    safe_error: Mapped[str | None] = mapped_column(Text)
+
+    conversation: Mapped[AssistantConversation] = relationship(back_populates="proposals")
+    job: Mapped[AssistantJob] = relationship(back_populates="proposal")
+    action_records: Mapped[list["AssistantProposalAction"]] = relationship(
+        back_populates="proposal",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="AssistantProposalAction.position",
+    )
+
+
+class AssistantProposalAction(Base):
+    __tablename__ = "assistant_proposal_actions"
+    __table_args__ = (
+        UniqueConstraint("proposal_id", "position", name="uq_proposal_action_position"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    proposal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("assistant_proposals.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    operation: Mapped[str] = mapped_column(String(40), nullable=False)
+    target_calendar_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    target_event_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    requested_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict | None] = mapped_column(JSON)
+    safe_error: Mapped[str | None] = mapped_column(Text)
+
+    proposal: Mapped[AssistantProposal] = relationship(back_populates="action_records")

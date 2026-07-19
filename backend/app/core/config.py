@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     codex_model: str = "gpt-5.6-sol"
     codex_timeout_seconds: int = Field(default=90, ge=10, le=600)
     codex_max_context_events: int = Field(default=1000, ge=1, le=5000)
+    assistant_proposal_ttl_minutes: int = Field(default=30, ge=5, le=1440)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

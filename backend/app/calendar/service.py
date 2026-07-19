@@ -33,32 +33,49 @@ class CalendarService:
     async def get_calendar(self, calendar_id: uuid.UUID) -> Calendar:
         return await self.calendars.get(calendar_id)
 
-    async def create_calendar(self, values: dict[str, Any]) -> Calendar:
+    async def create_calendar(
+        self, values: dict[str, Any], *, commit: bool = True
+    ) -> Calendar:
         values = dict(values)
         source_type = values.get("source_type", CalendarSourceType.LOCAL)
         if source_type != CalendarSourceType.LOCAL:
             values["is_read_only"] = True
         calendar = await self.calendars.create(values)
-        await self.session.commit()
-        await self.session.refresh(calendar)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(calendar)
+        else:
+            await self.session.refresh(calendar)
         return calendar
 
-    async def update_calendar(self, calendar_id: uuid.UUID, changes: dict[str, Any]) -> Calendar:
+    async def update_calendar(
+        self,
+        calendar_id: uuid.UUID,
+        changes: dict[str, Any],
+        *,
+        commit: bool = True,
+    ) -> Calendar:
         calendar = await self.calendars.get(calendar_id, for_update=True)
         self._ensure_calendar_update_allowed(calendar, changes)
         calendar = await self.calendars.update(calendar_id, changes)
-        await self.session.commit()
-        await self.session.refresh(calendar)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(calendar)
+        else:
+            await self.session.refresh(calendar)
         return calendar
 
-    async def delete_calendar(self, calendar_id: uuid.UUID) -> None:
+    async def delete_calendar(
+        self, calendar_id: uuid.UUID, *, commit: bool = True
+    ) -> None:
         calendar = await self.calendars.get(calendar_id, for_update=True)
         if calendar.is_read_only:
             raise CalendarReadOnlyError()
         if calendar.source_type != CalendarSourceType.LOCAL:
             raise CalendarSourceProtectedError()
         await self.calendars.delete(calendar_id)
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
 
     async def list_events(
         self,
@@ -94,17 +111,28 @@ class CalendarService:
     async def get_event(self, event_id: uuid.UUID) -> CalendarEvent:
         return await self.events.get(event_id)
 
-    async def create_event(self, values: dict[str, Any]) -> CalendarEvent:
+    async def create_event(
+        self, values: dict[str, Any], *, commit: bool = True
+    ) -> CalendarEvent:
         calendar = await self.calendars.get(values["calendar_id"], for_update=True)
         self._ensure_writable(calendar)
         self._validate_event_times(values["start_at"], values["end_at"])
         self._validate_recurrence_rule(values.get("recurrence_rule"))
         event = await self.events.create(values)
-        await self.session.commit()
-        await self.session.refresh(event)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(event)
+        else:
+            await self.session.refresh(event)
         return event
 
-    async def update_event(self, event_id: uuid.UUID, changes: dict[str, Any]) -> CalendarEvent:
+    async def update_event(
+        self,
+        event_id: uuid.UUID,
+        changes: dict[str, Any],
+        *,
+        commit: bool = True,
+    ) -> CalendarEvent:
         event = await self.events.get(event_id, for_update=True)
         source_calendar = await self.calendars.get(event.calendar_id, for_update=True)
         self._ensure_writable(source_calendar)
@@ -117,22 +145,28 @@ class CalendarService:
         self._validate_event_times(start_at, end_at)
         self._validate_recurrence_rule(changes.get("recurrence_rule", event.recurrence_rule))
         event = await self.events.update(event_id, changes)
-        await self.session.commit()
-        await self.session.refresh(event)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(event)
+        else:
+            await self.session.refresh(event)
         return event
 
-    async def delete_event(self, event_id: uuid.UUID) -> None:
+    async def delete_event(self, event_id: uuid.UUID, *, commit: bool = True) -> None:
         event = await self.events.get(event_id, for_update=True)
         calendar = await self.calendars.get(event.calendar_id, for_update=True)
         self._ensure_writable(calendar)
         await self.events.delete(event_id)
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
 
     async def update_event_occurrence(
         self,
         event_id: uuid.UUID,
         occurrence_start_at: datetime,
         changes: dict[str, Any],
+        *,
+        commit: bool = True,
     ) -> CalendarEvent:
         self._require_timezone(occurrence_start_at)
         parent = await self._get_series_parent(event_id)
@@ -173,12 +207,19 @@ class CalendarService:
             occurrence = await self.events.create(values)
         else:
             occurrence = await self.events.update(existing.id, values)
-        await self.session.commit()
-        await self.session.refresh(occurrence)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(occurrence)
+        else:
+            await self.session.refresh(occurrence)
         return occurrence
 
     async def update_event_series(
-        self, event_id: uuid.UUID, changes: dict[str, Any]
+        self,
+        event_id: uuid.UUID,
+        changes: dict[str, Any],
+        *,
+        commit: bool = True,
     ) -> CalendarEvent:
         parent = await self._get_series_parent(event_id)
         self._validate_recurrence_rule(changes.get("recurrence_rule", parent.recurrence_rule))
@@ -208,12 +249,19 @@ class CalendarService:
         elif target_calendar_id != source_calendar_id:
             for exception in await self.events.list_exceptions(parent.id):
                 await self.events.update(exception.id, {"calendar_id": target_calendar_id})
-        await self.session.commit()
-        await self.session.refresh(updated)
+        if commit:
+            await self.session.commit()
+            await self.session.refresh(updated)
+        else:
+            await self.session.refresh(updated)
         return updated
 
     async def delete_event_occurrence(
-        self, event_id: uuid.UUID, occurrence_start_at: datetime
+        self,
+        event_id: uuid.UUID,
+        occurrence_start_at: datetime,
+        *,
+        commit: bool = True,
     ) -> None:
         self._require_timezone(occurrence_start_at)
         parent = await self._get_series_parent(event_id)
@@ -221,12 +269,16 @@ class CalendarService:
             parent.id,
             occurrence_start_at,
             {"status": EventStatus.CANCELLED},
+            commit=commit,
         )
 
-    async def delete_event_series(self, event_id: uuid.UUID) -> None:
+    async def delete_event_series(
+        self, event_id: uuid.UUID, *, commit: bool = True
+    ) -> None:
         parent = await self._get_series_parent(event_id)
         await self.events.delete_series(parent.id)
-        await self.session.commit()
+        if commit:
+            await self.session.commit()
 
     async def _get_series_parent(self, event_id: uuid.UUID) -> CalendarEvent:
         event = await self.events.get(event_id, for_update=True)

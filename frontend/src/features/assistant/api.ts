@@ -5,6 +5,7 @@ import type {
   AssistantConversationDetail,
   AssistantDeviceLogin,
   AssistantJob,
+  AssistantProposal,
   AssistantTurn,
 } from "./types";
 
@@ -102,6 +103,31 @@ export const assistantApi = {
   retryJob(jobId: string) {
     return request<AssistantTurn>(`/assistant/jobs/${jobId}/retry`, {
       method: "POST",
+    });
+  },
+
+  getProposal(proposalId: string) {
+    return request<AssistantProposal>(`/assistant/proposals/${proposalId}`);
+  },
+
+  confirmProposal(proposalId: string) {
+    return request<AssistantProposal>(
+      `/assistant/proposals/${proposalId}/confirm`,
+      { method: "POST" },
+    );
+  },
+
+  rejectProposal(proposalId: string) {
+    return request<AssistantProposal>(
+      `/assistant/proposals/${proposalId}/reject`,
+      { method: "POST" },
+    );
+  },
+
+  reviseProposal(proposalId: string, content: string) {
+    return request<AssistantTurn>(`/assistant/proposals/${proposalId}/revise`, {
+      method: "POST",
+      body: JSON.stringify({ content }),
     });
   },
 };

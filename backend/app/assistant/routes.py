@@ -5,12 +5,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.assistant.proposal_service import ProposalService
 from app.assistant.schemas import (
     AssistantAuthStatusResponse,
     AssistantDeviceLoginResponse,
     AssistantJobResponse,
     AssistantMessageCreate,
     AssistantMessageResponse,
+    AssistantProposalResponse,
     AssistantTurnResponse,
     ConversationCreate,
     ConversationDetailResponse,
@@ -52,6 +54,11 @@ def turn_response(turn: AssistantTurn) -> AssistantTurnResponse:
             else None
         ),
         job=AssistantJobResponse.model_validate(turn.job),
+        proposal=(
+            AssistantProposalResponse.model_validate(turn.proposal)
+            if turn.proposal is not None
+            else None
+        ),
     )
 
 
@@ -124,6 +131,9 @@ async def get_conversation(
         **ConversationResponse.model_validate(detail.conversation).model_dump(),
         messages=[AssistantMessageResponse.model_validate(item) for item in detail.messages],
         jobs=[AssistantJobResponse.model_validate(item) for item in detail.jobs],
+        proposals=[
+            AssistantProposalResponse.model_validate(item) for item in detail.proposals
+        ],
     )
 
 
@@ -158,4 +168,57 @@ async def retry_job(
     adapter: AdapterDependency,
 ) -> AssistantTurnResponse:
     turn = await AssistantService(session, adapter).retry_job(job_id)
+    return turn_response(turn)
+
+
+@router.get(
+    "/assistant/proposals/{proposal_id}",
+    response_model=AssistantProposalResponse,
+)
+async def get_proposal(
+    proposal_id: uuid.UUID,
+    session: SessionDependency,
+) -> AssistantProposalResponse:
+    proposal = await ProposalService(session).get(proposal_id)
+    return AssistantProposalResponse.model_validate(proposal)
+
+
+@router.post(
+    "/assistant/proposals/{proposal_id}/confirm",
+    response_model=AssistantProposalResponse,
+)
+async def confirm_proposal(
+    proposal_id: uuid.UUID,
+    session: SessionDependency,
+) -> AssistantProposalResponse:
+    proposal = await ProposalService(session).confirm(proposal_id)
+    return AssistantProposalResponse.model_validate(proposal)
+
+
+@router.post(
+    "/assistant/proposals/{proposal_id}/reject",
+    response_model=AssistantProposalResponse,
+)
+async def reject_proposal(
+    proposal_id: uuid.UUID,
+    session: SessionDependency,
+) -> AssistantProposalResponse:
+    proposal = await ProposalService(session).reject(proposal_id)
+    return AssistantProposalResponse.model_validate(proposal)
+
+
+@router.post(
+    "/assistant/proposals/{proposal_id}/revise",
+    response_model=AssistantTurnResponse,
+)
+async def revise_proposal(
+    proposal_id: uuid.UUID,
+    payload: AssistantMessageCreate,
+    session: SessionDependency,
+    adapter: AdapterDependency,
+) -> AssistantTurnResponse:
+    proposal = await ProposalService(session).reject(proposal_id)
+    turn = await AssistantService(session, adapter).send_message(
+        proposal.conversation_id, payload.content
+    )
     return turn_response(turn)
