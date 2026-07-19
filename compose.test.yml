@@ -11,6 +11,7 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://teacher_assistant_test:teacher_assistant_test@database:5432/teacher_assistant_test
       LOG_LEVEL: warning
+      TESTING: "true"
     ports: []
     restart: "no"
 

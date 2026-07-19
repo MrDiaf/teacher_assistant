@@ -109,3 +109,67 @@ class IcsSubscriptionNotFoundError(ResourceNotFoundError):
 
     def __init__(self) -> None:
         super().__init__("The requested calendar is not an ICS subscription.")
+
+
+class AssistantConversationNotFoundError(ResourceNotFoundError):
+    code = "assistant_conversation_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested assistant conversation does not exist.")
+
+
+class AssistantJobNotFoundError(ResourceNotFoundError):
+    code = "assistant_job_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested assistant job does not exist.")
+
+
+class AssistantRuntimeError(ApplicationError):
+    code = "assistant_unavailable"
+    status_code = HTTPStatus.SERVICE_UNAVAILABLE
+
+    def __init__(
+        self,
+        message: str = "The calendar assistant is temporarily unavailable. Try again safely.",
+    ) -> None:
+        super().__init__(message)
+
+
+class AssistantNotConfiguredError(AssistantRuntimeError):
+    code = "assistant_not_configured"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "The calendar assistant is not connected. Sign in with ChatGPT on the "
+            "Assistant page, or configure the optional API-key fallback."
+        )
+
+
+class AssistantAuthError(AssistantRuntimeError):
+    code = "assistant_auth_unavailable"
+
+    def __init__(self) -> None:
+        super().__init__("ChatGPT sign-in is temporarily unavailable. Try again safely.")
+
+
+class AssistantLoginAttemptNotFoundError(ResourceNotFoundError):
+    code = "assistant_login_attempt_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("This ChatGPT sign-in attempt is no longer active. Start again.")
+
+
+class InvalidAssistantResponseError(AssistantRuntimeError):
+    code = "invalid_assistant_response"
+
+    def __init__(self) -> None:
+        super().__init__("The assistant returned an invalid response. No calendar data changed.")
+
+
+class AssistantJobNotRetryableError(ApplicationError):
+    code = "assistant_job_not_retryable"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self) -> None:
+        super().__init__("Only a failed assistant job can be retried.")

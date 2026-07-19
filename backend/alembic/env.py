@@ -5,6 +5,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from app.assistant import models as assistant_models  # noqa: F401
 from app.calendar import models  # noqa: F401
 from app.core.config import get_settings
 from app.database.base import Base

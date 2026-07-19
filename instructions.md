@@ -864,16 +864,17 @@ Acceptance:
 
 ## M5 — Assistant chat, read-only first
 
-- [ ] Build the Assistant page.
-- [ ] Add conversation storage.
-- [ ] Add backend assistant endpoints.
-- [ ] Add the Codex SDK adapter.
-- [ ] Add temporary workspaces.
-- [ ] Add runtime `AGENT.md`.
-- [ ] Run Codex in a restricted sandbox.
-- [ ] Provide relevant calendar context.
-- [ ] Support read-only calendar questions.
-- [ ] Mock Codex in automated tests.
+- [x] Build the Assistant page.
+- [x] Add conversation storage.
+- [x] Add backend assistant endpoints.
+- [x] Add the Codex SDK adapter.
+- [x] Add temporary workspaces.
+- [x] Add runtime `AGENT.md`.
+- [x] Run Codex in a restricted sandbox.
+- [x] Provide relevant calendar context.
+- [x] Support read-only calendar questions.
+- [x] Mock Codex in automated tests.
+- [x] Add private ChatGPT subscription sign-in.
 
 Acceptance:
 
@@ -938,7 +939,7 @@ Everything else later
 The next development session should implement:
 
 ```text
-M5 — Assistant chat, read-only first
+M6 — Codex calendar proposals
 ```
 
 Do not ask Codex to implement every milestone in one session.

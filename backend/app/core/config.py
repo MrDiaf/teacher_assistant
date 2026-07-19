@@ -1,5 +1,7 @@
 from functools import lru_cache
+from pathlib import Path
 
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +10,13 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://teacher_assistant:teacher_assistant_dev@database:5432/"
         "teacher_assistant"
     )
+    testing: bool = False
     log_level: str = "info"
+    openai_api_key: SecretStr | None = None
+    codex_auth_home: Path = Path("/var/lib/teacher-assistant/codex")
+    codex_model: str = "gpt-5.6-sol"
+    codex_timeout_seconds: int = Field(default=90, ge=10, le=600)
+    codex_max_context_events: int = Field(default=1000, ge=1, le=5000)
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

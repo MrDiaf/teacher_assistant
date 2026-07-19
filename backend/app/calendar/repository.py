@@ -158,6 +158,7 @@ class EventRepository:
         calendar_id: uuid.UUID | None = None,
         starts_before: datetime | None = None,
         ends_after: datetime | None = None,
+        limit: int | None = None,
     ) -> list[CalendarEvent]:
         statement: Select[tuple[CalendarEvent]] = select(CalendarEvent).order_by(
             CalendarEvent.start_at, CalendarEvent.id
@@ -177,6 +178,8 @@ class EventRepository:
                     CalendarEvent.recurrence_parent_id.is_not(None),
                 )
             )
+        if limit is not None:
+            statement = statement.limit(limit)
         return list(await self.session.scalars(statement))
 
     async def get(self, event_id: uuid.UUID, *, for_update: bool = False) -> CalendarEvent:

@@ -2,10 +2,11 @@ import { useState } from "react";
 
 import { AppShell, type ModuleId } from "./components/AppShell";
 import { Icon } from "./components/Icon";
+import { AssistantPage } from "./features/assistant/AssistantPage";
 import { CalendarPage } from "./features/calendar/CalendarPage";
 
 const PLACEHOLDER_COPY: Record<
-  Exclude<ModuleId, "calendar">,
+  Exclude<ModuleId, "calendar" | "assistant">,
   [string, string]
 > = {
   dashboard: [
@@ -17,10 +18,6 @@ const PLACEHOLDER_COPY: Record<
     "Study Plan",
     "Study planning tools are coming in a later phase.",
   ],
-  assistant: [
-    "Assistant",
-    "The calendar assistant will be introduced after the calendar is complete.",
-  ],
   settings: [
     "Settings",
     "Application preferences are coming in a later phase.",
@@ -30,7 +27,7 @@ const PLACEHOLDER_COPY: Record<
 function PlaceholderPage({
   module,
 }: {
-  module: Exclude<ModuleId, "calendar">;
+  module: Exclude<ModuleId, "calendar" | "assistant">;
 }) {
   const [title, copy] = PLACEHOLDER_COPY[module];
   return (
@@ -51,9 +48,9 @@ export default function App() {
 
   return (
     <AppShell activeModule={activeModule} onNavigate={setActiveModule}>
-      {activeModule === "calendar" ? (
-        <CalendarPage />
-      ) : (
+      {activeModule === "calendar" && <CalendarPage />}
+      {activeModule === "assistant" && <AssistantPage />}
+      {activeModule !== "calendar" && activeModule !== "assistant" && (
         <PlaceholderPage module={activeModule} />
       )}
     </AppShell>

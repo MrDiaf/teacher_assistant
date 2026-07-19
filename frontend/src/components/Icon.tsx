@@ -14,6 +14,7 @@ export type IconName =
   | "lock"
   | "plus"
   | "refresh"
+  | "send"
   | "settings"
   | "trash"
   | "x";
@@ -91,6 +92,12 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
       <>
         <path d="M20 6v5h-5" />
         <path d="M18.5 15a8 8 0 1 1-.8-7.9L20 11" />
+      </>
+    ),
+    send: (
+      <>
+        <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+        <path d="M22 2 11 13" />
       </>
     ),
     settings: (
