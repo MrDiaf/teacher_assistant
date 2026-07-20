@@ -38,6 +38,13 @@ interface CalendarDialogState {
   calendar: CalendarModel | null;
 }
 
+interface UndoState {
+  id: number;
+  message: string;
+  action: () => Promise<unknown>;
+  isRunning: boolean;
+}
+
 const EMPTY_FILTERS: EventFilters = {
   search: "",
   calendarId: "",
@@ -72,6 +79,31 @@ function eventOverlaps(event: DisplayCalendarEvent, start: Date, end: Date) {
   );
 }
 
+function eventMutationFrom(event: CalendarEvent): EventMutation {
+  return {
+    calendar_id: event.calendar_id,
+    title: event.title,
+    description: event.description,
+    location: event.location,
+    start_at: event.start_at,
+    end_at: event.end_at,
+    all_day: event.all_day,
+    timezone: event.timezone,
+    recurrence_rule: event.recurrence_rule,
+    status: event.status,
+  };
+}
+
+function calendarMutationFrom(calendar: CalendarModel): CalendarMutation {
+  return {
+    name: calendar.name,
+    description: calendar.description,
+    color: calendar.color,
+    is_visible: calendar.is_visible,
+    is_read_only: calendar.is_read_only,
+  };
+}
+
 export function CalendarPage() {
   const [view, setView] = useState<CalendarView>("month");
   const [anchor, setAnchor] = useState(() => new Date());
@@ -86,6 +118,13 @@ export function CalendarPage() {
   const [calendarDialog, setCalendarDialog] =
     useState<CalendarDialogState | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
+  const [undoState, setUndoState] = useState<UndoState | null>(null);
+
+  useEffect(() => {
+    if (!undoState || undoState.isRunning) return;
+    const timeout = window.setTimeout(() => setUndoState(null), 12_000);
+    return () => window.clearTimeout(timeout);
+  }, [undoState?.id, undoState?.isRunning]);
 
   const days = useMemo(() => getViewDays(anchor, view), [anchor, view]);
   const [rangeStart, rangeEnd] = useMemo(
@@ -239,7 +278,18 @@ export function CalendarPage() {
     calendar: CalendarModel | null,
   ) {
     if (calendar) {
-      await calendarApi.updateCalendar(calendar.id, payload);
+      const updated = await calendarApi.updateCalendar(calendar.id, payload);
+      offerUndo("Calendar changes saved.", async () => {
+        if (updated.is_read_only && !calendar.is_read_only) {
+          await calendarApi.updateCalendar(calendar.id, {
+            is_read_only: false,
+          });
+        }
+        await calendarApi.updateCalendar(
+          calendar.id,
+          calendarMutationFrom(calendar),
+        );
+      });
     } else {
       await calendarApi.createCalendar(payload as CalendarMutation);
     }
@@ -263,7 +313,8 @@ export function CalendarPage() {
     scope: RecurrenceScope | null,
   ) {
     if (!event) {
-      await calendarApi.createEvent(payload);
+      const created = await calendarApi.createEvent(payload);
+      offerUndo("Event created.", () => calendarApi.deleteEvent(created.id));
     } else if (scope === "occurrence") {
       if (!event.series_id || !event.occurrence_start_at) {
         throw new Error("This recurring occurrence could not be identified.");
@@ -273,10 +324,27 @@ export function CalendarPage() {
         event.occurrence_start_at,
         payload,
       );
+      const previous = eventMutationFrom(event);
+      offerUndo("Occurrence updated.", () =>
+        calendarApi.updateEventOccurrence(
+          event.series_id!,
+          event.occurrence_start_at!,
+          previous,
+        ),
+      );
     } else if (scope === "series") {
-      await calendarApi.updateEventSeries(event.series_id ?? event.id, payload);
+      const seriesId = event.series_id ?? event.id;
+      await calendarApi.updateEventSeries(seriesId, payload);
+      const previous = eventMutationFrom(seriesEvent ?? event);
+      offerUndo("Series updated.", () =>
+        calendarApi.updateEventSeries(seriesId, previous),
+      );
     } else {
       await calendarApi.updateEvent(event.id, payload);
+      const previous = eventMutationFrom(event);
+      offerUndo("Event updated.", () =>
+        calendarApi.updateEvent(event.id, previous),
+      );
     }
     setDialog(null);
     setReloadVersion((version) => version + 1);
@@ -294,10 +362,20 @@ export function CalendarPage() {
         event.series_id,
         event.occurrence_start_at,
       );
+      const previous = eventMutationFrom(event);
+      offerUndo("Occurrence deleted.", () =>
+        calendarApi.updateEventOccurrence(
+          event.series_id!,
+          event.occurrence_start_at!,
+          previous,
+        ),
+      );
     } else if (scope === "series") {
       await calendarApi.deleteEventSeries(event.series_id ?? event.id);
     } else {
       await calendarApi.deleteEvent(event.id);
+      const previous = eventMutationFrom(event);
+      offerUndo("Event deleted.", () => calendarApi.createEvent(previous));
     }
     setDialog(null);
     setReloadVersion((version) => version + 1);
@@ -319,14 +397,30 @@ export function CalendarPage() {
     if (!ensureEventWritable(event)) return;
     setError(null);
     try {
+      const previous = Object.fromEntries(
+        Object.keys(changes).map((field) => [
+          field,
+          event[field as keyof DisplayCalendarEvent],
+        ]),
+      ) as Partial<EventMutation>;
       if (event.series_id && event.occurrence_start_at) {
         await calendarApi.updateEventOccurrence(
           event.series_id,
           event.occurrence_start_at,
           changes,
         );
+        offerUndo("Occurrence moved.", () =>
+          calendarApi.updateEventOccurrence(
+            event.series_id!,
+            event.occurrence_start_at!,
+            previous,
+          ),
+        );
       } else {
         await calendarApi.updateEvent(event.id, changes);
+        offerUndo("Event changed.", () =>
+          calendarApi.updateEvent(event.id, previous),
+        );
       }
       setReloadVersion((version) => version + 1);
     } catch (interactionError) {
@@ -366,6 +460,25 @@ export function CalendarPage() {
     void persistDirectInteraction(event, { end_at: endAt.toISOString() });
   }
 
+  function offerUndo(message: string, action: () => Promise<unknown>) {
+    setUndoState({ id: Date.now(), message, action, isRunning: false });
+  }
+
+  async function runUndo() {
+    if (!undoState || undoState.isRunning) return;
+    const current = undoState;
+    setUndoState({ ...current, isRunning: true });
+    setError(null);
+    try {
+      await current.action();
+      setUndoState(null);
+      setReloadVersion((version) => version + 1);
+    } catch (undoError) {
+      setError(messageFromError(undoError));
+      setUndoState({ ...current, isRunning: false });
+    }
+  }
+
   const noVisibleCalendars =
     calendars.length > 0 && visibleCalendarIds.size === 0;
   const noEvents =
@@ -379,7 +492,7 @@ export function CalendarPage() {
       : null;
 
   return (
-    <main className="calendar-page">
+    <main aria-labelledby="calendar-page-title" className="calendar-page">
       <CalendarToolbar
         anchor={anchor}
         canCreate={writableCalendars.length > 0}
@@ -436,7 +549,11 @@ export function CalendarPage() {
 
         <div className="calendar-canvas">
           {isLoading && calendars.length === 0 ? (
-            <div className="calendar-loading" aria-label="Loading calendar">
+            <div
+              className="calendar-loading"
+              aria-label="Loading calendar"
+              role="status"
+            >
               <span />
               <span />
               <span />
@@ -532,6 +649,27 @@ export function CalendarPage() {
           onClose={() => setIsImportOpen(false)}
           onImported={() => setReloadVersion((version) => version + 1)}
         />
+      )}
+
+      {undoState && (
+        <div className="undo-toast" role="status" aria-live="polite">
+          <span>{undoState.message}</span>
+          <button
+            disabled={undoState.isRunning}
+            onClick={() => void runUndo()}
+            type="button"
+          >
+            {undoState.isRunning ? "Undoing…" : "Undo"}
+          </button>
+          <button
+            aria-label="Dismiss undo notification"
+            disabled={undoState.isRunning}
+            onClick={() => setUndoState(null)}
+            type="button"
+          >
+            <Icon name="x" size={15} />
+          </button>
+        </div>
       )}
     </main>
   );

@@ -59,6 +59,20 @@ function proposalStatusLabel(status: AssistantProposal["status"]): string {
   return status.replaceAll("_", " ");
 }
 
+function proposalErrorCode(proposal: AssistantProposal): string | null {
+  const code = proposal.result?.error_code;
+  return typeof code === "string" && code ? code : null;
+}
+
+function auditTime(value: string): string {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 function reviewValue(field: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "Not set";
   if (typeof value === "boolean") return value ? "Yes" : "No";
@@ -116,6 +130,7 @@ function ProposalCard({
   onRevise,
 }: ProposalCardProps) {
   const awaiting = proposal.status === "awaiting_confirmation";
+  const errorCode = proposalErrorCode(proposal);
   return (
     <section
       aria-label={`Calendar proposal: ${proposal.summary}`}
@@ -183,7 +198,11 @@ function ProposalCard({
       )}
       {proposal.safe_error && (
         <p className="assistant-proposal-error" role="alert">
-          {proposal.safe_error}
+          <span>{proposal.safe_error}</span>
+          <small>
+            {errorCode && <>Error code: {errorCode}. </>}This safe failure is
+            included automatically in your next assistant message.
+          </small>
         </p>
       )}
       {awaiting && (
@@ -204,6 +223,38 @@ function ProposalCard({
           Confirmed and completed by the calendar service.
         </p>
       )}
+      <details className="assistant-proposal-audit">
+        <summary>Audit details</summary>
+        <ol>
+          {proposal.action_records.map((record) => (
+            <li key={record.id}>
+              <strong>{record.operation.replaceAll("_", " ")}</strong>
+              <span>
+                Requested{" "}
+                <time dateTime={record.requested_at}>
+                  {auditTime(record.requested_at)}
+                </time>
+              </span>
+              {record.confirmed_at && (
+                <span>
+                  Confirmed{" "}
+                  <time dateTime={record.confirmed_at}>
+                    {auditTime(record.confirmed_at)}
+                  </time>
+                </span>
+              )}
+              {record.executed_at && (
+                <span>
+                  Executed{" "}
+                  <time dateTime={record.executed_at}>
+                    {auditTime(record.executed_at)}
+                  </time>
+                </span>
+              )}
+            </li>
+          ))}
+        </ol>
+      </details>
     </section>
   );
 }
@@ -216,6 +267,11 @@ export function AssistantPage() {
     useState<AssistantConversation | null>(null);
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [proposals, setProposals] = useState<AssistantProposal[]>([]);
+  const [auditItems, setAuditItems] = useState<AssistantProposal[]>([]);
+  const [sidebarMode, setSidebarMode] = useState<"conversations" | "activity">(
+    "conversations",
+  );
+  const [isAuditLoading, setIsAuditLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [failedJob, setFailedJob] = useState<AssistantJob | null>(null);
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
@@ -368,6 +424,46 @@ export function AssistantPage() {
     }
   }
 
+  async function showAudit() {
+    setSidebarMode("activity");
+    if (auditItems.length || isAuditLoading) return;
+    setIsAuditLoading(true);
+    setError(null);
+    try {
+      setAuditItems(await assistantApi.listAudit());
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Assistant activity could not be loaded.",
+      );
+    } finally {
+      setIsAuditLoading(false);
+    }
+  }
+
+  async function openAuditItem(proposal: AssistantProposal) {
+    setError(null);
+    try {
+      const detail = await assistantApi.getConversation(
+        proposal.conversation_id,
+      );
+      setActiveConversation(detail);
+      setMessages(detail.messages);
+      setProposals(detail.proposals ?? []);
+      setFailedJob(
+        [...detail.jobs].reverse().find((job) => job.status === "failed") ??
+          null,
+      );
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "This audit entry could not be opened.",
+      );
+    }
+  }
+
   async function startConversation() {
     if (isSending) return;
     setError(null);
@@ -425,6 +521,7 @@ export function AssistantPage() {
       const detail = await assistantApi.getConversation(conversation.id);
       setMessages(detail.messages);
       setProposals(detail.proposals ?? []);
+      mergeAudit(detail.proposals ?? []);
       setRevisionProposal(null);
       setActiveConversation(turn.conversation);
       setConversations((current) => [
@@ -459,6 +556,7 @@ export function AssistantPage() {
       const detail = await assistantApi.getConversation(turn.conversation.id);
       setMessages(detail.messages);
       setProposals(detail.proposals ?? []);
+      mergeAudit(detail.proposals ?? []);
       setFailedJob(turn.job.status === "failed" ? turn.job : null);
     } catch (retryError) {
       setError(
@@ -471,12 +569,27 @@ export function AssistantPage() {
     }
   }
 
+  function mergeAudit(items: AssistantProposal[]) {
+    setAuditItems((current) => {
+      const incomingIds = new Set(items.map((proposal) => proposal.id));
+      return [
+        ...items,
+        ...current.filter((proposal) => !incomingIds.has(proposal.id)),
+      ].sort(
+        (left, right) =>
+          new Date(right.updated_at).getTime() -
+          new Date(left.updated_at).getTime(),
+      );
+    });
+  }
+
   function replaceProposal(updated: AssistantProposal) {
     setProposals((current) =>
       current.map((proposal) =>
         proposal.id === updated.id ? updated : proposal,
       ),
     );
+    mergeAudit([updated]);
   }
 
   async function confirmProposal(proposal: AssistantProposal) {
@@ -591,7 +704,9 @@ export function AssistantPage() {
           <div className="conversation-panel-heading">
             <div>
               <p className="eyebrow">History</p>
-              <h2>Conversations</h2>
+              <h2>
+                {sidebarMode === "activity" ? "Activity" : "Conversations"}
+              </h2>
             </div>
             <button
               aria-label="New conversation"
@@ -603,39 +718,94 @@ export function AssistantPage() {
               <Icon name="plus" size={15} />
             </button>
           </div>
-          <div className="conversation-list">
-            {isLoading ? (
-              <div className="assistant-history-loading" role="status">
-                Loading conversations…
-              </div>
-            ) : conversations.length === 0 ? (
-              <p className="conversation-list-empty">
-                Your saved conversations appear here.
-              </p>
-            ) : (
-              conversations.map((conversation) => (
-                <button
-                  className={
-                    conversation.id === activeConversation?.id ? "active" : ""
-                  }
-                  key={conversation.id}
-                  onClick={() => void loadConversation(conversation)}
-                  type="button"
-                >
-                  <Icon name="assistant" size={16} />
-                  <span>
-                    <strong>{conversation.title}</strong>
-                    <small>
-                      {new Intl.DateTimeFormat("en", {
-                        month: "short",
-                        day: "numeric",
-                      }).format(new Date(conversation.updated_at))}
-                    </small>
-                  </span>
-                </button>
-              ))
-            )}
+          <div
+            className="assistant-sidebar-tabs"
+            role="tablist"
+            aria-label="Assistant history"
+          >
+            <button
+              aria-selected={sidebarMode === "conversations"}
+              onClick={() => setSidebarMode("conversations")}
+              role="tab"
+              type="button"
+            >
+              Conversations
+            </button>
+            <button
+              aria-selected={sidebarMode === "activity"}
+              onClick={() => void showAudit()}
+              role="tab"
+              type="button"
+            >
+              Activity
+            </button>
           </div>
+          {sidebarMode === "conversations" ? (
+            <div className="conversation-list" role="tabpanel">
+              {isLoading ? (
+                <div className="assistant-history-loading" role="status">
+                  Loading conversations…
+                </div>
+              ) : conversations.length === 0 ? (
+                <p className="conversation-list-empty">
+                  Your saved conversations appear here.
+                </p>
+              ) : (
+                conversations.map((conversation) => (
+                  <button
+                    className={
+                      conversation.id === activeConversation?.id ? "active" : ""
+                    }
+                    key={conversation.id}
+                    onClick={() => void loadConversation(conversation)}
+                    type="button"
+                  >
+                    <Icon name="assistant" size={16} />
+                    <span>
+                      <strong>{conversation.title}</strong>
+                      <small>
+                        {new Intl.DateTimeFormat("en", {
+                          month: "short",
+                          day: "numeric",
+                        }).format(new Date(conversation.updated_at))}
+                      </small>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          ) : (
+            <div className="assistant-audit-list" role="tabpanel">
+              {isAuditLoading ? (
+                <div className="assistant-history-loading" role="status">
+                  Loading activity…
+                </div>
+              ) : auditItems.length === 0 ? (
+                <p className="conversation-list-empty">
+                  Confirmed and rejected proposals appear here.
+                </p>
+              ) : (
+                auditItems.map((proposal) => (
+                  <button
+                    key={proposal.id}
+                    onClick={() => void openAuditItem(proposal)}
+                    type="button"
+                  >
+                    <span
+                      className={`assistant-audit-status ${proposal.status}`}
+                    />
+                    <span>
+                      <strong>{proposal.summary}</strong>
+                      <small>
+                        {proposalStatusLabel(proposal.status)} ·{" "}
+                        {auditTime(proposal.updated_at)}
+                      </small>
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
           {isAuthenticated && (
             <div className="assistant-account-summary">
               <span className="assistant-account-dot" aria-hidden="true" />
@@ -823,6 +993,13 @@ export function AssistantPage() {
                     <div>
                       <strong>The assistant could not finish</strong>
                       <p>{friendlyJobError(failedJob.safe_error)}</p>
+                      <small>
+                        {failedJob.safe_error_code && (
+                          <>Error code: {failedJob.safe_error_code}. </>
+                        )}
+                        Retry sends this safe failure back to the assistant so
+                        it can correct the response.
+                      </small>
                     </div>
                     <button
                       className="quiet-button"

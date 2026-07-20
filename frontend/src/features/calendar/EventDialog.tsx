@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { Icon } from "../../components/Icon";
+import { useModalDialog } from "../../hooks/useModalDialog";
 import { addDays, defaultEventWindow, toDateTimeLocal } from "./dateUtils";
 import { recurrenceLabel } from "./recurrence";
 import type {
@@ -93,6 +94,7 @@ export function EventDialog({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useModalDialog(onClose);
 
   function loadEventValues(source: CalendarEvent) {
     setCalendarId(source.calendar_id);
@@ -233,6 +235,7 @@ export function EventDialog({
         aria-labelledby="event-dialog-title"
         aria-modal="true"
         className="event-dialog"
+        ref={dialogRef}
         role="dialog"
       >
         <header className="dialog-header">
@@ -293,7 +296,7 @@ export function EventDialog({
           <label className="field field-wide">
             <span>Title</span>
             <input
-              autoFocus={!event}
+              data-dialog-autofocus={!event ? "true" : undefined}
               disabled={isReadOnly}
               maxLength={240}
               onChange={(input) => setTitle(input.target.value)}

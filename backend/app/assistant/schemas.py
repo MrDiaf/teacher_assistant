@@ -48,6 +48,7 @@ class AssistantJobResponse(BaseModel):
     owner_message_id: uuid.UUID
     status: AssistantJobStatus
     safe_error: str | None
+    safe_error_code: str | None
     created_at: datetime
     updated_at: datetime
 

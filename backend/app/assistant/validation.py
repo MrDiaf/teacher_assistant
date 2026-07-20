@@ -17,10 +17,12 @@ from app.assistant.proposals import (
 )
 from app.calendar.models import Calendar, CalendarEvent
 from app.calendar.repository import CalendarRepository, EventRepository
+from app.calendar.service import validate_recurrence_rule
 from app.core.errors import (
     AssistantProposalStateError,
     CalendarReadOnlyError,
     InvalidAssistantResponseError,
+    InvalidRecurrenceError,
 )
 
 
@@ -43,7 +45,7 @@ class ProposalValidator:
     async def prepare(self, proposal: CalendarChangeProposal) -> PreparedProposal:
         try:
             return await self._inspect(proposal, for_update=False)
-        except InvalidAssistantResponseError:
+        except (InvalidAssistantResponseError, InvalidRecurrenceError):
             raise
         except Exception as exc:
             raise InvalidAssistantResponseError() from exc
@@ -161,6 +163,7 @@ class ProposalValidator:
                     action.calendar_id, for_update=for_update
                 )
                 self._ensure_writable(calendar)
+                validate_recurrence_rule(action.event.recurrence_rule)
                 event_count, action_warnings = self._affected_recurrence_count(
                     action.event.start_at, action.event.recurrence_rule
                 )
@@ -224,6 +227,7 @@ class ProposalValidator:
                 proposed = dict(previous)
                 proposed.update(action.changes.change_values(mode="json"))
                 rule = proposed.get("recurrence_rule")
+                validate_recurrence_rule(rule)
                 event_count, action_warnings = self._mutation_affected_count(
                     parent, action.recurrence_scope, rule
                 )

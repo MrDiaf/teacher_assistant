@@ -34,15 +34,16 @@ class ProposalService:
         self.proposals = ProposalRepository(session)
         self.assistant = AssistantRepository(session)
         self.calendar_service = CalendarService(session)
-        self.validator = ProposalValidator(
-            CalendarRepository(session), EventRepository(session)
-        )
+        self.validator = ProposalValidator(CalendarRepository(session), EventRepository(session))
 
     async def get(self, proposal_id: uuid.UUID) -> AssistantProposal:
         proposal = await self.proposals.get(proposal_id)
         if await self._expire_if_needed(proposal):
             return await self.proposals.get(proposal_id)
         return proposal
+
+    async def list_audit(self, *, limit: int = 50) -> list[AssistantProposal]:
+        return await self.proposals.list_recent(limit=limit)
 
     async def confirm(self, proposal_id: uuid.UUID) -> AssistantProposal:
         proposal = await self.proposals.get(proposal_id, for_update=True)
@@ -66,9 +67,7 @@ class ProposalService:
 
             proposal.status = AssistantProposalStatus.EXECUTING
             results: list[dict[str, Any]] = []
-            for action, record in zip(
-                actions, proposal.action_records, strict=True
-            ):
+            for action, record in zip(actions, proposal.action_records, strict=True):
                 action_result = await self._execute_action(action)
                 record.executed_at = now
                 record.result = action_result
@@ -87,21 +86,33 @@ class ProposalService:
             proposal.safe_error = None
             await self.assistant.update_job(
                 proposal.job_id,
-                {"status": AssistantJobStatus.COMPLETED, "safe_error": None},
+                {
+                    "status": AssistantJobStatus.COMPLETED,
+                    "safe_error": None,
+                    "safe_error_code": None,
+                },
             )
             await self.session.commit()
             return await self.proposals.get(proposal.id)
         except ApplicationError as exc:
             await self.session.rollback()
             return await self._record_failed_execution(
-                proposal_id, exc.message, confirmed_at=now
+                proposal_id,
+                exc.message,
+                error_code=exc.code,
+                confirmed_at=now,
             )
-        except Exception:
+        except Exception as exc:
             await self.session.rollback()
-            logger.exception("Assistant proposal execution failed: %s", proposal_id)
+            logger.error(
+                "Assistant proposal execution failed: proposal=%s error_type=%s",
+                proposal_id,
+                type(exc).__name__,
+            )
             return await self._record_failed_execution(
                 proposal_id,
                 "The proposal could not be executed safely. No calendar data changed.",
+                error_code="proposal_execution_failed",
                 confirmed_at=now,
             )
 
@@ -121,7 +132,11 @@ class ProposalService:
             record.result = {"status": "rejected_by_owner"}
         await self.assistant.update_job(
             proposal.job_id,
-            {"status": AssistantJobStatus.COMPLETED, "safe_error": None},
+            {
+                "status": AssistantJobStatus.COMPLETED,
+                "safe_error": None,
+                "safe_error_code": None,
+            },
         )
         await self.session.commit()
         return await self.proposals.get(proposal.id)
@@ -139,11 +154,7 @@ class ProposalService:
                 },
                 commit=False,
             )
-            return {
-                "calendar": CalendarResponse.model_validate(calendar).model_dump(
-                    mode="json"
-                )
-            }
+            return {"calendar": CalendarResponse.model_validate(calendar).model_dump(mode="json")}
 
         if isinstance(action, UpdateCalendarAction):
             calendar = await self.calendar_service.update_calendar(
@@ -151,11 +162,7 @@ class ProposalService:
                 action.changes.change_values(),
                 commit=False,
             )
-            return {
-                "calendar": CalendarResponse.model_validate(calendar).model_dump(
-                    mode="json"
-                )
-            }
+            return {"calendar": CalendarResponse.model_validate(calendar).model_dump(mode="json")}
 
         if isinstance(action, CreateEventAction):
             event = await self.calendar_service.create_event(
@@ -165,9 +172,7 @@ class ProposalService:
                 },
                 commit=False,
             )
-            return {
-                "event": EventResponse.model_validate(event).model_dump(mode="json")
-            }
+            return {"event": EventResponse.model_validate(event).model_dump(mode="json")}
 
         if isinstance(action, UpdateEventAction):
             changes = action.changes.change_values()
@@ -186,9 +191,7 @@ class ProposalService:
                 event = await self.calendar_service.update_event(
                     action.event_id, changes, commit=False
                 )
-            return {
-                "event": EventResponse.model_validate(event).model_dump(mode="json")
-            }
+            return {"event": EventResponse.model_validate(event).model_dump(mode="json")}
 
         if isinstance(action, DeleteEventAction):
             if action.recurrence_scope == "occurrence":
@@ -198,13 +201,9 @@ class ProposalService:
                     commit=False,
                 )
             elif action.recurrence_scope == "series":
-                await self.calendar_service.delete_event_series(
-                    action.event_id, commit=False
-                )
+                await self.calendar_service.delete_event_series(action.event_id, commit=False)
             else:
-                await self.calendar_service.delete_event(
-                    action.event_id, commit=False
-                )
+                await self.calendar_service.delete_event(action.event_id, commit=False)
             return {"event_id": str(action.event_id), "deleted": True}
 
         raise AssistantProposalStateError("The proposal contains an unknown action.")
@@ -214,6 +213,7 @@ class ProposalService:
         proposal_id: uuid.UUID,
         safe_error: str,
         *,
+        error_code: str,
         confirmed_at: datetime,
     ) -> AssistantProposal:
         proposal = await self.proposals.get(proposal_id, for_update=True)
@@ -221,11 +221,13 @@ class ProposalService:
         proposal.confirmed_at = confirmed_at
         proposal.safe_error = safe_error[:500]
         proposal.result = {
+            "error_code": error_code[:80],
             "actions": [
                 {
                     "position": record.position,
                     "operation": record.operation,
                     "status": "failed",
+                    "error_code": error_code[:80],
                     "error": safe_error[:500],
                 }
                 for record in proposal.action_records
@@ -234,10 +236,17 @@ class ProposalService:
         for record in proposal.action_records:
             record.confirmed_at = confirmed_at
             record.safe_error = safe_error[:500]
-            record.result = {"status": "failed"}
+            record.result = {
+                "status": "failed",
+                "error_code": error_code[:80],
+            }
         await self.assistant.update_job(
             proposal.job_id,
-            {"status": AssistantJobStatus.COMPLETED, "safe_error": None},
+            {
+                "status": AssistantJobStatus.COMPLETED,
+                "safe_error": None,
+                "safe_error_code": None,
+            },
         )
         await self.session.commit()
         return await self.proposals.get(proposal.id)
@@ -253,7 +262,11 @@ class ProposalService:
             )
             await self.assistant.update_job(
                 proposal.job_id,
-                {"status": AssistantJobStatus.COMPLETED, "safe_error": None},
+                {
+                    "status": AssistantJobStatus.COMPLETED,
+                    "safe_error": None,
+                    "safe_error_code": None,
+                },
             )
             await self.session.commit()
             return True

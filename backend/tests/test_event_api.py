@@ -1,5 +1,6 @@
 import uuid
 
+import pytest
 from httpx import AsyncClient
 
 from tests.helpers import create_calendar, create_event
@@ -294,5 +295,54 @@ async def test_rejects_unsupported_recurrence_rule(client: AsyncClient) -> None:
             "recurrence_rule": "FREQ=YEARLY",
         },
     )
+    assert response.status_code == 400
+    assert response.json()["code"] == "invalid_recurrence"
+
+
+async def test_supports_unique_weekdays_for_weekly_recurrence(
+    client: AsyncClient,
+) -> None:
+    calendar = await create_calendar(client)
+    response = await client.post(
+        "/api/v1/events",
+        json={
+            "calendar_id": calendar["id"],
+            "title": "Legs workout",
+            "start_at": "2026-07-22T19:00:00+02:00",
+            "end_at": "2026-07-22T21:00:00+02:00",
+            "timezone": "Europe/Stockholm",
+            "recurrence_rule": "FREQ=WEEKLY;BYDAY=WE,SA;COUNT=9",
+        },
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["recurrence_rule"] == "FREQ=WEEKLY;BYDAY=WE,SA;COUNT=9"
+
+
+@pytest.mark.parametrize(
+    "rule",
+    [
+        "FREQ=DAILY;BYDAY=MO;COUNT=3",
+        "FREQ=WEEKLY;BYDAY=MO,MO;COUNT=3",
+        "FREQ=WEEKLY;BYDAY=XX;COUNT=3",
+    ],
+)
+async def test_rejects_unsupported_byday_recurrence(
+    client: AsyncClient,
+    rule: str,
+) -> None:
+    calendar = await create_calendar(client)
+    response = await client.post(
+        "/api/v1/events",
+        json={
+            "calendar_id": calendar["id"],
+            "title": "Invalid weekly event",
+            "start_at": "2026-07-22T19:00:00+02:00",
+            "end_at": "2026-07-22T21:00:00+02:00",
+            "timezone": "Europe/Stockholm",
+            "recurrence_rule": rule,
+        },
+    )
+
     assert response.status_code == 400
     assert response.json()["code"] == "invalid_recurrence"

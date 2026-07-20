@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { Icon } from "../../components/Icon";
+import { useModalDialog } from "../../hooks/useModalDialog";
 import type { CalendarModel, CalendarMutation } from "./types";
 
 const DEFAULT_COLOR = "#29584c";
@@ -30,6 +31,7 @@ export function CalendarDialog({
   const [isReadOnly, setIsReadOnly] = useState(calendar?.is_read_only ?? false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useModalDialog(onClose);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -89,6 +91,7 @@ export function CalendarDialog({
         aria-labelledby="calendar-dialog-title"
         aria-modal="true"
         className="event-dialog calendar-dialog"
+        ref={dialogRef}
         role="dialog"
       >
         <header className="dialog-header">
@@ -125,7 +128,7 @@ export function CalendarDialog({
           <label className="field field-wide">
             <span>Name</span>
             <input
-              autoFocus={!calendar}
+              data-dialog-autofocus={!calendar ? "true" : undefined}
               disabled={isExistingReadOnly}
               maxLength={120}
               onChange={(input) => setName(input.target.value)}

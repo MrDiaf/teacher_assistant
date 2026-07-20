@@ -369,6 +369,33 @@ describe("CalendarPage", () => {
     );
 
     expect(await screen.findByText("Updated office hours")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+    expect(await screen.findByText("Office hours")).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).includes("/api/v1/events/event-created") &&
+          init?.method === "PATCH" &&
+          String(init.body).includes('"title":"Office hours"'),
+      ),
+    ).toBe(true);
+  });
+
+  it("closes dialogs with Escape and restores keyboard focus", async () => {
+    render(<CalendarPage />);
+    await screen.findByText("Planning session");
+    const createButton = screen.getByRole("button", { name: "Create event" });
+
+    createButton.focus();
+    fireEvent.click(createButton);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveFocus();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(createButton).toHaveFocus());
   });
 
   it("shows read-only events without mutation controls", async () => {

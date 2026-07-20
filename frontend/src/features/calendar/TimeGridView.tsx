@@ -272,7 +272,7 @@ export function TimeGridView({
                       {event.location && <small>{event.location}</small>}
                       {!isReadOnly && (
                         <span
-                          aria-label={`Resize ${event.title}`}
+                          aria-hidden="true"
                           className="event-resize-handle"
                           onPointerDown={(pointerEvent) =>
                             beginResize(pointerEvent, event)

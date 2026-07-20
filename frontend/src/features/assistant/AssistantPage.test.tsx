@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -110,6 +111,7 @@ function job(
     owner_message_id: ownerMessage.id,
     status,
     safe_error: safeError,
+    safe_error_code: safeError ? "assistant_unavailable" : null,
     created_at: now,
     updated_at: now,
   };
@@ -185,6 +187,13 @@ describe("AssistantPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
     expect(await screen.findByText("Confirmation mode")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Assistant" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen.getByRole("link", { name: "Skip to main content" }),
+    ).toHaveAttribute("href", "#main-content");
     expect(
       screen.getByText("What would you like to know?"),
     ).toBeInTheDocument();
@@ -284,6 +293,12 @@ describe("AssistantPage", () => {
     expect(
       await screen.findByText("Codex is temporarily unavailable."),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Error code: assistant_unavailable/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Retry sends this safe failure/),
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry safely" }));
     expect(
       await screen.findByText(
@@ -373,6 +388,73 @@ describe("AssistantPage", () => {
           ) && init?.method === "POST",
       ),
     ).toBe(true);
+  });
+
+  it("loads persistent proposal activity and exposes action timestamps", async () => {
+    const completedProposal: AssistantProposal = {
+      ...awaitingProposal,
+      status: "completed",
+      confirmed_at: now,
+      executed_at: now,
+      action_records: awaitingProposal.action_records.map((record) => ({
+        ...record,
+        confirmed_at: now,
+        executed_at: now,
+      })),
+    };
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/v1/assistant/auth") && method === "GET") {
+          return response(connectedAuth);
+        }
+        if (
+          url.endsWith("/api/v1/assistant/conversations") &&
+          method === "GET"
+        ) {
+          return response([conversation]);
+        }
+        if (
+          url.endsWith(`/api/v1/assistant/conversations/${conversation.id}`) &&
+          method === "GET"
+        ) {
+          return response({
+            ...conversation,
+            messages: [ownerMessage, assistantMessage],
+            jobs: [job("completed")],
+            proposals: [completedProposal],
+          });
+        }
+        if (
+          url.endsWith("/api/v1/assistant/audit?limit=50") &&
+          method === "GET"
+        ) {
+          return response([completedProposal]);
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    await screen.findByText("Move the planning session");
+    fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
+
+    expect(await screen.findByText(/completed ·/i)).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Move the planning session completed/i,
+      }),
+    );
+    const auditDetails = (await screen.findByText("Audit details")).closest(
+      "details",
+    )!;
+    fireEvent.click(within(auditDetails).getByText("Audit details"));
+    expect(within(auditDetails).getByText(/Requested/)).toBeInTheDocument();
+    expect(within(auditDetails).getByText(/Confirmed/)).toBeInTheDocument();
+    expect(within(auditDetails).getByText(/Executed/)).toBeInTheDocument();
   });
 
   it("offers a safe ChatGPT subscription device-login link when signed out", async () => {

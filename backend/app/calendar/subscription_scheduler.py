@@ -24,8 +24,12 @@ async def refresh_due_subscriptions() -> None:
         try:
             async with session_factory() as session:
                 await IcsSubscriptionService(session).sync(calendar_id)
-        except Exception:
-            logger.exception("ICS subscription refresh failed for calendar %s", calendar_id)
+        except Exception as exc:
+            logger.error(
+                "ICS subscription refresh failed: calendar=%s error_type=%s",
+                calendar_id,
+                type(exc).__name__,
+            )
 
 
 async def subscription_scheduler(stop: asyncio.Event) -> None:

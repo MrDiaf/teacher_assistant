@@ -2,7 +2,7 @@ import uuid
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assistant.proposal_service import ProposalService
@@ -131,9 +131,7 @@ async def get_conversation(
         **ConversationResponse.model_validate(detail.conversation).model_dump(),
         messages=[AssistantMessageResponse.model_validate(item) for item in detail.messages],
         jobs=[AssistantJobResponse.model_validate(item) for item in detail.jobs],
-        proposals=[
-            AssistantProposalResponse.model_validate(item) for item in detail.proposals
-        ],
+        proposals=[AssistantProposalResponse.model_validate(item) for item in detail.proposals],
     )
 
 
@@ -169,6 +167,18 @@ async def retry_job(
 ) -> AssistantTurnResponse:
     turn = await AssistantService(session, adapter).retry_job(job_id)
     return turn_response(turn)
+
+
+@router.get(
+    "/assistant/audit",
+    response_model=list[AssistantProposalResponse],
+)
+async def list_assistant_audit(
+    session: SessionDependency,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[AssistantProposalResponse]:
+    proposals = await ProposalService(session).list_audit(limit=limit)
+    return [AssistantProposalResponse.model_validate(item) for item in proposals]
 
 
 @router.get(

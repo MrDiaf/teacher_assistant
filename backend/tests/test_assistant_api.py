@@ -235,6 +235,92 @@ async def test_conversation_history_is_stored_and_supplied_without_hidden_reason
     assert "hidden reasoning" not in detail.text.lower()
 
 
+async def test_retry_receives_safe_validation_feedback_and_corrects_weekly_byday(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    calendar = await create_calendar(client, name="Gym")
+    conversation = await create_conversation(client)
+    fake_codex.response = json.dumps(
+        {
+            "message": "I can create the workout after confirmation.",
+            "proposal": {
+                "type": "calendar_change",
+                "summary": "Create a twice-weekly workout",
+                "actions": [
+                    {
+                        "operation": "create_event",
+                        "calendar_id": calendar["id"],
+                        "event": {
+                            "title": "Legs workout",
+                            "description": "Push-Pull-Legs gym session",
+                            "location": None,
+                            "start_at": "2026-07-22T19:00:00+02:00",
+                            "end_at": "2026-07-22T21:00:00+02:00",
+                            "all_day": False,
+                            "timezone": "Europe/Stockholm",
+                            "recurrence_rule": "FREQ=WEEKLY;BYDAY=XX;COUNT=9",
+                            "status": "confirmed",
+                        },
+                    }
+                ],
+            },
+        }
+    )
+
+    failed = await ask(client, conversation["id"], "Create it on Wednesdays and Saturdays")
+
+    assert failed.status_code == 200, failed.text
+    assert failed.json()["proposal"] is None
+    assert failed.json()["job"]["status"] == "failed"
+    assert failed.json()["job"]["safe_error_code"] == "invalid_recurrence"
+
+    fake_codex.response = json.dumps(
+        {
+            "message": "I corrected the recurrence rule and can create it after confirmation.",
+            "proposal": {
+                "type": "calendar_change",
+                "summary": "Create a twice-weekly workout",
+                "actions": [
+                    {
+                        "operation": "create_event",
+                        "calendar_id": calendar["id"],
+                        "event": {
+                            "title": "Legs workout",
+                            "description": "Push-Pull-Legs gym session",
+                            "location": None,
+                            "start_at": "2026-07-22T19:00:00+02:00",
+                            "end_at": "2026-07-22T21:00:00+02:00",
+                            "all_day": False,
+                            "timezone": "Europe/Stockholm",
+                            "recurrence_rule": "FREQ=WEEKLY;BYDAY=WE,SA;COUNT=9",
+                            "status": "confirmed",
+                        },
+                    }
+                ],
+            },
+        }
+    )
+    retried = await client.post(
+        f"/api/v1/assistant/jobs/{failed.json()['job']['id']}/retry"
+    )
+
+    assert retried.status_code == 200, retried.text
+    assert retried.json()["job"]["status"] == "awaiting_confirmation"
+    retry_request = fake_codex.calls[-1]["request"]
+    assert '"recent_backend_feedback"' in retry_request
+    assert '"error_code": "invalid_recurrence"' in retry_request
+    assert "Weekly recurrence days must use unique" in retry_request
+
+    confirmed = await client.post(
+        f"/api/v1/assistant/proposals/{retried.json()['proposal']['id']}/confirm"
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    assert confirmed.json()["status"] == "completed"
+    events = (await client.get("/api/v1/events")).json()
+    assert events[0]["recurrence_rule"] == "FREQ=WEEKLY;BYDAY=WE,SA;COUNT=9"
+
+
 async def test_proposal_output_is_rejected_and_failed_job_can_retry_safely(
     client: AsyncClient,
     fake_codex: FakeCodexAdapter,
@@ -347,12 +433,8 @@ async def test_create_calendar_proposal_waits_for_confirmation_and_is_idempotent
     assert proposal["affected_events"] == 0
     assert (await client.get("/api/v1/calendars")).json() == []
 
-    first = await client.post(
-        f"/api/v1/assistant/proposals/{proposal['id']}/confirm"
-    )
-    second = await client.post(
-        f"/api/v1/assistant/proposals/{proposal['id']}/confirm"
-    )
+    first = await client.post(f"/api/v1/assistant/proposals/{proposal['id']}/confirm")
+    second = await client.post(f"/api/v1/assistant/proposals/{proposal['id']}/confirm")
 
     assert first.status_code == 200, first.text
     assert first.json()["status"] == "completed"
@@ -409,14 +491,10 @@ async def test_update_calendar_and_create_event_proposals_execute_only_after_con
 
     proposed = await ask(client, conversation["id"], "Rename it and add my dentist")
     proposal = proposed.json()["proposal"]
-    assert (await client.get(f"/api/v1/calendars/{calendar['id']}")).json()["name"] == (
-        "Personal"
-    )
+    assert (await client.get(f"/api/v1/calendars/{calendar['id']}")).json()["name"] == ("Personal")
     assert (await client.get("/api/v1/events")).json() == []
 
-    confirmed = await client.post(
-        f"/api/v1/assistant/proposals/{proposal['id']}/confirm"
-    )
+    confirmed = await client.post(f"/api/v1/assistant/proposals/{proposal['id']}/confirm")
 
     assert confirmed.status_code == 200, confirmed.text
     assert confirmed.json()["status"] == "completed", confirmed.text
@@ -424,9 +502,7 @@ async def test_update_calendar_and_create_event_proposals_execute_only_after_con
     events = (await client.get("/api/v1/events")).json()
     assert (updated["name"], updated["color"]) == ("Private", "#335577")
     assert updated["description"] == "Ordinary local calendar"
-    assert [(event["title"], event["location"]) for event in events] == [
-        ("Dentist", "Clinic")
-    ]
+    assert [(event["title"], event["location"]) for event in events] == [("Dentist", "Clinic")]
 
 
 async def test_update_event_proposal_executes_after_confirmation(
@@ -519,16 +595,33 @@ async def test_update_event_revalidates_snapshot_and_fails_if_event_changed(
     )
     assert manually_changed.status_code == 200
 
-    confirmed = await client.post(
-        f"/api/v1/assistant/proposals/{proposal['id']}/confirm"
-    )
+    confirmed = await client.post(f"/api/v1/assistant/proposals/{proposal['id']}/confirm")
 
     assert confirmed.status_code == 200, confirmed.text
     assert confirmed.json()["status"] == "failed"
+    assert confirmed.json()["result"]["error_code"] == "assistant_proposal_state_conflict"
     assert "changed before confirmation" in confirmed.json()["safe_error"]
     unchanged_time = (await client.get(f"/api/v1/events/{event['id']}")).json()
     assert unchanged_time["start_at"] == "2026-07-20T08:00:00Z"
     assert unchanged_time["title"] == "Owner changed this"
+
+    fake_codex.response = json.dumps(
+        {
+            "message": (
+                "I can see the backend rejected the stale proposal and will use "
+                "the current event."
+            ),
+            "proposal": None,
+        }
+    )
+    follow_up = await ask(client, conversation["id"], "Please correct it and try again")
+
+    assert follow_up.status_code == 200, follow_up.text
+    follow_up_request = fake_codex.calls[-1]["request"]
+    assert '"source": "calendar_proposal"' in follow_up_request
+    assert '"error_code": "assistant_proposal_state_conflict"' in follow_up_request
+    assert "changed before confirmation" in follow_up_request
+    assert '"attempted_actions"' in follow_up_request
 
 
 async def test_confirmation_rechecks_read_only_calendar_protection(
@@ -753,9 +846,7 @@ async def test_bulk_delete_and_unknown_operations_are_rejected(
             "proposal": {
                 "type": "calendar_change",
                 "summary": "Unknown operation",
-                "actions": [
-                    {"operation": "delete_calendar", "calendar_id": calendar["id"]}
-                ],
+                "actions": [{"operation": "delete_calendar", "calendar_id": calendar["id"]}],
             },
         }
     )
@@ -794,10 +885,84 @@ async def test_expired_proposal_cannot_execute(
     proposal.expires_at = datetime.now(UTC) - timedelta(minutes=1)
     await session.commit()
 
-    confirmed = await client.post(
-        f"/api/v1/assistant/proposals/{proposal_id}/confirm"
-    )
+    confirmed = await client.post(f"/api/v1/assistant/proposals/{proposal_id}/confirm")
 
     assert confirmed.status_code == 200
     assert confirmed.json()["status"] == "expired"
     assert (await client.get("/api/v1/calendars")).json() == []
+
+
+async def test_assistant_audit_lists_recent_proposal_lifecycle_records(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    conversation = await create_conversation(client)
+
+    def create_response(name: str) -> str:
+        return json.dumps(
+            {
+                "message": f"I can create {name} after confirmation.",
+                "proposal": {
+                    "type": "calendar_change",
+                    "summary": f"Create {name}",
+                    "actions": [
+                        {
+                            "operation": "create_calendar",
+                            "name": name,
+                            "description": None,
+                            "color": "#29584c",
+                        }
+                    ],
+                },
+            }
+        )
+
+    fake_codex.response = create_response("Rejected calendar")
+    rejected_turn = await ask(client, conversation["id"], "Create one")
+    rejected_id = rejected_turn.json()["proposal"]["id"]
+    await client.post(f"/api/v1/assistant/proposals/{rejected_id}/reject")
+
+    fake_codex.response = create_response("Confirmed calendar")
+    completed_turn = await ask(client, conversation["id"], "Create another")
+    completed_id = completed_turn.json()["proposal"]["id"]
+    await client.post(f"/api/v1/assistant/proposals/{completed_id}/confirm")
+
+    recent = await client.get("/api/v1/assistant/audit?limit=1")
+    complete = await client.get("/api/v1/assistant/audit?limit=2")
+
+    assert recent.status_code == 200
+    assert [item["id"] for item in recent.json()] == [completed_id]
+    assert recent.json()[0]["status"] == "completed"
+    assert recent.json()[0]["action_records"][0]["confirmed_at"] is not None
+    assert recent.json()[0]["action_records"][0]["executed_at"] is not None
+    assert [item["status"] for item in complete.json()] == [
+        "completed",
+        "rejected",
+    ]
+
+
+async def test_invalid_model_content_is_not_written_to_application_logs(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    private_marker = "PRIVATE-CALENDAR-CONTENT-MUST-NOT-BE-LOGGED"
+    conversation = await create_conversation(client)
+    fake_codex.response = json.dumps(
+        {
+            "message": private_marker,
+            "proposal": {
+                "type": "calendar_change",
+                "summary": "Unsafe",
+                "actions": [{"operation": "delete_calendar"}],
+            },
+        }
+    )
+
+    with caplog.at_level("WARNING"):
+        response = await ask(client, conversation["id"], "Do something unsafe")
+
+    assert response.status_code == 200
+    assert response.json()["job"]["status"] == "failed"
+    assert private_marker not in caplog.text
+    assert "invalid_assistant_response" in caplog.text

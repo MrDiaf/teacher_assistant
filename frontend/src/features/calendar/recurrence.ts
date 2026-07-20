@@ -5,7 +5,18 @@ interface ParsedRecurrence {
   interval: number;
   count: number | null;
   until: number | null;
+  byWeekdays: number[] | null;
 }
+
+const WEEKDAY_INDICES: Record<string, number> = {
+  MO: 0,
+  TU: 1,
+  WE: 2,
+  TH: 3,
+  FR: 4,
+  SA: 5,
+  SU: 6,
+};
 
 function parseRecurrence(rule: string): ParsedRecurrence | null {
   const parts = new Map(
@@ -33,6 +44,21 @@ function parseRecurrence(rule: string): ParsedRecurrence | null {
         ),
       )
     : null;
+  const byDayText = parts.get("BYDAY");
+  let byWeekdays: number[] | null = null;
+  if (byDayText) {
+    const weekdays = byDayText.split(",");
+    if (
+      frequency !== "WEEKLY" ||
+      weekdays.length !== new Set(weekdays).size ||
+      weekdays.some((weekday) => WEEKDAY_INDICES[weekday] === undefined)
+    ) {
+      return null;
+    }
+    byWeekdays = weekdays
+      .map((weekday) => WEEKDAY_INDICES[weekday])
+      .sort((first, second) => first - second);
+  }
   if (
     !Number.isInteger(interval) ||
     interval < 1 ||
@@ -41,7 +67,7 @@ function parseRecurrence(rule: string): ParsedRecurrence | null {
   ) {
     return null;
   }
-  return { frequency, interval, count, until };
+  return { frequency, interval, count, until, byWeekdays };
 }
 
 function monthlyOccurrence(start: Date, index: number, interval: number) {
@@ -65,6 +91,29 @@ function occurrenceAt(
 ) {
   if (recurrence.frequency === "MONTHLY") {
     return monthlyOccurrence(start, index, recurrence.interval);
+  }
+  if (recurrence.frequency === "WEEKLY" && recurrence.byWeekdays) {
+    const startWeekday = (start.getDay() + 6) % 7;
+    const weekStart = new Date(start);
+    weekStart.setDate(start.getDate() - startWeekday);
+    const remainingFirstWeekdays = recurrence.byWeekdays.filter(
+      (weekday) => weekday >= startWeekday,
+    );
+    if (index < remainingFirstWeekdays.length) {
+      const result = new Date(weekStart);
+      result.setDate(weekStart.getDate() + remainingFirstWeekdays[index]);
+      return result;
+    }
+    const remainingIndex = index - remainingFirstWeekdays.length;
+    const activeWeek =
+      Math.floor(remainingIndex / recurrence.byWeekdays.length) + 1;
+    const weekday =
+      recurrence.byWeekdays[remainingIndex % recurrence.byWeekdays.length];
+    const result = new Date(weekStart);
+    result.setDate(
+      weekStart.getDate() + activeWeek * recurrence.interval * 7 + weekday,
+    );
+    return result;
   }
   const result = new Date(start);
   result.setDate(

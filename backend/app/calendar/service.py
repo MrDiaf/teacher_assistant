@@ -18,7 +18,53 @@ from app.core.errors import (
 )
 
 ALLOWED_RECURRENCE_FREQUENCIES = {"DAILY", "WEEKLY", "MONTHLY"}
-ALLOWED_RECURRENCE_PARTS = {"FREQ", "INTERVAL", "COUNT", "UNTIL"}
+ALLOWED_RECURRENCE_PARTS = {"FREQ", "INTERVAL", "COUNT", "UNTIL", "BYDAY"}
+ALLOWED_RECURRENCE_WEEKDAYS = {"MO", "TU", "WE", "TH", "FR", "SA", "SU"}
+
+
+def validate_recurrence_rule(rule: str | None) -> None:
+    if rule is None:
+        return
+    parts: dict[str, str] = {}
+    for segment in rule.split(";"):
+        key, separator, value = segment.partition("=")
+        if not separator or not value or key in parts or key not in ALLOWED_RECURRENCE_PARTS:
+            raise InvalidRecurrenceError("The recurrence rule is malformed or unsupported.")
+        parts[key] = value
+    frequency = parts.get("FREQ")
+    if frequency not in ALLOWED_RECURRENCE_FREQUENCIES:
+        raise InvalidRecurrenceError("Only daily, weekly, and monthly recurrence is supported.")
+    for key, maximum in (("INTERVAL", 365), ("COUNT", 999)):
+        if key in parts:
+            try:
+                value = int(parts[key])
+            except ValueError as exc:
+                raise InvalidRecurrenceError(
+                    f"Recurrence {key.lower()} must be a number."
+                ) from exc
+            if value < 1 or value > maximum:
+                raise InvalidRecurrenceError(
+                    f"Recurrence {key.lower()} is outside the supported range."
+                )
+    if "UNTIL" in parts:
+        try:
+            datetime.strptime(parts["UNTIL"], "%Y%m%dT%H%M%SZ")
+        except ValueError as exc:
+            raise InvalidRecurrenceError(
+                "Recurrence until must use UTC format YYYYMMDDTHHMMSSZ."
+            ) from exc
+    if "BYDAY" in parts:
+        weekdays = parts["BYDAY"].split(",")
+        if frequency != "WEEKLY":
+            raise InvalidRecurrenceError(
+                "Recurrence by-day selection is supported only for weekly events."
+            )
+        if len(weekdays) != len(set(weekdays)) or any(
+            weekday not in ALLOWED_RECURRENCE_WEEKDAYS for weekday in weekdays
+        ):
+            raise InvalidRecurrenceError(
+                "Weekly recurrence days must use unique MO, TU, WE, TH, FR, SA, or SU values."
+            )
 
 
 class CalendarService:
@@ -117,7 +163,7 @@ class CalendarService:
         calendar = await self.calendars.get(values["calendar_id"], for_update=True)
         self._ensure_writable(calendar)
         self._validate_event_times(values["start_at"], values["end_at"])
-        self._validate_recurrence_rule(values.get("recurrence_rule"))
+        validate_recurrence_rule(values.get("recurrence_rule"))
         event = await self.events.create(values)
         if commit:
             await self.session.commit()
@@ -143,7 +189,7 @@ class CalendarService:
         start_at = changes.get("start_at", event.start_at)
         end_at = changes.get("end_at", event.end_at)
         self._validate_event_times(start_at, end_at)
-        self._validate_recurrence_rule(changes.get("recurrence_rule", event.recurrence_rule))
+        validate_recurrence_rule(changes.get("recurrence_rule", event.recurrence_rule))
         event = await self.events.update(event_id, changes)
         if commit:
             await self.session.commit()
@@ -222,7 +268,7 @@ class CalendarService:
         commit: bool = True,
     ) -> CalendarEvent:
         parent = await self._get_series_parent(event_id)
-        self._validate_recurrence_rule(changes.get("recurrence_rule", parent.recurrence_rule))
+        validate_recurrence_rule(changes.get("recurrence_rule", parent.recurrence_rule))
         source_calendar_id = parent.calendar_id
         original_start_at = parent.start_at
         original_recurrence_rule = parent.recurrence_rule
@@ -321,38 +367,6 @@ class CalendarService:
     def _require_timezone(value: datetime) -> None:
         if value.tzinfo is None or value.utcoffset() is None:
             raise InvalidRecurrenceError("Occurrence time must include a timezone offset.")
-
-    @staticmethod
-    def _validate_recurrence_rule(rule: str | None) -> None:
-        if rule is None:
-            return
-        parts: dict[str, str] = {}
-        for segment in rule.split(";"):
-            key, separator, value = segment.partition("=")
-            if not separator or not value or key in parts or key not in ALLOWED_RECURRENCE_PARTS:
-                raise InvalidRecurrenceError("The recurrence rule is malformed or unsupported.")
-            parts[key] = value
-        if parts.get("FREQ") not in ALLOWED_RECURRENCE_FREQUENCIES:
-            raise InvalidRecurrenceError("Only daily, weekly, and monthly recurrence is supported.")
-        for key, maximum in (("INTERVAL", 365), ("COUNT", 999)):
-            if key in parts:
-                try:
-                    value = int(parts[key])
-                except ValueError as exc:
-                    raise InvalidRecurrenceError(
-                        f"Recurrence {key.lower()} must be a number."
-                    ) from exc
-                if value < 1 or value > maximum:
-                    raise InvalidRecurrenceError(
-                        f"Recurrence {key.lower()} is outside the supported range."
-                    )
-        if "UNTIL" in parts:
-            try:
-                datetime.strptime(parts["UNTIL"], "%Y%m%dT%H%M%SZ")
-            except ValueError as exc:
-                raise InvalidRecurrenceError(
-                    "Recurrence until must use UTC format YYYYMMDDTHHMMSSZ."
-                ) from exc
 
     @staticmethod
     def _event_matches(event: CalendarEvent, query: str) -> bool:

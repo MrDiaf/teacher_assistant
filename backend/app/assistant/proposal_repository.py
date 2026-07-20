@@ -61,9 +61,7 @@ class ProposalRepository:
         await self.session.flush()
         return proposal
 
-    async def get(
-        self, proposal_id: uuid.UUID, *, for_update: bool = False
-    ) -> AssistantProposal:
+    async def get(self, proposal_id: uuid.UUID, *, for_update: bool = False) -> AssistantProposal:
         statement = (
             select(AssistantProposal)
             .where(AssistantProposal.id == proposal_id)
@@ -76,14 +74,21 @@ class ProposalRepository:
             raise AssistantProposalNotFoundError()
         return proposal
 
-    async def list_for_conversation(
-        self, conversation_id: uuid.UUID
-    ) -> list[AssistantProposal]:
+    async def list_for_conversation(self, conversation_id: uuid.UUID) -> list[AssistantProposal]:
         statement = (
             select(AssistantProposal)
             .where(AssistantProposal.conversation_id == conversation_id)
             .options(selectinload(AssistantProposal.action_records))
             .order_by(AssistantProposal.created_at, AssistantProposal.id)
+        )
+        return list(await self.session.scalars(statement))
+
+    async def list_recent(self, *, limit: int = 50) -> list[AssistantProposal]:
+        statement = (
+            select(AssistantProposal)
+            .options(selectinload(AssistantProposal.action_records))
+            .order_by(AssistantProposal.created_at.desc(), AssistantProposal.id.desc())
+            .limit(limit)
         )
         return list(await self.session.scalars(statement))
 

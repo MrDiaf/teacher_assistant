@@ -129,6 +129,7 @@ class AssistantJob(TimestampMixin, Base):
         default=AssistantJobStatus.QUEUED,
     )
     safe_error: Mapped[str | None] = mapped_column(Text)
+    safe_error_code: Mapped[str | None] = mapped_column(String(80))
 
     conversation: Mapped[AssistantConversation] = relationship(back_populates="jobs")
     proposal: Mapped["AssistantProposal | None"] = relationship(

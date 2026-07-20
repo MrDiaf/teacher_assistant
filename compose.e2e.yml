@@ -1,0 +1,70 @@
+services:
+  database:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_DB: teacher_assistant_e2e
+      POSTGRES_USER: teacher_assistant_e2e
+      POSTGRES_PASSWORD: teacher_assistant_e2e
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U teacher_assistant_e2e -d teacher_assistant_e2e
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - e2e-database-data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://teacher_assistant_e2e:teacher_assistant_e2e@database:5432/teacher_assistant_e2e
+      TESTING: "true"
+      LOG_LEVEL: warning
+      CODEX_AUTH_HOME: /tmp/teacher-assistant-e2e-codex
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/health')
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://127.0.0.1:5173
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: "no"
+
+  e2e:
+    build:
+      context: ./e2e
+    environment:
+      BASE_URL: http://frontend:5173
+    depends_on:
+      frontend:
+        condition: service_healthy
+    volumes:
+      - ./e2e:/source
+    restart: "no"
+
+volumes:
+  e2e-database-data:

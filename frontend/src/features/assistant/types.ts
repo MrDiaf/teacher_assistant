@@ -46,6 +46,7 @@ export interface AssistantJob {
   owner_message_id: string;
   status: AssistantJobStatus;
   safe_error: string | null;
+  safe_error_code: string | null;
   created_at: string;
   updated_at: string;
 }

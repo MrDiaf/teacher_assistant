@@ -101,4 +101,26 @@ describe("expandCalendarEvents", () => {
       ["2026-07-21T00:00:00.000Z", "2026-07-22T00:00:00.000Z"],
     ]);
   });
+
+  it("expands a weekly series across each selected BYDAY weekday", () => {
+    const expanded = expandCalendarEvents(
+      [
+        event({
+          start_at: "2026-07-22T17:00:00.000Z",
+          end_at: "2026-07-22T19:00:00.000Z",
+          recurrence_rule: "FREQ=WEEKLY;BYDAY=WE,SA;COUNT=5",
+        }),
+      ],
+      new Date("2026-07-20T00:00:00.000Z"),
+      new Date("2026-08-10T00:00:00.000Z"),
+    );
+
+    expect(expanded.map((item) => item.start_at)).toEqual([
+      "2026-07-22T17:00:00.000Z",
+      "2026-07-25T17:00:00.000Z",
+      "2026-07-29T17:00:00.000Z",
+      "2026-08-01T17:00:00.000Z",
+      "2026-08-05T17:00:00.000Z",
+    ]);
+  });
 });

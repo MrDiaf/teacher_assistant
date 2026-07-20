@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 
 import { Icon } from "../../components/Icon";
+import { useModalDialog } from "../../hooks/useModalDialog";
 import { calendarApi } from "./api";
 import { recurrenceLabel } from "./recurrence";
 import type { CalendarModel, IcsImportResult, IcsPreview } from "./types";
@@ -40,6 +41,7 @@ export function IcsImportDialog({
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useModalDialog(onClose);
 
   function changeMode(nextMode: "upload" | "subscribe") {
     setMode(nextMode);
@@ -146,6 +148,7 @@ export function IcsImportDialog({
         aria-labelledby="ics-import-title"
         aria-modal="true"
         className="event-dialog ics-import-dialog"
+        ref={dialogRef}
         role="dialog"
       >
         <header className="dialog-header">

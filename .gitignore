@@ -8,6 +8,9 @@ __pycache__/
 htmlcov/
 node_modules/
 dist/
+backups/
+playwright-report/
+test-results/
 runtime/
 storage/
 *.log

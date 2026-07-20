@@ -38,6 +38,9 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <aside className="app-sidebar">
         <div className="brand">
           <span className="brand-symbol">
@@ -55,6 +58,7 @@ export function AppShell({
               className={
                 item.id === activeModule ? "nav-item active" : "nav-item"
               }
+              aria-current={item.id === activeModule ? "page" : undefined}
               key={item.id}
               onClick={() => onNavigate(item.id)}
               type="button"
@@ -66,14 +70,16 @@ export function AppShell({
         </nav>
 
         <div className="sidebar-footer">
-          <span className="privacy-dot" />
+          <span className="privacy-dot" aria-hidden="true" />
           <span>
             <strong>Private workspace</strong>
             <small>Stored on this installation</small>
           </span>
         </div>
       </aside>
-      <div className="app-content">{children}</div>
+      <div className="app-content" id="main-content" tabIndex={-1}>
+        {children}
+      </div>
     </div>
   );
 }

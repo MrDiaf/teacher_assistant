@@ -27,7 +27,7 @@ export function CalendarToolbar({
     <header className="calendar-toolbar">
       <div className="calendar-title-block">
         <p className="eyebrow">Personal schedule</p>
-        <h1>{formatHeading(anchor, view)}</h1>
+        <h1 id="calendar-page-title">{formatHeading(anchor, view)}</h1>
       </div>
 
       <div className="calendar-toolbar-actions">

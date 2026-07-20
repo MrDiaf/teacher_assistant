@@ -910,15 +910,15 @@ Acceptance:
 
 ## M7 — Final calendar hardening
 
-- [ ] Improve mobile layout.
-- [ ] Add accessibility review.
-- [ ] Add assistant audit history.
-- [ ] Add undo for recent local changes where practical.
-- [ ] Add end-to-end tests.
-- [ ] Document setup.
-- [ ] Document Codex authentication.
-- [ ] Document backup and restore.
-- [ ] Review logging for private data.
+- [x] Improve mobile layout.
+- [x] Add accessibility review.
+- [x] Add assistant audit history.
+- [x] Add undo for recent local changes where practical.
+- [x] Add end-to-end tests.
+- [x] Document setup.
+- [x] Document Codex authentication.
+- [x] Document backup and restore.
+- [x] Review logging for private data.
 
 Acceptance:
 
@@ -936,10 +936,12 @@ Assistant second
 Everything else later
 ```
 
-The next development session should implement:
+The calendar-first development phase is complete. The next development session
+should review M7 and explicitly define the next product phase before changing
+scope:
 
 ```text
-M7 — Final calendar hardening
+Review M7 and define the next product phase
 ```
 
 Do not ask Codex to implement every milestone in one session.

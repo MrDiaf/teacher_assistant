@@ -100,6 +100,10 @@ export const assistantApi = {
     return request<AssistantJob>(`/assistant/jobs/${jobId}`);
   },
 
+  listAudit(limit = 50) {
+    return request<AssistantProposal[]>(`/assistant/audit?limit=${limit}`);
+  },
+
   retryJob(jobId: string) {
     return request<AssistantTurn>(`/assistant/jobs/${jobId}/retry`, {
       method: "POST",
