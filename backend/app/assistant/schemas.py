@@ -27,6 +27,7 @@ class ConversationResponse(BaseModel):
 
 class AssistantMessageCreate(BaseModel):
     content: str = Field(min_length=1, max_length=4000)
+    model: str | None = Field(default=None, min_length=1, max_length=100)
 
 
 class AssistantMessageResponse(BaseModel):
@@ -47,6 +48,7 @@ class AssistantJobResponse(BaseModel):
     conversation_id: uuid.UUID
     owner_message_id: uuid.UUID
     status: AssistantJobStatus
+    model: str
     safe_error: str | None
     safe_error_code: str | None
     created_at: datetime

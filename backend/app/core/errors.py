@@ -50,6 +50,38 @@ class NoteNotFoundError(ResourceNotFoundError):
         super().__init__("The requested course note does not exist.")
 
 
+class NoteSummaryNotFoundError(ResourceNotFoundError):
+    code = "note_summary_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested note summary does not exist.")
+
+
+class InvalidAiModelError(ApplicationError):
+    code = "invalid_ai_model"
+
+    def __init__(self, allowed_models: tuple[str, ...]) -> None:
+        allowed = ", ".join(allowed_models)
+        super().__init__(
+            f"That AI model is not allowed by this installation. Choose one of: {allowed}."
+        )
+
+
+class NoteSummaryNotRetryableError(ApplicationError):
+    code = "note_summary_not_retryable"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self) -> None:
+        super().__init__("Only a failed note summary can be retried.")
+
+
+class NoteSummarySourceUnavailableError(ApplicationError):
+    code = "note_summary_source_unavailable"
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class InvalidNoteSlideReferenceError(ApplicationError):
     code = "invalid_note_slide_reference"
 
@@ -224,6 +256,15 @@ class InvalidAssistantResponseError(AssistantRuntimeError):
 
     def __init__(self) -> None:
         super().__init__("The assistant returned an invalid response. No calendar data changed.")
+
+
+class InvalidNoteSummaryResponseError(AssistantRuntimeError):
+    code = "invalid_note_summary_response"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "The summary response was invalid, so no summary was saved. Retry safely."
+        )
 
 
 class AssistantProposalLimitError(AssistantRuntimeError):

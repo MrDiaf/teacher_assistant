@@ -25,6 +25,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       CODEX_AUTH_HOME: ${CODEX_AUTH_HOME:-/var/lib/teacher-assistant/codex}
       CODEX_MODEL: ${CODEX_MODEL:-gpt-5.6-sol}
+      AI_ALLOWED_MODELS: ${AI_ALLOWED_MODELS:-gpt-5.6-sol,gpt-5.6-terra,gpt-5.6-luna}
       CODEX_TIMEOUT_SECONDS: ${CODEX_TIMEOUT_SECONDS:-90}
       ASSISTANT_PROPOSAL_TTL_MINUTES: ${ASSISTANT_PROPOSAL_TTL_MINUTES:-30}
       COURSE_STORAGE_ROOT: ${COURSE_STORAGE_ROOT:-/data/course_content}

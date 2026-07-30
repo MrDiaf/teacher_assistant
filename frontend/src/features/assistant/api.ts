@@ -86,12 +86,12 @@ export const assistantApi = {
     );
   },
 
-  sendMessage(conversationId: string, content: string) {
+  sendMessage(conversationId: string, content: string, model: string) {
     return request<AssistantTurn>(
       `/assistant/conversations/${conversationId}/messages`,
       {
         method: "POST",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, model }),
       },
     );
   },
@@ -128,10 +128,10 @@ export const assistantApi = {
     );
   },
 
-  reviseProposal(proposalId: string, content: string) {
+  reviseProposal(proposalId: string, content: string, model: string) {
     return request<AssistantTurn>(`/assistant/proposals/${proposalId}/revise`, {
       method: "POST",
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, model }),
     });
   },
 };

@@ -15,8 +15,19 @@ import type {
   CourseNote,
   CourseSource,
   NoteMutation,
+  NoteSummary,
   SlideReference,
 } from "./types";
+
+vi.mock("../ai/api", () => ({
+  getAiModels: vi.fn(async () => ({
+    default_model: "gpt-5.6-sol",
+    models: [
+      { id: "gpt-5.6-sol", label: "GPT-5.6 Sol · flagship" },
+      { id: "gpt-5.6-terra", label: "GPT-5.6 Terra · balanced" },
+    ],
+  })),
+}));
 
 const now = new Date().toISOString();
 const activeCourse: CourseModel = {
@@ -77,6 +88,7 @@ function installCourseApi(
       ...reference,
     })),
   }));
+  let summaries: Record<string, NoteSummary | null> = {};
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
@@ -222,6 +234,81 @@ function installCourseApi(
       notes = [created, ...notes];
       return jsonResponse(created, 201);
     }
+    if (
+      parsedUrl.pathname.endsWith("/summary") &&
+      parsedUrl.pathname.includes("/api/v1/notes/") &&
+      method === "GET"
+    ) {
+      const noteId = parsedUrl.pathname.split("/").at(-2)!;
+      return jsonResponse(summaries[noteId] ?? null);
+    }
+    if (
+      parsedUrl.pathname.endsWith("/summaries") &&
+      parsedUrl.pathname.includes("/api/v1/notes/") &&
+      method === "POST"
+    ) {
+      const noteId = parsedUrl.pathname.split("/").at(-2)!;
+      const note = notes.find((item) => item.id === noteId)!;
+      const payload = JSON.parse(String(init?.body)) as { model: string };
+      const slide = note.slide_references[0];
+      const created: NoteSummary = {
+        id: `summary-${noteId}`,
+        note_id: noteId,
+        model: payload.model,
+        status: "completed",
+        summary_json: {
+          bullets: [
+            {
+              text: "The note connects atomicity with reliable transactions.",
+              origin: slide ? "mixed" : "note",
+              source_references: [
+                {
+                  note_id: noteId,
+                  source_id: null,
+                  slide: null,
+                },
+                ...(slide
+                  ? [
+                      {
+                        note_id: null,
+                        source_id: slide.source_id,
+                        slide: slide.start_slide ?? 1,
+                      },
+                    ]
+                  : []),
+              ],
+            },
+          ],
+        },
+        note_content_hash: "a".repeat(64),
+        slide_content_hash: "b".repeat(64),
+        is_stale: false,
+        safe_error: null,
+        safe_error_code: null,
+        created_at: now,
+        updated_at: now,
+      };
+      summaries[noteId] = created;
+      return jsonResponse(created, 201);
+    }
+    if (
+      parsedUrl.pathname.includes("/api/v1/note-summaries/") &&
+      parsedUrl.pathname.endsWith("/retry") &&
+      method === "POST"
+    ) {
+      const summaryId = parsedUrl.pathname.split("/").at(-2);
+      const summary = Object.values(summaries).find(
+        (item) => item?.id === summaryId,
+      )!;
+      const completed = {
+        ...summary,
+        status: "completed" as const,
+        safe_error: null,
+        safe_error_code: null,
+      };
+      summaries[completed.note_id] = completed;
+      return jsonResponse(completed);
+    }
     if (parsedUrl.pathname.includes("/api/v1/notes/") && method === "PATCH") {
       const noteId = parsedUrl.pathname.split("/").at(-1);
       const payload = JSON.parse(String(init?.body)) as NoteMutation;
@@ -246,11 +333,15 @@ function installCourseApi(
         updated_at: now,
       };
       notes = notes.map((note) => (note.id === noteId ? updated : note));
+      if (summaries[noteId!]) {
+        summaries[noteId!] = { ...summaries[noteId!]!, is_stale: true };
+      }
       return jsonResponse(updated);
     }
     if (parsedUrl.pathname.includes("/api/v1/notes/") && method === "DELETE") {
       const noteId = parsedUrl.pathname.split("/").at(-1);
       notes = notes.filter((note) => note.id !== noteId);
+      delete summaries[noteId!];
       return jsonResponse(undefined, 204);
     }
 
@@ -578,6 +669,87 @@ describe("CoursesPage", () => {
       await screen.findByRole("heading", {
         name: "Start your course notebook",
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("selects an allowed model and shows accessible summary provenance and staleness", async () => {
+    const linkedReference: SlideReference = {
+      id: "reference-summary",
+      source_id: slideSource.id,
+      source_display_name: slideSource.display_name,
+      original_filename: slideSource.original_filename,
+      start_slide: 2,
+      end_slide: 4,
+      label: "Core concepts",
+      created_at: now,
+    };
+    const note: CourseNote = {
+      id: "note-summary",
+      course_id: activeCourse.id,
+      title: "Transaction notes",
+      body: "Atomicity keeps transaction changes together.",
+      slide_references: [linkedReference],
+      created_at: now,
+      updated_at: now,
+    };
+    const fetchMock = installCourseApi([activeCourse], [slideSource], [note]);
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CoursesPage />);
+
+    await screen.findByText("Database Systems");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Database Systems" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    const summaryRegion = await screen.findByRole("region", {
+      name: "AI summary for Transaction notes",
+    });
+
+    fireEvent.change(screen.getByLabelText("Summary model"), {
+      target: { value: "gpt-5.6-terra" },
+    });
+    fireEvent.click(
+      within(summaryRegion).getByRole("button", {
+        name: "Generate summary",
+      }),
+    );
+
+    expect(
+      await within(summaryRegion).findByText("From note + slides"),
+    ).toBeInTheDocument();
+    expect(
+      within(summaryRegion).getByText(
+        "The note connects atomicity with reliable transactions.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(summaryRegion).getByText(/Transactions deck, slide 2/),
+    ).toBeInTheDocument();
+    const summaryCall = fetchMock.mock.calls.find(
+      ([url, init]) =>
+        String(url).endsWith("/api/v1/notes/note-summary/summaries") &&
+        init?.method === "POST",
+    );
+    expect(JSON.parse(String(summaryCall?.[1]?.body))).toEqual({
+      model: "gpt-5.6-terra",
+    });
+
+    fireEvent.click(
+      within(summaryRegion.closest("article")!).getByRole("button", {
+        name: "Edit",
+      }),
+    );
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Note body"), {
+      target: { value: "Changed transaction notes." },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
+    expect(
+      await screen.findByText(
+        "This summary is stale because the note or linked slide text changed.",
+      ),
     ).toBeInTheDocument();
   });
 });

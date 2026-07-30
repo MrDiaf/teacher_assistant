@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.service import AiModelRegistry
 from app.assistant.proposal_service import ProposalService
 from app.assistant.schemas import (
     AssistantAuthStatusResponse,
@@ -149,7 +150,11 @@ async def send_message(
     session: SessionDependency,
     adapter: AdapterDependency,
 ) -> AssistantTurnResponse:
-    turn = await AssistantService(session, adapter).send_message(conversation_id, payload.content)
+    turn = await AssistantService(session, adapter).send_message(
+        conversation_id,
+        payload.content,
+        payload.model,
+    )
     return turn_response(turn)
 
 
@@ -231,8 +236,11 @@ async def revise_proposal(
     session: SessionDependency,
     adapter: AdapterDependency,
 ) -> AssistantTurnResponse:
+    selected_model = AiModelRegistry().resolve(payload.model)
     proposal = await ProposalService(session).reject_plan(proposal_id)
     turn = await AssistantService(session, adapter).send_message(
-        proposal.conversation_id, payload.content
+        proposal.conversation_id,
+        payload.content,
+        selected_model,
     )
     return turn_response(turn)

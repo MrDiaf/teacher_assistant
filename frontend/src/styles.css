@@ -2931,6 +2931,36 @@ textarea:focus-visible {
   font-size: 10px;
 }
 
+.ai-model-selector {
+  display: flex;
+  min-width: 180px;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--secondary-text);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ai-model-selector select {
+  min-height: 32px;
+  padding: 0 28px 0 9px;
+  color: var(--primary-text);
+  border: 1px solid #cdd8d4;
+  border-radius: 9px;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ai-model-selector select:disabled {
+  color: #8b9793;
+  background: #f4f5f1;
+}
+
 .assistant-composer {
   position: relative;
   display: grid;
@@ -2943,6 +2973,12 @@ textarea:focus-visible {
   border-radius: 15px;
   background: #fff;
   box-shadow: 0 10px 24px rgba(20, 63, 54, 0.09);
+}
+
+.assistant-composer > .ai-model-selector {
+  grid-column: 1 / -1;
+  width: min(260px, 100%);
+  padding: 0 6px;
 }
 
 .assistant-composer textarea {
@@ -3916,6 +3952,17 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
+.course-notes-header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.course-notes-header-actions > button {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
 .course-notes-empty {
   display: flex;
   min-height: 300px;
@@ -4087,6 +4134,137 @@ textarea:focus-visible {
   margin-top: 2px;
   color: #405b53;
   font-size: 8px;
+}
+
+.note-summary {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e1e6e1;
+}
+
+.note-summary > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.note-summary > header > div {
+  min-width: 0;
+}
+
+.note-summary > header p {
+  margin: 0;
+}
+
+.note-summary > header span {
+  display: block;
+  margin-top: 3px;
+  color: var(--secondary-text);
+  font-size: 8px;
+}
+
+.note-summary > header button {
+  min-height: 29px;
+  flex: 0 0 auto;
+  font-size: 8px;
+}
+
+.note-summary-empty {
+  margin: 11px 0 0;
+  color: #6f7d79;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.note-summary-stale {
+  margin: 10px 0 0;
+  padding: 8px 9px;
+  color: #725913;
+  border: 1px solid #e6c867;
+  border-radius: 8px;
+  background: #fff8dc;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.note-summary-error {
+  display: flex;
+  margin-top: 10px;
+  padding: 9px;
+  flex-direction: column;
+  gap: 3px;
+  color: #70423c;
+  border-radius: 9px;
+  background: #fff1ef;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.note-summary-error small {
+  opacity: 0.8;
+}
+
+.note-summary-bullets {
+  display: flex;
+  margin: 11px 0 0;
+  padding: 0;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+}
+
+.note-summary-bullets li {
+  padding: 10px;
+  border-left: 4px solid;
+  border-radius: 8px;
+}
+
+.note-summary-bullets li.origin-note {
+  border-color: #3e806b;
+  background: #e8f2ed;
+}
+
+.note-summary-bullets li.origin-slide {
+  border-color: #6654a3;
+  background: #eeebf8;
+}
+
+.note-summary-bullets li.origin-mixed {
+  border-color: #c49322;
+  background: #fff5d9;
+}
+
+.note-summary-origin {
+  display: inline-block;
+  padding: 3px 6px;
+  color: #294a42;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.origin-slide .note-summary-origin {
+  color: #55458e;
+}
+
+.origin-mixed .note-summary-origin {
+  color: #775a10;
+}
+
+.note-summary-bullets p {
+  margin: 7px 0 4px;
+  color: #344743;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.note-summary-bullets small {
+  color: #677772;
+  font-size: 7px;
 }
 
 .course-note-delete-confirm {
@@ -4805,6 +4983,17 @@ textarea:focus-visible {
   }
 
   .course-notes-header > button {
+    width: 100%;
+  }
+
+  .course-notes-header-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .course-notes-header-actions .ai-model-selector,
+  .course-notes-header-actions > button {
     width: 100%;
   }
 

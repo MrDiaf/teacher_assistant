@@ -8,6 +8,8 @@ import {
 } from "react";
 
 import { Icon } from "../../components/Icon";
+import { AiModelSelector } from "../ai/AiModelSelector";
+import { useAiModelSelection } from "../ai/useAiModelSelection";
 import { assistantApi } from "./api";
 import type {
   AssistantAuthStatus,
@@ -269,6 +271,8 @@ function ProposalCard({
 }
 
 export function AssistantPage() {
+  const { modelList, selectedModel, setSelectedModel, modelError } =
+    useAiModelSelection();
   const [conversations, setConversations] = useState<AssistantConversation[]>(
     [],
   );
@@ -509,6 +513,10 @@ export function AssistantPage() {
       setError("Sign in with ChatGPT before sending a message.");
       return;
     }
+    if (!selectedModel) {
+      setError("Choose an allowed AI model before sending a message.");
+      return;
+    }
     setIsSending(true);
     setError(null);
     setFailedJob(null);
@@ -525,8 +533,16 @@ export function AssistantPage() {
       };
       setMessages((current) => [...current, optimisticMessage]);
       const turn = revisionProposal
-        ? await assistantApi.reviseProposal(revisionProposal.id, normalized)
-        : await assistantApi.sendMessage(conversation.id, normalized);
+        ? await assistantApi.reviseProposal(
+            revisionProposal.id,
+            normalized,
+            selectedModel,
+          )
+        : await assistantApi.sendMessage(
+            conversation.id,
+            normalized,
+            selectedModel,
+          );
       const detail = await assistantApi.getConversation(conversation.id);
       setMessages(detail.messages);
       setProposals(detail.proposals ?? []);
@@ -1070,6 +1086,11 @@ export function AssistantPage() {
               {authError}
             </p>
           )}
+          {modelError && (
+            <p className="assistant-page-error" role="alert">
+              {modelError}
+            </p>
+          )}
 
           <form className="assistant-composer" onSubmit={submit}>
             {revisionProposal && (
@@ -1086,11 +1107,17 @@ export function AssistantPage() {
                 </button>
               </div>
             )}
+            <AiModelSelector
+              disabled={isSending}
+              modelList={modelList}
+              onChange={setSelectedModel}
+              value={selectedModel}
+            />
             <label className="sr-only" htmlFor="assistant-message">
               Message the calendar assistant
             </label>
             <textarea
-              disabled={isSending || !isAuthenticated}
+              disabled={isSending || !isAuthenticated || !selectedModel}
               id="assistant-message"
               maxLength={4000}
               onChange={(event) => setDraft(event.target.value)}
@@ -1108,7 +1135,9 @@ export function AssistantPage() {
             />
             <button
               aria-label="Send message"
-              disabled={isSending || !isAuthenticated || !draft.trim()}
+              disabled={
+                isSending || !isAuthenticated || !selectedModel || !draft.trim()
+              }
               type="submit"
             >
               <Icon name="send" size={18} />

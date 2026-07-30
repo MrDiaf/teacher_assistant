@@ -50,7 +50,11 @@ class CodexDeviceLoginAttempt:
 
 
 class CodexAdapter(Protocol):
-    async def answer(self, workspace: RuntimeWorkspace) -> CodexRuntimeResult: ...
+    async def answer(
+        self,
+        workspace: RuntimeWorkspace,
+        model: str | None = None,
+    ) -> CodexRuntimeResult: ...
 
 
 class CodexAuth(Protocol):
@@ -84,7 +88,11 @@ class CodexSdkAdapter:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
 
-    async def answer(self, workspace: RuntimeWorkspace) -> CodexRuntimeResult:
+    async def answer(
+        self,
+        workspace: RuntimeWorkspace,
+        model: str | None = None,
+    ) -> CodexRuntimeResult:
         api_key = _secret_api_key(self.settings)
         auth_home = _prepare_auth_home(self.settings)
         has_chatgpt_credentials = _has_cached_chatgpt_credentials(auth_home)
@@ -139,7 +147,7 @@ class CodexSdkAdapter:
                         cwd=str(workspace.job_directory),
                         developer_instructions=workspace.policy,
                         ephemeral=True,
-                        model=self.settings.codex_model,
+                        model=model or self.settings.codex_model,
                         config=runtime_permissions,
                     )
                     result = await thread.run(

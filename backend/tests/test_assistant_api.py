@@ -35,8 +35,9 @@ class FakeCodexAdapter:
         self.calls: list[dict[str, Any]] = []
         self.fail_with: AssistantRuntimeError | None = None
 
-    async def answer(self, workspace) -> CodexRuntimeResult:
+    async def answer(self, workspace, model=None) -> CodexRuntimeResult:
         snapshot = {
+            "model": model,
             "root": workspace.root,
             "job_directory": workspace.job_directory,
             "policy": (workspace.job_directory / "AGENT.md").read_text(),
@@ -117,10 +118,18 @@ async def create_conversation(client: AsyncClient) -> dict[str, Any]:
     return response.json()
 
 
-async def ask(client: AsyncClient, conversation_id: str, content: str):
+async def ask(
+    client: AsyncClient,
+    conversation_id: str,
+    content: str,
+    model: str | None = None,
+):
+    payload = {"content": content}
+    if model is not None:
+        payload["model"] = model
     return await client.post(
         f"/api/v1/assistant/conversations/{conversation_id}/messages",
-        json={"content": content},
+        json=payload,
     )
 
 
@@ -181,16 +190,23 @@ async def test_read_only_question_reaches_mocked_codex_with_private_calendar_con
     protected = await create_calendar(client, name="Imported", is_read_only=True)
     conversation = await create_conversation(client)
 
-    response = await ask(client, conversation["id"], "What do I have tomorrow?")
+    response = await ask(
+        client,
+        conversation["id"],
+        "What do I have tomorrow?",
+        model="gpt-5.6-terra",
+    )
 
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["job"]["status"] == "completed"
+    assert body["job"]["model"] == "gpt-5.6-terra"
     assert body["assistant_message"]["role"] == "assistant"
     assert "planning session" in body["assistant_message"]["content"].lower()
     assert body["conversation"]["title"] == "What do I have tomorrow?"
     assert len(fake_codex.calls) == 1
     call = fake_codex.calls[0]
+    assert call["model"] == "gpt-5.6-terra"
     assert {item["name"] for item in call["calendars"]} == {"Personal", "Imported"}
     imported_context = next(item for item in call["calendars"] if item["id"] == protected["id"])
     assert imported_context["is_read_only"] is True

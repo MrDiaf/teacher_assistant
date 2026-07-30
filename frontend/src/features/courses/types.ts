@@ -78,3 +78,38 @@ export interface NoteMutation {
   body: string;
   slide_references: SlideReferenceMutation[];
 }
+
+export type NoteSummaryStatus =
+  | "queued"
+  | "running"
+  | "validating"
+  | "completed"
+  | "failed";
+export type SummaryOrigin = "note" | "slide" | "mixed";
+
+export interface SummarySourceReference {
+  note_id: string | null;
+  source_id: string | null;
+  slide: number | null;
+}
+
+export interface SummaryBullet {
+  text: string;
+  origin: SummaryOrigin;
+  source_references: SummarySourceReference[];
+}
+
+export interface NoteSummary {
+  id: string;
+  note_id: string;
+  model: string;
+  status: NoteSummaryStatus;
+  summary_json: { bullets: SummaryBullet[] } | null;
+  note_content_hash: string;
+  slide_content_hash: string;
+  is_stale: boolean;
+  safe_error: string | null;
+  safe_error_code: string | null;
+  created_at: string;
+  updated_at: string;
+}

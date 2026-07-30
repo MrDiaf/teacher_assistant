@@ -1,8 +1,9 @@
-# Calendar Codex runtime
+# Teacher Assistant Codex runtime
 
-Each assistant job gets a mode `0700` temporary root outside the source
-repository. The job workspace contains only the runtime policy, the current
-request, bounded calendar context, and the structured answer/proposal schema.
+Each calendar-assistant or note-summary job gets a mode `0700` temporary root
+outside the source repository. Calendar workspaces contain only bounded
+calendar context. Summary workspaces contain only the note body and explicitly
+linked slide text. Both contain the runtime policy and structured output schema.
 
 The Codex app-server receives an allowlisted process environment. Its tool
 subprocesses inherit no secrets. A named read-only permission profile allows
@@ -21,7 +22,7 @@ refresh tokens. `OPENAI_API_KEY` remains an optional usage-billed fallback.
 
 ## Retention
 
-Runtime workspaces are deleted immediately after every job, whether it
+All runtime workspaces are deleted immediately after every job, whether it
 completes, fails validation, times out, or raises an exception. Conversation
 messages, final validated answers, validated proposals, confirmation state,
 execution results, job state, and safe error messages remain in PostgreSQL;

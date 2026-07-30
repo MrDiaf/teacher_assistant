@@ -176,6 +176,16 @@ test("creates and manages a manual course through the UI", async ({ page }) => {
   await expect(note.getByText("Slides 3–5")).toBeVisible();
   await expect(note.getByText(/Isolation overview/)).toBeVisible();
 
+  await page
+    .getByLabel("Summary model")
+    .selectOption({ value: "gpt-5.6-terra" });
+  await note.getByRole("button", { name: "Generate summary" }).click();
+  await expect(note.getByText("Summary failed safely")).toBeVisible();
+  await expect(note.getByText("gpt-5.6-terra")).toBeVisible();
+  await expect(
+    note.getByText(/Linked slide text is unavailable/),
+  ).toBeVisible();
+
   await note.getByRole("button", { name: "Edit" }).click();
   await noteDialog.getByLabel("Note title").fill("Serializable isolation");
   await noteDialog.getByRole("button", { name: "Save changes" }).click();

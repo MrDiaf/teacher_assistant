@@ -129,6 +129,7 @@ class AssistantJob(TimestampMixin, Base):
         nullable=False,
         default=AssistantJobStatus.QUEUED,
     )
+    model: Mapped[str] = mapped_column(String(100), nullable=False)
     safe_error: Mapped[str | None] = mapped_column(Text)
     safe_error_code: Mapped[str | None] = mapped_column(String(80))
 

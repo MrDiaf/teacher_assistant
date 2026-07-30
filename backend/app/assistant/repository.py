@@ -83,11 +83,13 @@ class AssistantRepository:
         self,
         conversation_id: uuid.UUID,
         owner_message_id: uuid.UUID,
+        model: str,
     ) -> AssistantJob:
         job = AssistantJob(
             conversation_id=conversation_id,
             owner_message_id=owner_message_id,
             status=AssistantJobStatus.QUEUED,
+            model=model,
         )
         self.session.add(job)
         await self.session.flush()

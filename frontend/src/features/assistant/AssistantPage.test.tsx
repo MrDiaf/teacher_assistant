@@ -16,6 +16,16 @@ import type {
   AssistantProposal,
 } from "./types";
 
+vi.mock("../ai/api", () => ({
+  getAiModels: vi.fn(async () => ({
+    default_model: "gpt-5.6-sol",
+    models: [
+      { id: "gpt-5.6-sol", label: "GPT-5.6 Sol · flagship" },
+      { id: "gpt-5.6-terra", label: "GPT-5.6 Terra · balanced" },
+    ],
+  })),
+}));
+
 const now = new Date().toISOString();
 const conversation: AssistantConversation = {
   id: "conversation-1",
@@ -112,6 +122,7 @@ function job(
     conversation_id: conversation.id,
     owner_message_id: ownerMessage.id,
     status,
+    model: "gpt-5.6-sol",
     safe_error: safeError,
     safe_error_code: safeError ? "assistant_unavailable" : null,
     created_at: now,
@@ -217,6 +228,7 @@ describe("AssistantPage", () => {
     );
     expect(JSON.parse(String(messageCall?.[1]?.body))).toEqual({
       content: "What do I have tomorrow?",
+      model: "gpt-5.6-sol",
     });
   });
 

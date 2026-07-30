@@ -9,6 +9,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.ai.service import AiModelRegistry
 from app.assistant.models import (
     AssistantConversation,
     AssistantJob,
@@ -70,6 +71,7 @@ class AssistantService:
         self.proposals = ProposalRepository(session)
         self.proposal_validator = ProposalValidator(self.calendars, self.events)
         self.settings = get_settings()
+        self.models = AiModelRegistry(self.settings)
 
     async def list_conversations(self) -> list[AssistantConversation]:
         return await self.assistant.list_conversations()
@@ -95,14 +97,24 @@ class AssistantService:
     async def get_job(self, job_id: uuid.UUID) -> AssistantJob:
         return await self.assistant.get_job(job_id)
 
-    async def send_message(self, conversation_id: uuid.UUID, content: str) -> AssistantTurn:
+    async def send_message(
+        self,
+        conversation_id: uuid.UUID,
+        content: str,
+        model: str | None = None,
+    ) -> AssistantTurn:
+        selected_model = self.models.resolve(model)
         conversation = await self.assistant.get_conversation(conversation_id, for_update=True)
         owner_message = await self.assistant.create_message(
             conversation.id,
             role=AssistantMessageRole.OWNER,
             content=content.strip(),
         )
-        job = await self.assistant.create_job(conversation.id, owner_message.id)
+        job = await self.assistant.create_job(
+            conversation.id,
+            owner_message.id,
+            selected_model,
+        )
         if conversation.title == "Calendar conversation":
             conversation.title = self._conversation_title(owner_message.content)
         conversation.updated_at = datetime.now(UTC)
@@ -115,6 +127,7 @@ class AssistantService:
             return await self._turn_from_job(job)
         if job.status != AssistantJobStatus.FAILED:
             raise AssistantJobNotRetryableError()
+        self.models.resolve(job.model)
         retry_feedback = self._job_failure_feedback(job)
         job.status = AssistantJobStatus.QUEUED
         job.safe_error = None
@@ -164,7 +177,7 @@ class AssistantService:
                     job.id, {"status": AssistantJobStatus.RUNNING}
                 )
                 await self.session.commit()
-                runtime_result = await self.adapter.answer(workspace)
+                runtime_result = await self.adapter.answer(workspace, model=job.model)
                 job = await self.assistant.update_job(
                     job.id, {"status": AssistantJobStatus.VALIDATING}
                 )

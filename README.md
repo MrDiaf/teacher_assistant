@@ -75,6 +75,11 @@ An `OPENAI_API_KEY` in `.env` is supported only as an optional usage-billed
 fallback. API-key usage is billed through the OpenAI Platform account rather
 than a ChatGPT subscription.
 
+The Assistant and note summaries share the server-configured model list.
+`CODEX_MODEL` is the default, while `AI_ALLOWED_MODELS` is a comma-separated
+allowlist. The browser can select only IDs returned by the backend and remembers
+the last valid choice locally. Restart the backend after changing either value.
+
 ## Calendar-change safety
 
 - Read-only calendars remain viewable and searchable but cannot be mutated.
@@ -110,7 +115,11 @@ unsupported format is still stored safely.
 The **Notes** tab stores private plain text or Markdown notes. A note works
 without slides, or it can link to one or more whole slide decks or numbered
 slide ranges. Note text is displayed as text and user-entered HTML is never
-rendered. AI summaries and calendar links are not enabled yet.
+rendered. AI summaries use only the note body and explicitly linked extracted
+slide text. Every stored bullet is labeled **From note**, **From slides**, or
+**From note + slides** with its exact source references. Summaries retain the
+selected model and source hashes, and are marked stale after their note or
+linked slide text changes. Course-linked calendars are not enabled yet.
 
 Deleting one source removes only that source file, its metadata, and its
 extracted text. Deleting a slide source also removes references to that source,
@@ -220,6 +229,6 @@ types, not calendar content, ICS URLs, model output, credentials, or request
 bodies. Keep Docker logs private and review them before sharing.
 
 Runtime Codex workspaces are private temporary directories containing only the
-relevant calendar context. Tools, network access, repository access, and host
-filesystem access are disabled; each workspace is deleted immediately after the
-job.
+relevant bounded calendar context, or one note body plus its explicitly linked
+slide text. Tools, network access, repository access, and host filesystem access
+are disabled; each workspace is deleted immediately after the job.

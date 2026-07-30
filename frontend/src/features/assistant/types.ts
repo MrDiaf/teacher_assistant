@@ -45,6 +45,7 @@ export interface AssistantJob {
   conversation_id: string;
   owner_message_id: string;
   status: AssistantJobStatus;
+  model: string;
   safe_error: string | null;
   safe_error_code: string | null;
   created_at: string;

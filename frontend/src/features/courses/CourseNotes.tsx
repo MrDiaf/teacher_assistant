@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "../../components/Icon";
+import { AiModelSelector } from "../ai/AiModelSelector";
+import { useAiModelSelection } from "../ai/useAiModelSelection";
 import { NoteDialog } from "./NoteDialog";
 import { courseApi } from "./api";
 import type {
@@ -8,7 +10,10 @@ import type {
   CourseNote,
   CourseSource,
   NoteMutation,
+  NoteSummary,
   SlideReference,
+  SummaryOrigin,
+  SummarySourceReference,
 } from "./types";
 
 function referenceRange(reference: SlideReference) {
@@ -21,22 +26,67 @@ function referenceRange(reference: SlideReference) {
   return `Slides ${reference.start_slide}–${reference.end_slide}`;
 }
 
+const ORIGIN_LABELS: Record<SummaryOrigin, string> = {
+  note: "From note",
+  slide: "From slides",
+  mixed: "From note + slides",
+};
+
+function summaryReferenceLabel(
+  note: CourseNote,
+  reference: SummarySourceReference,
+) {
+  if (reference.note_id === note.id) return "This note";
+  const slideReference = note.slide_references.find(
+    (item) => item.source_id === reference.source_id,
+  );
+  if (slideReference && reference.slide !== null) {
+    return `${slideReference.source_display_name}, slide ${reference.slide}`;
+  }
+  return reference.slide === null
+    ? "Linked source"
+    : `Linked slide ${reference.slide}`;
+}
+
+function summaryInputsChanged(before: CourseNote, after: CourseNote) {
+  const references = (note: CourseNote) =>
+    note.slide_references.map((reference) => ({
+      source_id: reference.source_id,
+      start_slide: reference.start_slide,
+      end_slide: reference.end_slide,
+    }));
+  return (
+    before.body !== after.body ||
+    JSON.stringify(references(before)) !== JSON.stringify(references(after))
+  );
+}
+
 function NoteCard({
   busy,
+  canSummarize,
   confirmingDelete,
   note,
   onCancelDelete,
   onConfirmDelete,
   onEdit,
+  onGenerateSummary,
   onRequestDelete,
+  onRetrySummary,
+  summary,
+  summaryBusy,
 }: {
   busy: boolean;
+  canSummarize: boolean;
   confirmingDelete: boolean;
   note: CourseNote;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
   onEdit: () => void;
+  onGenerateSummary: () => void;
   onRequestDelete: () => void;
+  onRetrySummary: () => void;
+  summary: NoteSummary | null;
+  summaryBusy: boolean;
 }) {
   return (
     <article className="course-note-card">
@@ -97,6 +147,87 @@ function NoteCard({
         )}
       </div>
 
+      <section
+        aria-label={`AI summary for ${note.title}`}
+        className="note-summary"
+      >
+        <header>
+          <div>
+            <p className="eyebrow">AI study summary</p>
+            <span>
+              {summary
+                ? `${summary.model}${summary.is_stale ? " · sources changed" : ""}`
+                : "Uses only this note and its linked slides"}
+            </span>
+          </div>
+          {summary?.status === "failed" ? (
+            <button
+              className="quiet-button"
+              disabled={summaryBusy}
+              onClick={onRetrySummary}
+              type="button"
+            >
+              {summaryBusy ? "Retrying…" : "Retry safely"}
+            </button>
+          ) : (
+            <button
+              className="quiet-button"
+              disabled={summaryBusy || !canSummarize}
+              onClick={onGenerateSummary}
+              type="button"
+            >
+              {summaryBusy
+                ? "Summarizing…"
+                : summary?.is_stale
+                  ? "Regenerate"
+                  : summary?.status === "completed"
+                    ? "Generate again"
+                    : "Generate summary"}
+            </button>
+          )}
+        </header>
+
+        {summary?.is_stale && (
+          <p className="note-summary-stale" role="status">
+            This summary is stale because the note or linked slide text changed.
+          </p>
+        )}
+        {summary?.status === "failed" && (
+          <div className="note-summary-error" role="alert">
+            <strong>Summary failed safely</strong>
+            <span>{summary.safe_error}</span>
+            {summary.safe_error_code && (
+              <small>Error code: {summary.safe_error_code}</small>
+            )}
+          </div>
+        )}
+        {summary?.status === "completed" && summary.summary_json && (
+          <ul className="note-summary-bullets">
+            {summary.summary_json.bullets.map((bullet, index) => (
+              <li
+                className={`origin-${bullet.origin}`}
+                key={`${bullet.text}-${index}`}
+              >
+                <span className="note-summary-origin">
+                  {ORIGIN_LABELS[bullet.origin]}
+                </span>
+                <p>{bullet.text}</p>
+                <small>
+                  {bullet.source_references
+                    .map((reference) => summaryReferenceLabel(note, reference))
+                    .join(" · ")}
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!summary && (
+          <p className="note-summary-empty">
+            Generate concise bullets with visible note and slide provenance.
+          </p>
+        )}
+      </section>
+
       {confirmingDelete && (
         <div className="course-note-delete-confirm" role="alert">
           <p>
@@ -128,7 +259,12 @@ function NoteCard({
 }
 
 export function CourseNotes({ course }: { course: CourseModel }) {
+  const { modelList, selectedModel, setSelectedModel, modelError } =
+    useAiModelSelection();
   const [notes, setNotes] = useState<CourseNote[]>([]);
+  const [summaries, setSummaries] = useState<
+    Record<string, NoteSummary | null>
+  >({});
   const [slideSources, setSlideSources] = useState<CourseSource[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogNote, setDialogNote] = useState<CourseNote | null | undefined>(
@@ -136,6 +272,7 @@ export function CourseNotes({ course }: { course: CourseModel }) {
   );
   const [confirmNoteId, setConfirmNoteId] = useState<string | null>(null);
   const [busyNoteId, setBusyNoteId] = useState<string | null>(null);
+  const [summaryBusyId, setSummaryBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -148,8 +285,18 @@ export function CourseNotes({ course }: { course: CourseModel }) {
           courseApi.listNotes(course.id, controller.signal),
           courseApi.listSources(course.id, controller.signal, "slides"),
         ]);
+        const loadedSummaries = await Promise.all(
+          loadedNotes.map((note) =>
+            courseApi.getNoteSummary(note.id, controller.signal),
+          ),
+        );
         setNotes(loadedNotes);
         setSlideSources(loadedSources);
+        setSummaries(
+          Object.fromEntries(
+            loadedNotes.map((note, index) => [note.id, loadedSummaries[index]]),
+          ),
+        );
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setError(
@@ -178,6 +325,19 @@ export function CourseNotes({ course }: { course: CourseModel }) {
         ? current.map((note) => (note.id === saved.id ? saved : note))
         : [saved, ...current],
     );
+    setSummaries((current) => ({
+      ...current,
+      [saved.id]: existingNote
+        ? current[saved.id]
+          ? {
+              ...current[saved.id]!,
+              is_stale:
+                current[saved.id]!.is_stale ||
+                summaryInputsChanged(existingNote, saved),
+            }
+          : null
+        : null,
+    }));
     setDialogNote(undefined);
   }
 
@@ -187,6 +347,11 @@ export function CourseNotes({ course }: { course: CourseModel }) {
     try {
       await courseApi.deleteNote(note.id);
       setNotes((current) => current.filter((item) => item.id !== note.id));
+      setSummaries((current) => {
+        const next = { ...current };
+        delete next[note.id];
+        return next;
+      });
       setConfirmNoteId(null);
     } catch (deleteError) {
       setError(
@@ -196,6 +361,45 @@ export function CourseNotes({ course }: { course: CourseModel }) {
       );
     } finally {
       setBusyNoteId(null);
+    }
+  }
+
+  async function generateSummary(note: CourseNote) {
+    if (!selectedModel || summaryBusyId) return;
+    setSummaryBusyId(note.id);
+    setError(null);
+    try {
+      const summary = await courseApi.generateNoteSummary(
+        note.id,
+        selectedModel,
+      );
+      setSummaries((current) => ({ ...current, [note.id]: summary }));
+    } catch (summaryError) {
+      setError(
+        summaryError instanceof Error
+          ? summaryError.message
+          : "The note summary could not be generated safely.",
+      );
+    } finally {
+      setSummaryBusyId(null);
+    }
+  }
+
+  async function retrySummary(note: CourseNote, summary: NoteSummary) {
+    if (summaryBusyId) return;
+    setSummaryBusyId(note.id);
+    setError(null);
+    try {
+      const retried = await courseApi.retryNoteSummary(summary.id);
+      setSummaries((current) => ({ ...current, [note.id]: retried }));
+    } catch (summaryError) {
+      setError(
+        summaryError instanceof Error
+          ? summaryError.message
+          : "The note summary retry failed safely.",
+      );
+    } finally {
+      setSummaryBusyId(null);
     }
   }
 
@@ -210,15 +414,28 @@ export function CourseNotes({ course }: { course: CourseModel }) {
             to one or more slide ranges.
           </p>
         </div>
-        <button
-          className="primary-button"
-          onClick={() => setDialogNote(null)}
-          type="button"
-        >
-          <Icon name="plus" size={16} /> Create note
-        </button>
+        <div className="course-notes-header-actions">
+          <AiModelSelector
+            label="Summary model"
+            modelList={modelList}
+            onChange={setSelectedModel}
+            value={selectedModel}
+          />
+          <button
+            className="primary-button"
+            onClick={() => setDialogNote(null)}
+            type="button"
+          >
+            <Icon name="plus" size={16} /> Create note
+          </button>
+        </div>
       </header>
 
+      {modelError && (
+        <div className="course-materials-error" role="alert">
+          {modelError}
+        </div>
+      )}
       {error && (
         <div className="course-materials-error" role="alert">
           {error}
@@ -253,13 +470,21 @@ export function CourseNotes({ course }: { course: CourseModel }) {
           {notes.map((note) => (
             <NoteCard
               busy={busyNoteId === note.id}
+              canSummarize={Boolean(selectedModel)}
               confirmingDelete={confirmNoteId === note.id}
               key={note.id}
               note={note}
               onCancelDelete={() => setConfirmNoteId(null)}
               onConfirmDelete={() => void deleteNote(note)}
               onEdit={() => setDialogNote(note)}
+              onGenerateSummary={() => void generateSummary(note)}
               onRequestDelete={() => setConfirmNoteId(note.id)}
+              onRetrySummary={() => {
+                const summary = summaries[note.id];
+                if (summary) void retrySummary(note, summary);
+              }}
+              summary={summaries[note.id] ?? null}
+              summaryBusy={summaryBusyId === note.id}
             />
           ))}
         </div>

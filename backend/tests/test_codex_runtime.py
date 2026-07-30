@@ -82,6 +82,7 @@ async def test_sdk_adapter_uses_read_only_sandbox_and_scrubbed_environment(
         from openai_codex import ApprovalMode
 
         assert captured["thread_options"]["approval_mode"] == ApprovalMode.deny_all
+        assert captured["thread_options"]["model"] == "gpt-5.6-sol"
         runtime_config = captured["thread_options"]["config"]
         assert runtime_config["default_permissions"] == "calendar-runtime-read-only"
         filesystem = runtime_config["permissions"]["calendar-runtime-read-only"]["filesystem"]

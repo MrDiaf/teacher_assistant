@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     openai_api_key: SecretStr | None = None
     codex_auth_home: Path = Path("/var/lib/teacher-assistant/codex")
     codex_model: str = "gpt-5.6-sol"
+    ai_allowed_models: str = "gpt-5.6-sol,gpt-5.6-terra,gpt-5.6-luna"
     codex_timeout_seconds: int = Field(default=90, ge=10, le=600)
     codex_max_context_events: int = Field(default=1000, ge=1, le=5000)
     assistant_proposal_ttl_minutes: int = Field(default=30, ge=5, le=1440)

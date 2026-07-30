@@ -5,6 +5,7 @@ import type {
   CourseNote,
   CourseSource,
   NoteMutation,
+  NoteSummary,
 } from "./types";
 
 interface ApiErrorPayload {
@@ -152,5 +153,22 @@ export const courseApi = {
 
   deleteNote(noteId: string) {
     return request<void>(`/notes/${noteId}`, { method: "DELETE" });
+  },
+
+  getNoteSummary(noteId: string, signal?: AbortSignal) {
+    return request<NoteSummary | null>(`/notes/${noteId}/summary`, { signal });
+  },
+
+  generateNoteSummary(noteId: string, model: string) {
+    return request<NoteSummary>(`/notes/${noteId}/summaries`, {
+      method: "POST",
+      body: JSON.stringify({ model }),
+    });
+  },
+
+  retryNoteSummary(summaryId: string) {
+    return request<NoteSummary>(`/note-summaries/${summaryId}/retry`, {
+      method: "POST",
+    });
   },
 };

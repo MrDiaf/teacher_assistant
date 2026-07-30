@@ -1027,19 +1027,19 @@ Acceptance:
 
 ## M11 — AI summaries and model selection
 
-- [ ] Add backend model allowlist and default model.
-- [ ] Add shared model-selection endpoint.
-- [ ] Add model selector to Assistant.
-- [ ] Add model selector to note summaries.
-- [ ] Extend the existing Codex adapter rather than creating a second integration.
-- [ ] Build restricted summary workspaces.
-- [ ] Add structured summary output.
-- [ ] Add `note`, `slide`, and `mixed` provenance.
-- [ ] Add accessible visual distinction.
-- [ ] Store summary model and source hashes.
-- [ ] Mark stale summaries.
-- [ ] Add retries and safe errors.
-- [ ] Mock Codex in automated tests.
+- [x] Add backend model allowlist and default model.
+- [x] Add shared model-selection endpoint.
+- [x] Add model selector to Assistant.
+- [x] Add model selector to note summaries.
+- [x] Extend the existing Codex adapter rather than creating a second integration.
+- [x] Build restricted summary workspaces.
+- [x] Add structured summary output.
+- [x] Add `note`, `slide`, and `mixed` provenance.
+- [x] Add accessible visual distinction.
+- [x] Store summary model and source hashes.
+- [x] Mark stale summaries.
+- [x] Add retries and safe errors.
+- [x] Mock Codex in automated tests.
 
 Acceptance:
 
