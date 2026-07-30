@@ -31,8 +31,8 @@ async def clean_database() -> AsyncIterator[None]:
                 "TRUNCATE TABLE note_summaries, assistant_proposal_actions, assistant_proposals, "
                 "assistant_jobs, assistant_messages, "
                 "assistant_conversations, note_source_links, notes, "
-                "course_source_text, course_sources, courses, events, "
-                "calendars CASCADE"
+                "course_source_text, course_sources, course_calendar_links, "
+                "courses, events, calendars CASCADE"
             )
         )
     storage_root = settings.course_storage_root.resolve()

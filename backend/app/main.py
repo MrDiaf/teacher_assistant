@@ -14,6 +14,7 @@ from app.calendar.subscription_routes import router as calendar_subscription_rou
 from app.calendar.subscription_scheduler import subscription_scheduler
 from app.codex_runtime.adapter import get_codex_auth_manager
 from app.core.errors import ApplicationError
+from app.course_calendars.routes import router as course_calendar_router
 from app.course_sources.routes import router as course_source_router
 from app.courses.routes import router as course_router
 from app.database.session import session_factory
@@ -39,6 +40,11 @@ app = FastAPI(title="Teacher Assistant API", version="1.0.0", lifespan=lifespan)
 app.include_router(ai_router, prefix="/api/v1", tags=["ai"])
 app.include_router(calendar_router, prefix="/api/v1", tags=["calendar"])
 app.include_router(course_router, prefix="/api/v1", tags=["courses"])
+app.include_router(
+    course_calendar_router,
+    prefix="/api/v1",
+    tags=["course-calendars"],
+)
 app.include_router(course_source_router, prefix="/api/v1", tags=["course-materials"])
 app.include_router(note_router, prefix="/api/v1", tags=["course-notes"])
 app.include_router(

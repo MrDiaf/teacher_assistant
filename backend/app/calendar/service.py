@@ -127,6 +127,7 @@ class CalendarService:
         self,
         *,
         calendar_id: uuid.UUID | None = None,
+        calendar_ids: set[uuid.UUID] | None = None,
         starts_before: datetime | None = None,
         ends_after: datetime | None = None,
         search: str | None = None,
@@ -135,6 +136,7 @@ class CalendarService:
             await self.calendars.get(calendar_id)
         events = await self.events.list(
             calendar_id=calendar_id,
+            calendar_ids=calendar_ids,
             starts_before=starts_before,
             ends_after=ends_after,
         )

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "../../components/Icon";
+import { CourseCalendar } from "./CourseCalendar";
 import { CourseDialog } from "./CourseDialog";
 import { CourseMaterials } from "./CourseMaterials";
 import { CourseNotes } from "./CourseNotes";
@@ -14,16 +15,6 @@ const TABS: { id: CourseTab; label: string }[] = [
   { id: "materials", label: "Materials" },
   { id: "calendar", label: "Calendar" },
 ];
-
-const PLACEHOLDER_TABS: Record<
-  Exclude<CourseTab, "overview" | "notes" | "materials">,
-  [string, string]
-> = {
-  calendar: [
-    "Calendar linking comes later",
-    "Existing calendars can be linked to courses when M12 begins.",
-  ],
-};
 
 function CourseCard({
   busy,
@@ -69,7 +60,9 @@ function CourseCard({
       <footer className="course-card-actions">
         <span>
           {course.source_count}{" "}
-          {course.source_count === 1 ? "material" : "materials"}
+          {course.source_count === 1 ? "material" : "materials"} ·{" "}
+          {course.calendar_count}{" "}
+          {course.calendar_count === 1 ? "calendar" : "calendars"}
         </span>
         <div>
           <button disabled={busy} onClick={() => onEdit(course)} type="button">
@@ -153,6 +146,7 @@ function CourseDetail({
   onDelete,
   onEdit,
   onRestore,
+  onCalendarCountChange,
   onSourceCountChange,
 }: {
   busy: boolean;
@@ -162,11 +156,10 @@ function CourseDetail({
   onDelete: () => void;
   onEdit: () => void;
   onRestore: () => void;
+  onCalendarCountChange: (count: number) => void;
   onSourceCountChange: (count: number) => void;
 }) {
   const [activeTab, setActiveTab] = useState<CourseTab>("overview");
-  const placeholder =
-    activeTab === "calendar" ? PLACEHOLDER_TABS[activeTab] : null;
 
   return (
     <main className="course-detail-page" aria-labelledby="course-detail-title">
@@ -269,15 +262,18 @@ function CourseDetail({
                   <dt>Materials</dt>
                   <dd>{course.source_count}</dd>
                 </div>
+                <div>
+                  <dt>Linked calendars</dt>
+                  <dd>{course.calendar_count}</dd>
+                </div>
               </dl>
             </article>
             <article className="course-next-steps">
               <p className="eyebrow">Course workspace</p>
               <h2>Build a useful source library</h2>
               <p>
-                Literature, slides, and private course notes are ready now.
-                Calendar linking remains unavailable until its dedicated
-                milestone.
+                Literature, slides, private course notes, and linked calendars
+                are ready in this course workspace.
               </p>
             </article>
           </div>
@@ -288,14 +284,19 @@ function CourseDetail({
             course={course}
             onSourceCountChange={onSourceCountChange}
           />
+        ) : activeTab === "calendar" ? (
+          <CourseCalendar
+            course={course}
+            onCalendarCountChange={onCalendarCountChange}
+          />
         ) : (
           <div className="course-tab-placeholder">
             <span>
-              <Icon name={activeTab === "calendar" ? "calendar" : "courses"} />
+              <Icon name="courses" />
             </span>
             <p className="eyebrow">Planned section</p>
-            <h2>{placeholder?.[0]}</h2>
-            <p>{placeholder?.[1]}</p>
+            <h2>Planned section</h2>
+            <p>This course section is not available yet.</p>
           </div>
         )}
       </section>
@@ -358,6 +359,25 @@ export function CoursesPage() {
           }
           changed = true;
           return { ...course, source_count: count };
+        });
+        return changed ? next : current;
+      });
+    },
+    [selectedCourseId],
+  );
+  const updateSelectedCourseCalendarCount = useCallback(
+    (count: number) => {
+      setCourses((current) => {
+        let changed = false;
+        const next = current.map((course) => {
+          if (
+            course.id !== selectedCourseId ||
+            course.calendar_count === count
+          ) {
+            return course;
+          }
+          changed = true;
+          return { ...course, calendar_count: count };
         });
         return changed ? next : current;
       });
@@ -432,6 +452,7 @@ export function CoursesPage() {
           onDelete={() => setDeleteCourse(selectedCourse)}
           onEdit={() => setDialogCourse(selectedCourse)}
           onRestore={() => void changeStatus(selectedCourse, "restore")}
+          onCalendarCountChange={updateSelectedCourseCalendarCount}
           onSourceCountChange={updateSelectedCourseSourceCount}
         />
         {dialogCourse !== undefined && (

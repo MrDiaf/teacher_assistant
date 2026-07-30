@@ -40,6 +40,7 @@ const activeCourse: CourseModel = {
   status: "active",
   source_type: "manual",
   source_count: 0,
+  calendar_count: 0,
   created_at: now,
   updated_at: now,
 };
@@ -105,6 +106,7 @@ function installCourseApi(
         status: "active",
         source_type: "manual",
         source_count: 0,
+        calendar_count: 0,
         created_at: now,
         updated_at: now,
       };

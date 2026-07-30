@@ -1052,15 +1052,15 @@ Acceptance:
 
 ## M12 — Course-linked calendars
 
-- [ ] Add course-calendar relation.
-- [ ] Add link and unlink API routes.
-- [ ] Add calendar selection UI.
-- [ ] Add Course Calendar tab.
-- [ ] Reuse existing calendar components.
-- [ ] Filter the view to linked calendars.
-- [ ] Preserve read-only restrictions.
-- [ ] Preserve existing event behavior.
-- [ ] Add tests.
+- [x] Add course-calendar relation.
+- [x] Add link and unlink API routes.
+- [x] Add calendar selection UI.
+- [x] Add Course Calendar tab.
+- [x] Reuse existing calendar components.
+- [x] Filter the view to linked calendars.
+- [x] Preserve read-only restrictions.
+- [x] Preserve existing event behavior.
+- [x] Add tests.
 
 Acceptance:
 

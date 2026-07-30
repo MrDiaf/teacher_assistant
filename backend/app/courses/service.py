@@ -40,14 +40,20 @@ class CourseService:
         course = await self.courses.create(creation_values)
         await self.session.commit()
         await self.session.refresh(course)
-        await self.session.refresh(course, attribute_names=["sources"])
+        await self.session.refresh(
+            course,
+            attribute_names=["sources", "calendar_links"],
+        )
         return course
 
     async def update_course(self, course_id: uuid.UUID, changes: dict[str, Any]) -> Course:
         course = await self.courses.update(course_id, changes)
         await self.session.commit()
         await self.session.refresh(course)
-        await self.session.refresh(course, attribute_names=["sources"])
+        await self.session.refresh(
+            course,
+            attribute_names=["sources", "calendar_links"],
+        )
         return course
 
     async def archive_course(self, course_id: uuid.UUID) -> Course:
@@ -72,5 +78,8 @@ class CourseService:
         course = await self.courses.update(course_id, {"status": status})
         await self.session.commit()
         await self.session.refresh(course)
-        await self.session.refresh(course, attribute_names=["sources"])
+        await self.session.refresh(
+            course,
+            attribute_names=["sources", "calendar_links"],
+        )
         return course

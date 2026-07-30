@@ -80,5 +80,6 @@ class CourseResponse(BaseModel):
     status: CourseStatus
     source_type: CourseSourceType
     source_count: int
+    calendar_count: int
     created_at: datetime
     updated_at: datetime

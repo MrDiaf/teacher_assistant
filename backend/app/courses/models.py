@@ -6,6 +6,7 @@ from sqlalchemy import CheckConstraint, Enum, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.calendar.models import enum_values
+from app.course_calendars.models import CourseCalendarLink
 from app.database.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
@@ -76,7 +77,17 @@ class Course(TimestampMixin, Base):
         passive_deletes=True,
         lazy="selectin",
     )
+    calendar_links: Mapped[list["CourseCalendarLink"]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
 
     @property
     def source_count(self) -> int:
         return len(self.sources)
+
+    @property
+    def calendar_count(self) -> int:
+        return len(self.calendar_links)

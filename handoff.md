@@ -8,27 +8,27 @@ Repository: `/home/ronny/Public/projects/teacher_assitant`
 1. Read `AGENTS.md` completely and follow its session-canary instruction.
 2. Read `instrcutions_2.md` (the filename is intentionally misspelled).
 3. Inspect the worktree before editing. Do not discard, reset, or overwrite the
-   uncommitted M11 work described below.
-4. Continue with one milestone only. M8, M9, M10, and M11 are complete. The next
-   milestone is M12.
+   uncommitted M12 work described below.
+4. Continue with one milestone only. M8 through M12 are complete. The next
+   milestone is M13.
 5. Do not commit, push, merge, rebase, or delete branches unless the owner asks.
 
 The stale “Implement M8 only” text near the bottom of `instrcutions_2.md` has
 been superseded by the owner's explicit milestone requests and the completed
-M8–M11 checklists.
+M8–M12 checklists.
 
 ## Current repository and runtime state
 
-- Current Git `HEAD`: `2f96aae M10 - notes and slides references , complete`
-- M11 is implemented and verified but remains uncommitted in the worktree.
-- `handoff.md` is also an uncommitted handoff artifact.
+- Current Git `HEAD`: `4cb8e42 handoff done`
+- M12 is implemented and verified but remains uncommitted in the worktree.
+- M11 is included in the current `HEAD`.
 - Development services are running:
   - Frontend: `http://localhost:5173`
   - Backend: `http://localhost:8000`
   - Backend health: passing
   - PostgreSQL: healthy
-- Alembic is at `20260730_0013 (head)`.
-- No M12 implementation has started.
+- Alembic is at `20260730_0014 (head)`.
+- No M13 implementation has started.
 - No `.openai/hosting.json` exists. This is a self-hosted Docker application;
   do not deploy it through Sites.
 
@@ -58,7 +58,7 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
 - Runtime Codex workspaces must not expose the source tree, Docker socket,
   credentials, environment files, database credentials, or unrelated private
   data.
-- Do not implement M13 or other future systems while working on M12.
+- Do not implement beyond the explicitly selected milestone.
 
 ## Completed milestone summary
 
@@ -187,32 +187,66 @@ frontend/src/features/courses/CoursesPage.test.tsx
 e2e/tests/calendar-assistant.spec.ts
 ```
 
+### M12 — Course-linked calendars
+
+All M12 checklist items in `instrcutions_2.md` are checked and acceptance was
+verified.
+
+Implemented behavior:
+
+- Courses link to existing calendars through a pure many-to-many association.
+- The unique `(course_id, calendar_id)` constraint prevents duplicate links.
+- Link rows cascade away when a course or calendar is deleted, but neither
+  unlinking nor deleting a course can delete calendars or events.
+- Added course calendar routes:
+  - `GET /api/v1/courses/{course_id}/calendars`
+  - `POST /api/v1/courses/{course_id}/calendars`
+  - `DELETE /api/v1/courses/{course_id}/calendars/{calendar_id}`
+  - `GET /api/v1/courses/{course_id}/events`
+- Course event queries filter by linked calendar IDs without joining through
+  events, so each event is returned once.
+- The Course Calendar tab reuses the existing calendar toolbar, filters, month/
+  week/day views, event dialog, recurrence expansion, drag/move/resize behavior,
+  undo handling, and mutation APIs.
+- The link selector shows available calendars and identifies read-only choices.
+- Course calendar counts appear on course cards and in the Overview tab.
+- Calendar visibility is shared consistently with the main Calendar module.
+- Linked read-only calendars and events remain visible, while create, edit,
+  move, resize, and delete controls remain disabled. Existing backend and
+  database guards remain authoritative.
+- The empty state provides a `Link calendar` action.
+
+Key M12 files:
+
+```text
+backend/app/course_calendars/
+backend/alembic/versions/20260730_0014_course_calendars.py
+backend/tests/test_course_calendars.py
+frontend/src/features/courses/CourseCalendar.tsx
+frontend/src/features/courses/CourseCalendar.test.tsx
+frontend/src/features/calendar/CalendarPage.tsx
+e2e/tests/calendar-assistant.spec.ts
+```
+
 ## Latest verification results
 
-The exact M11 source state was verified with:
+The exact M12 source state was verified with:
 
 ```text
 make test
-  Backend: 91 passed
-  Frontend: 35 passed
+  Backend: 96 passed
+  Frontend: 37 passed
 
 make e2e
   Playwright/accessibility: 5 passed
 
-Python Ruff: passed
-Frontend TypeScript + Prettier: passed
-E2E TypeScript + Prettier: passed
+make lint: passed
+Frontend production build: passed
 git diff --check: passed
-Alembic current: 20260730_0013 (head)
+Alembic current: 20260730_0014 (head)
 Backend health: passed
 Frontend HTTP check: passed
-GET /api/v1/ai/models: passed
 ```
-
-A redundant `make lint` rerun encountered a transient Microsoft Container
-Registry `429` while resolving the Playwright base image. The same complete
-lint command had already passed, and the exact E2E source was subsequently
-rechecked successfully from the cached image.
 
 Ordinary tests mock Codex and require no real credentials. Real summary
 generation requires the owner to sign in with ChatGPT on the Assistant page or
@@ -220,9 +254,9 @@ configure the optional API-key fallback.
 
 ## Uncommitted worktree scope
 
-The modified/untracked files at handoff are the M11 implementation,
-configuration/documentation updates, M11 tests, the M11 checklist update, and
-this handoff file. Treat them as intentional owner work.
+The modified/untracked files at handoff are the M12 implementation, migration,
+tests, checklist update, and this handoff update. Treat them as intentional
+owner work.
 
 Do not use destructive Git commands. In particular, do not run:
 
@@ -233,60 +267,32 @@ git clean -fd
 ```
 
 Use `git status --short` and `git diff` to inspect changes. Do not assume an
-untracked M11 file is disposable.
+untracked M12 file is disposable.
 
-## Next milestone: M12 only
+## Next milestone: M13 only
 
-M12 is “Course-linked calendars”. Required checklist:
+M13 is “Course-aware Assistant and diagnostics”. Required checklist:
 
-- Add a course-calendar relation.
-- Add link and unlink API routes.
-- Add calendar selection UI.
-- Add the Course Calendar tab.
-- Reuse existing calendar components.
-- Filter the view to linked calendars.
-- Preserve read-only restrictions.
-- Preserve existing event behavior.
-- Add tests.
+- Extend Assistant context with relevant course notes.
+- Add course-aware clarification behavior.
+- Add note and slide citations.
+- Add structured safe error reports and redaction.
+- Add `Ask Assistant about this error`.
+- Separate input fixes from application-improvement suggestions.
+- Prevent runtime source-code editing.
+- Add audit records, privacy tests, and end-to-end coverage.
+- Update setup, backup, restore, and troubleshooting documentation.
 
 Acceptance:
 
-- One course may link to several calendars.
-- Entering the course Calendar tab shows events from linked calendars.
-- Events are not duplicated.
-- Unlinking or deleting a course does not delete calendar data.
-
-Suggested API shape from `instrcutions_2.md`:
-
-```text
-GET    /api/v1/courses/{course_id}/calendars
-POST   /api/v1/courses/{course_id}/calendars
-DELETE /api/v1/courses/{course_id}/calendars/{calendar_id}
-GET    /api/v1/courses/{course_id}/events
-```
-
-Recommended M12 approach:
-
-1. Inspect the current calendar models, repository, service, routes, frontend
-   calendar components, course detail tabs, and current tests before designing
-   the relation.
-2. Add a pure association table/entity with foreign keys to Course and Calendar
-   and a uniqueness constraint on `(course_id, calendar_id)`.
-3. Deleting/unlinking a relation must never delete either calendar or its
-   events. Configure ORM/database cascades accordingly and add direct tests.
-4. Reuse `CalendarPage` subcomponents where practical. Do not copy the whole
-   calendar feature or move business logic into React.
-5. Filter by linked calendar IDs without duplicating events. Preserve the
-   existing backend calendar service as the authority for all event mutations.
-6. Show linked read-only calendars and their events, but keep create/edit/move/
-   resize/delete controls disabled and retain backend/database protection.
-7. Add migration `20260730_0014_...` revising `20260730_0013`.
-8. Add backend, frontend, and Playwright coverage, run the full Docker suites,
-   then check only the M12 boxes.
-9. Stop after M12 and report using the exact `AGENTS.md` session-report format.
+- The Assistant answers questions using only relevant course notes and supplied
+  slide text.
+- Sanitized application errors can be explained safely.
+- Secrets and unrelated private data are excluded.
+- Existing Calendar and Assistant safety rules remain enforced.
 
 Recommended next owner prompt:
 
 ```text
-Read AGENTS.md and handoff.md, then proceed with M12 only.
+Read AGENTS.md and handoff.md, then proceed with M13 only.
 ```

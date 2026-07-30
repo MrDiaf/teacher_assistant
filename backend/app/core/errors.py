@@ -36,6 +36,13 @@ class CourseNotFoundError(ResourceNotFoundError):
         super().__init__("The requested course does not exist.")
 
 
+class CourseCalendarNotLinkedError(ResourceNotFoundError):
+    code = "course_calendar_not_linked"
+
+    def __init__(self) -> None:
+        super().__init__("The requested calendar is not linked to this course.")
+
+
 class CourseSourceNotFoundError(ResourceNotFoundError):
     code = "course_source_not_found"
 

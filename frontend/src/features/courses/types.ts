@@ -20,6 +20,7 @@ export interface CourseModel {
   status: CourseStatus;
   source_type: CourseOriginType;
   source_count: number;
+  calendar_count: number;
   created_at: string;
   updated_at: string;
 }

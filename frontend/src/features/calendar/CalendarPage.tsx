@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { Icon } from "../../components/Icon";
 import { calendarApi } from "./api";
@@ -43,6 +49,33 @@ interface UndoState {
   message: string;
   action: () => Promise<unknown>;
   isRunning: boolean;
+}
+
+export interface CalendarSidebarRenderProps {
+  calendars: CalendarModel[];
+  isLoading: boolean;
+  onVisibilityChange: (
+    calendar: CalendarModel,
+    visible: boolean,
+  ) => Promise<void>;
+}
+
+interface CalendarWorkspaceProps {
+  embedded?: boolean;
+  emptyState?: ReactNode;
+  eyebrow?: string;
+  loadCalendars?: (signal?: AbortSignal) => Promise<CalendarModel[]>;
+  loadEvents?: (
+    startsBefore: Date,
+    endsAfter: Date,
+    options?: {
+      calendarId?: string;
+      search?: string;
+      signal?: AbortSignal;
+    },
+  ) => Promise<CalendarEvent[]>;
+  reloadToken?: number;
+  renderSidebar?: (props: CalendarSidebarRenderProps) => ReactNode;
 }
 
 const EMPTY_FILTERS: EventFilters = {
@@ -104,7 +137,15 @@ function calendarMutationFrom(calendar: CalendarModel): CalendarMutation {
   };
 }
 
-export function CalendarPage() {
+export function CalendarWorkspace({
+  embedded = false,
+  emptyState,
+  eyebrow = "Personal schedule",
+  loadCalendars = calendarApi.listCalendars,
+  loadEvents = calendarApi.listEvents,
+  reloadToken = 0,
+  renderSidebar,
+}: CalendarWorkspaceProps) {
   const [view, setView] = useState<CalendarView>("month");
   const [anchor, setAnchor] = useState(() => new Date());
   const [calendars, setCalendars] = useState<CalendarModel[]>([]);
@@ -143,8 +184,8 @@ export function CalendarPage() {
   const loadCalendar = useCallback(
     async (signal?: AbortSignal) => {
       const [calendarResult, eventResult] = await Promise.all([
-        calendarApi.listCalendars(signal),
-        calendarApi.listEvents(queryEnd, queryStart, {
+        loadCalendars(signal),
+        loadEvents(queryEnd, queryStart, {
           calendarId: filters.calendarId || undefined,
           search: filters.search.trim() || undefined,
           signal,
@@ -153,7 +194,14 @@ export function CalendarPage() {
       setCalendars(calendarResult);
       setEvents(eventResult);
     },
-    [filters.calendarId, filters.search, queryEnd, queryStart],
+    [
+      filters.calendarId,
+      filters.search,
+      loadCalendars,
+      loadEvents,
+      queryEnd,
+      queryStart,
+    ],
   );
 
   useEffect(() => {
@@ -176,12 +224,21 @@ export function CalendarPage() {
         }
       });
     return () => controller.abort();
-  }, [loadCalendar, reloadVersion]);
+  }, [loadCalendar, reloadToken, reloadVersion]);
 
   const calendarMap = useMemo(
     () => new Map(calendars.map((calendar) => [calendar.id, calendar])),
     [calendars],
   );
+  useEffect(() => {
+    if (
+      !isLoading &&
+      filters.calendarId &&
+      !calendarMap.has(filters.calendarId)
+    ) {
+      setFilters((current) => ({ ...current, calendarId: "" }));
+    }
+  }, [calendarMap, filters.calendarId, isLoading]);
   const visibleCalendarIds = useMemo(
     () =>
       new Set(
@@ -491,11 +548,21 @@ export function CalendarPage() {
       ? (events.find((event) => event.id === dialog.event?.id) ?? null)
       : null;
 
+  const Root = embedded ? "div" : "main";
+  const headingId = embedded
+    ? "course-calendar-workspace-heading"
+    : "calendar-page-title";
+
   return (
-    <main aria-labelledby="calendar-page-title" className="calendar-page">
+    <Root
+      aria-labelledby={headingId}
+      className={`calendar-page${embedded ? " embedded-calendar-page" : ""}`}
+    >
       <CalendarToolbar
         anchor={anchor}
         canCreate={writableCalendars.length > 0}
+        eyebrow={eyebrow}
+        headingId={headingId}
         onCreate={() => openCreate(startOfDay(anchor))}
         onMove={(direction) =>
           setAnchor((current) => moveAnchor(current, view, direction))
@@ -536,16 +603,24 @@ export function CalendarPage() {
       )}
 
       <div className="calendar-workspace">
-        <CalendarList
-          calendars={calendars}
-          isBootstrapping={isBootstrapping}
-          isLoading={isLoading && calendars.length === 0}
-          onBootstrap={handleBootstrap}
-          onCreate={() => setCalendarDialog({ calendar: null })}
-          onImport={() => setIsImportOpen(true)}
-          onManage={(calendar) => setCalendarDialog({ calendar })}
-          onVisibilityChange={handleVisibilityChange}
-        />
+        {renderSidebar ? (
+          renderSidebar({
+            calendars,
+            isLoading: isLoading && calendars.length === 0,
+            onVisibilityChange: handleVisibilityChange,
+          })
+        ) : (
+          <CalendarList
+            calendars={calendars}
+            isBootstrapping={isBootstrapping}
+            isLoading={isLoading && calendars.length === 0}
+            onBootstrap={handleBootstrap}
+            onCreate={() => setCalendarDialog({ calendar: null })}
+            onImport={() => setIsImportOpen(true)}
+            onManage={(calendar) => setCalendarDialog({ calendar })}
+            onVisibilityChange={handleVisibilityChange}
+          />
+        )}
 
         <div className="calendar-canvas">
           {isLoading && calendars.length === 0 ? (
@@ -560,25 +635,27 @@ export function CalendarPage() {
               <span />
             </div>
           ) : calendars.length === 0 ? (
-            <div className="main-empty-state">
-              <span className="empty-symbol large">
-                <Icon name="calendar" size={28} />
-              </span>
-              <p className="eyebrow">A clear place to begin</p>
-              <h2>Set up your first calendar</h2>
-              <p>
-                Create a private Personal calendar, then add your first event.
-              </p>
-              <button
-                className="primary-button"
-                disabled={isBootstrapping}
-                onClick={handleBootstrap}
-                type="button"
-              >
-                <Icon name="plus" size={18} />
-                {isBootstrapping ? "Setting up…" : "Set up calendar"}
-              </button>
-            </div>
+            (emptyState ?? (
+              <div className="main-empty-state">
+                <span className="empty-symbol large">
+                  <Icon name="calendar" size={28} />
+                </span>
+                <p className="eyebrow">A clear place to begin</p>
+                <h2>Set up your first calendar</h2>
+                <p>
+                  Create a private Personal calendar, then add your first event.
+                </p>
+                <button
+                  className="primary-button"
+                  disabled={isBootstrapping}
+                  onClick={handleBootstrap}
+                  type="button"
+                >
+                  <Icon name="plus" size={18} />
+                  {isBootstrapping ? "Setting up…" : "Set up calendar"}
+                </button>
+              </div>
+            ))
           ) : (
             <div className="calendar-view-frame">
               {noVisibleCalendars && (
@@ -671,6 +748,10 @@ export function CalendarPage() {
           </button>
         </div>
       )}
-    </main>
+    </Root>
   );
+}
+
+export function CalendarPage() {
+  return <CalendarWorkspace />;
 }

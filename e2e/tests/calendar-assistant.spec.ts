@@ -87,7 +87,41 @@ test("keeps a protected event visible but immutable", async ({
   ).toHaveCount(0);
 });
 
-test("creates and manages a manual course through the UI", async ({ page }) => {
+test("creates and manages a manual course through the UI", async ({
+  page,
+  request,
+}) => {
+  const courseCalendarResponse = await request.post("/api/v1/calendars", {
+    data: {
+      name: "Course E2E schedule",
+      description: "Calendar linked by the course end-to-end test",
+      color: "#8f6ea8",
+    },
+  });
+  expect(courseCalendarResponse.ok()).toBeTruthy();
+  const courseCalendar = (await courseCalendarResponse.json()) as {
+    id: string;
+  };
+  const courseEventStart = new Date();
+  courseEventStart.setHours(13, 0, 0, 0);
+  const courseEventEnd = new Date(courseEventStart.getTime() + 60 * 60 * 1000);
+  const courseEventResponse = await request.post("/api/v1/events", {
+    data: {
+      calendar_id: courseCalendar.id,
+      title: "Course-linked E2E lecture",
+      description: null,
+      location: "Campus",
+      start_at: courseEventStart.toISOString(),
+      end_at: courseEventEnd.toISOString(),
+      all_day: false,
+      timezone: "Europe/Oslo",
+      recurrence_rule: null,
+      status: "confirmed",
+    },
+  });
+  expect(courseEventResponse.ok()).toBeTruthy();
+  const courseEvent = (await courseEventResponse.json()) as { id: string };
+
   await page.goto("/");
   await page.getByRole("button", { name: "Courses" }).click();
   await expect(page.getByRole("heading", { name: "Courses" })).toBeVisible();
@@ -120,6 +154,47 @@ test("creates and manages a manual course through the UI", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
   await page.getByRole("button", { name: "Restore" }).click();
   await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Calendar" }).click();
+  await expect(
+    page.getByRole("heading", { name: "No calendars linked yet" }),
+  ).toBeVisible();
+  const courseCalendarSidebar = page.getByRole("complementary", {
+    name: "Course calendars",
+  });
+  await courseCalendarSidebar
+    .getByLabel("Calendar to link")
+    .selectOption(courseCalendar.id);
+  await courseCalendarSidebar
+    .getByRole("button", { name: "Link calendar" })
+    .click();
+  await expect(page.getByText("Course-linked E2E lecture")).toBeVisible();
+
+  await page.getByText("Course-linked E2E lecture").click();
+  const eventDialog = page.getByRole("dialog");
+  await expect(eventDialog.getByLabel("Title")).toBeEnabled();
+  await eventDialog.getByRole("button", { name: "Close", exact: true }).click();
+
+  const courseCalendarResults = await new AxeBuilder({ page }).analyze();
+  expectNoAccessibilityViolations(courseCalendarResults.violations);
+
+  await courseCalendarSidebar
+    .getByRole("button", { name: "Unlink Course E2E schedule" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "No calendars linked yet" }),
+  ).toBeVisible();
+  expect(
+    (await request.get(`/api/v1/events/${courseEvent.id}`)).ok(),
+  ).toBeTruthy();
+
+  await courseCalendarSidebar
+    .getByLabel("Calendar to link")
+    .selectOption(courseCalendar.id);
+  await courseCalendarSidebar
+    .getByRole("button", { name: "Link calendar" })
+    .click();
+  await expect(page.getByText("Course-linked E2E lecture")).toBeVisible();
 
   await page.getByRole("tab", { name: "Materials" }).click();
   await page.getByLabel("Upload literature").setInputFiles({
@@ -222,6 +297,12 @@ test("creates and manages a manual course through the UI", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Create your first course" }),
   ).toBeVisible();
+  expect(
+    (await request.get(`/api/v1/calendars/${courseCalendar.id}`)).ok(),
+  ).toBeTruthy();
+  expect(
+    (await request.get(`/api/v1/events/${courseEvent.id}`)).ok(),
+  ).toBeTruthy();
 });
 
 test("passes an automated accessibility scan and supports subscription sign-in", async ({

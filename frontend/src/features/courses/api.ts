@@ -7,6 +7,7 @@ import type {
   NoteMutation,
   NoteSummary,
 } from "./types";
+import type { CalendarEvent, CalendarModel } from "../calendar/types";
 
 interface ApiErrorPayload {
   message?: string;
@@ -86,6 +87,51 @@ export const courseApi = {
 
   delete(courseId: string) {
     return request<void>(`/courses/${courseId}`, { method: "DELETE" });
+  },
+
+  listCalendars(courseId: string, signal?: AbortSignal) {
+    return request<CalendarModel[]>(`/courses/${courseId}/calendars`, {
+      signal,
+    });
+  },
+
+  linkCalendar(courseId: string, calendarId: string) {
+    return request<CalendarModel>(`/courses/${courseId}/calendars`, {
+      method: "POST",
+      body: JSON.stringify({ calendar_id: calendarId }),
+    });
+  },
+
+  unlinkCalendar(courseId: string, calendarId: string) {
+    return request<void>(`/courses/${courseId}/calendars/${calendarId}`, {
+      method: "DELETE",
+    });
+  },
+
+  listEvents(
+    courseId: string,
+    startsBefore: Date,
+    endsAfter: Date,
+    options?: {
+      calendarId?: string;
+      search?: string;
+      signal?: AbortSignal;
+    },
+  ) {
+    const query = new URLSearchParams({
+      starts_before: startsBefore.toISOString(),
+      ends_after: endsAfter.toISOString(),
+    });
+    if (options?.calendarId) {
+      query.set("calendar_id", options.calendarId);
+    }
+    if (options?.search) {
+      query.set("search", options.search);
+    }
+    return request<CalendarEvent[]>(
+      `/courses/${courseId}/events?${query.toString()}`,
+      { signal: options?.signal },
+    );
   },
 
   listSources(

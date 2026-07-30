@@ -5,6 +5,8 @@ import type { CalendarView } from "./types";
 interface CalendarToolbarProps {
   anchor: Date;
   canCreate: boolean;
+  eyebrow?: string;
+  headingId?: string;
   onCreate: () => void;
   onMove: (direction: -1 | 1) => void;
   onToday: () => void;
@@ -17,6 +19,8 @@ const VIEWS: CalendarView[] = ["day", "week", "month"];
 export function CalendarToolbar({
   anchor,
   canCreate,
+  eyebrow = "Personal schedule",
+  headingId = "calendar-page-title",
   onCreate,
   onMove,
   onToday,
@@ -26,8 +30,8 @@ export function CalendarToolbar({
   return (
     <header className="calendar-toolbar">
       <div className="calendar-title-block">
-        <p className="eyebrow">Personal schedule</p>
-        <h1 id="calendar-page-title">{formatHeading(anchor, view)}</h1>
+        <p className="eyebrow">{eyebrow}</p>
+        <h1 id={headingId}>{formatHeading(anchor, view)}</h1>
       </div>
 
       <div className="calendar-toolbar-actions">

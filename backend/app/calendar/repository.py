@@ -156,6 +156,7 @@ class EventRepository:
         self,
         *,
         calendar_id: uuid.UUID | None = None,
+        calendar_ids: set[uuid.UUID] | None = None,
         starts_before: datetime | None = None,
         ends_after: datetime | None = None,
         limit: int | None = None,
@@ -165,6 +166,8 @@ class EventRepository:
         )
         if calendar_id is not None:
             statement = statement.where(CalendarEvent.calendar_id == calendar_id)
+        if calendar_ids is not None:
+            statement = statement.where(CalendarEvent.calendar_id.in_(calendar_ids))
         range_conditions = []
         if starts_before is not None:
             range_conditions.append(CalendarEvent.start_at < starts_before)
