@@ -9,14 +9,17 @@ export type IconName =
   | "clock"
   | "courses"
   | "dashboard"
+  | "file"
   | "leaf"
   | "location"
   | "lock"
   | "plus"
+  | "presentation"
   | "refresh"
   | "send"
   | "settings"
   | "trash"
+  | "upload"
   | "x";
 
 interface IconProps extends SVGProps<SVGSVGElement> {
@@ -69,6 +72,12 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
         <rect x="14" y="14" width="7" height="7" rx="1" />
       </>
     ),
+    file: (
+      <>
+        <path d="M6 2h8l4 4v16H6V2Z" />
+        <path d="M14 2v5h5M9 12h6M9 16h6" />
+      </>
+    ),
     leaf: (
       <>
         <path d="M20 4c-7 0-13 2-13 8 0 3 2 5 5 5 6 0 8-6 8-13Z" />
@@ -88,6 +97,12 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
       </>
     ),
     plus: <path d="M12 5v14M5 12h14" />,
+    presentation: (
+      <>
+        <rect x="3" y="3" width="18" height="14" rx="2" />
+        <path d="M8 21l4-4 4 4M8 8h8M8 12h5" />
+      </>
+    ),
     refresh: (
       <>
         <path d="M20 6v5h-5" />
@@ -110,6 +125,12 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
       <>
         <path d="M3 6h18M8 6V3h8v3M19 6l-1 15H6L5 6" />
         <path d="M10 11v5M14 11v5" />
+      </>
+    ),
+    upload: (
+      <>
+        <path d="M12 16V4M7 9l5-5 5 5" />
+        <path d="M5 15v5h14v-5" />
       </>
     ),
     x: <path d="m6 6 12 12M18 6 6 18" />,

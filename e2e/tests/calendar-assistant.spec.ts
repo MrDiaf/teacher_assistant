@@ -121,7 +121,87 @@ test("creates and manages a manual course through the UI", async ({ page }) => {
   await page.getByRole("button", { name: "Restore" }).click();
   await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("tab", { name: "Materials" }).click();
+  await page.getByLabel("Upload literature").setInputFiles({
+    name: "database-reading.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("Transactions, normalization, and indexing."),
+  });
+  const literature = page
+    .getByRole("article")
+    .filter({ hasText: "database-reading" });
+  await expect(literature.getByText("Ready", { exact: true })).toBeVisible();
+  await expect(literature.getByText(/1 text section extracted/)).toBeVisible();
+
+  await page.getByLabel("Upload slides").setInputFiles({
+    name: "lecture-assets.zip",
+    mimeType: "application/zip",
+    buffer: Buffer.from("stored unsupported source"),
+  });
+  const slides = page
+    .getByRole("article")
+    .filter({ hasText: "lecture-assets" });
+  await expect(
+    slides.getByText("Stored · extraction unavailable"),
+  ).toBeVisible();
+
+  await literature.getByRole("button", { name: "Delete" }).click();
+  await expect(
+    literature.getByText(/Other course materials are unaffected/),
+  ).toBeVisible();
+  await literature.getByRole("button", { name: "Delete this file" }).click();
+  await expect(literature).toHaveCount(0);
+  await expect(slides).toBeVisible();
+
+  await page.getByRole("tab", { name: "Notes" }).click();
+  await page.getByRole("button", { name: "Create note" }).first().click();
+  const noteDialog = page.getByRole("dialog");
+  await noteDialog.getByLabel("Note title").fill("Transaction isolation");
+  await noteDialog
+    .getByLabel("Note body")
+    .fill("# Serializable\nAvoid write skew and dirty reads.");
+  await noteDialog.getByRole("button", { name: "Add reference" }).click();
+  await noteDialog
+    .getByLabel("Slide deck 1")
+    .selectOption({ label: "lecture-assets" });
+  await noteDialog.getByLabel("Start slide 1").fill("3");
+  await noteDialog.getByLabel("End slide 1").fill("5");
+  await noteDialog.getByLabel("Reference label 1").fill("Isolation overview");
+  await noteDialog.getByRole("button", { name: "Create note" }).click();
+
+  const note = page
+    .getByRole("article")
+    .filter({ hasText: "Transaction isolation" });
+  await expect(note.getByText("lecture-assets")).toBeVisible();
+  await expect(note.getByText("Slides 3–5")).toBeVisible();
+  await expect(note.getByText(/Isolation overview/)).toBeVisible();
+
+  await note.getByRole("button", { name: "Edit" }).click();
+  await noteDialog.getByLabel("Note title").fill("Serializable isolation");
+  await noteDialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Serializable isolation" }),
+  ).toBeVisible();
+
+  const notesResults = await new AxeBuilder({ page }).analyze();
+  expectNoAccessibilityViolations(notesResults.violations);
+
+  const updatedNote = page
+    .getByRole("article")
+    .filter({ hasText: "Serializable isolation" });
+  await updatedNote.getByRole("button", { name: "Delete" }).click();
+  await expect(
+    updatedNote.getByText(/Slide files are unaffected/),
+  ).toBeVisible();
+  await updatedNote.getByRole("button", { name: "Delete note" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Start your course notebook" }),
+  ).toBeVisible();
+
+  await page
+    .locator(".course-detail-actions")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
   const deleteDialog = page.getByRole("alertdialog");
   await expect(
     deleteDialog.getByText(/Calendars and calendar events are never deleted/),

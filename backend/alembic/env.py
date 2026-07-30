@@ -8,8 +8,10 @@ from alembic import context
 from app.assistant import models as assistant_models  # noqa: F401
 from app.calendar import models  # noqa: F401
 from app.core.config import get_settings
+from app.course_sources import models as course_source_models  # noqa: F401
 from app.courses import models as course_models  # noqa: F401
 from app.database.base import Base
+from app.notes import models as note_models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)

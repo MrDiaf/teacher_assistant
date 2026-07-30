@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     codex_timeout_seconds: int = Field(default=90, ge=10, le=600)
     codex_max_context_events: int = Field(default=1000, ge=1, le=5000)
     assistant_proposal_ttl_minutes: int = Field(default=30, ge=5, le=1440)
+    course_storage_root: Path = Path("/data/course_content")
+    course_max_upload_mb: int = Field(default=25, ge=1, le=500)
+
+    @property
+    def course_max_upload_bytes(self) -> int:
+        return self.course_max_upload_mb * 1024 * 1024
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

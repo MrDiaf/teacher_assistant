@@ -102,11 +102,62 @@ Open **Courses** to create a course with a name, optional course code, term,
 description, and color. Courses can be edited, archived, restored, and
 permanently deleted after an explicit confirmation.
 
-This milestone stores course details in PostgreSQL only. Course literature,
-slides, notes, summaries, and calendar links are not enabled yet, and there are
-no course files on disk to remove. Deleting a course never deletes calendars or
-calendar events. Duplicate course names are supported because course records are
-identified by their private IDs.
+Each course has a **Materials** tab with separate Literature and Slides
+libraries. PDF, PowerPoint (`.pptx`), UTF-8 text, and Markdown files are
+text-extracted when uploaded. A failed extraction can be retried, while an
+unsupported format is still stored safely.
+
+The **Notes** tab stores private plain text or Markdown notes. A note works
+without slides, or it can link to one or more whole slide decks or numbered
+slide ranges. Note text is displayed as text and user-entered HTML is never
+rendered. AI summaries and calendar links are not enabled yet.
+
+Deleting one source removes only that source file, its metadata, and its
+extracted text. Deleting a slide source also removes references to that source,
+but preserves the notes themselves. Deleting a note never deletes a slide file.
+Deleting a course removes all its notes, references, literature, and slides.
+None of these actions deletes calendars or calendar events. Duplicate course
+names are supported because course records are identified by their private IDs.
+
+## Course file storage
+
+The Compose setup stores private course files on the host at:
+
+```text
+./data/course_content
+```
+
+That directory is bind-mounted into the backend at the path configured by
+`COURSE_STORAGE_ROOT` (`/data/course_content` by default). `COURSE_MAX_UPLOAD_MB`
+sets the per-file upload limit and defaults to `25`. Both values can be changed
+in `.env`; Compose mounts the host directory at the configured container path.
+
+Files use immutable database IDs instead of user-supplied paths:
+
+```text
+data/course_content/
+└── <course-id>/
+    ├── literature/
+    │   └── <source-id>/
+    │       └── original.<extension>
+    └── slides/
+        └── <source-id>/
+            └── original.<extension>
+```
+
+PostgreSQL stores course/source metadata, extraction state, extracted text, page
+or slide numbers, content hashes, notes, and slide-reference ranges. The
+original binary or text file is stored only under `data/course_content`. Server
+paths are not returned to the browser. `data/` is ignored by Git and must remain
+private.
+
+Use the Materials tab to remove a source safely. It deletes only the selected
+`<source-id>` directory and its database rows, even if the raw file is already
+missing. Use the course deletion dialog to remove an entire course directory.
+Do not manually delete the storage root while the application is running. If
+manual cleanup is necessary, stop the application, make both backups described
+below, and remove only the exact course or source ID directory. The stale source
+record can then be removed through the Materials tab.
 
 ## Backup
 
@@ -120,6 +171,22 @@ This writes `backups/teacher-assistant.dump` with permissions restricted to the
 current host user. The backup contains private courses, calendars, events,
 assistant conversations, proposal history, and subscription URLs. `backups/`
 is ignored by Git. Copy the dump only to encrypted, access-controlled storage.
+
+Course source files are stored outside PostgreSQL and require a separate backup.
+For a consistent pair of backups, briefly stop writes, create both archives,
+and restart:
+
+```bash
+docker compose -f compose.yml -f compose.dev.yml stop backend frontend
+make backup
+tar -C data -czf backups/teacher-assistant-course-content.tar.gz course_content
+chmod 600 backups/teacher-assistant-course-content.tar.gz
+make dev
+```
+
+Keep the database dump and course-content archive together. The archive contains
+private course literature and slides. To restore course files, stop the
+application and extract the archive under `data/` before running `make dev`.
 
 The ChatGPT credential volume is intentionally not included. Reauthenticate
 after restoring to another installation instead of copying renewable access
@@ -141,7 +208,9 @@ make dev
 
 Verify Courses, Calendar, and Assistant history after restore, then sign in to
 ChatGPT again if the restored installation does not already have its own
-private auth volume.
+private auth volume. If the database contains course sources, also restore the
+matching `teacher-assistant-course-content.tar.gz`; otherwise those source
+records will report missing raw files and extraction retries will fail safely.
 
 ## Privacy-safe logging
 

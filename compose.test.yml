@@ -13,6 +13,8 @@ services:
       LOG_LEVEL: warning
       TESTING: "true"
     ports: []
+    volumes:
+      - test-course-content:/data/course_content
     restart: "no"
 
   frontend:
@@ -20,4 +22,5 @@ services:
     restart: "no"
 
 volumes:
+  test-course-content:
   test-database-data:

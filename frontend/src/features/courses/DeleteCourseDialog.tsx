@@ -60,8 +60,9 @@ export function DeleteCourseDialog({
 
         <div className="delete-course-content">
           <p>
-            This permanently deletes the course details. Course files are not
-            available in M8, so no uploaded files are removed.
+            This permanently deletes the course details and all of its
+            literature, slides, extracted text, notes, and slide references. The
+            content cannot be recovered unless you have a backup.
           </p>
           <p>
             Calendars and calendar events are never deleted with a course. This

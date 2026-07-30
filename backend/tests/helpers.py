@@ -29,6 +29,47 @@ async def create_course(client: AsyncClient, **overrides: Any) -> dict[str, Any]
     return response.json()
 
 
+async def upload_course_source(
+    client: AsyncClient,
+    course_id: str,
+    *,
+    file_name: str,
+    content: bytes,
+    source_type: str = "literature",
+    display_name: str | None = None,
+) -> dict[str, Any]:
+    params = {
+        "source_type": source_type,
+        "file_name": file_name,
+    }
+    if display_name is not None:
+        params["display_name"] = display_name
+    response = await client.post(
+        f"/api/v1/courses/{course_id}/sources",
+        params=params,
+        content=content,
+        headers={"Content-Type": "application/octet-stream"},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def create_note(
+    client: AsyncClient,
+    course_id: str,
+    **overrides: Any,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "title": "Lecture notes",
+        "body": "Important course ideas.",
+        "slide_references": [],
+    }
+    payload.update(overrides)
+    response = await client.post(f"/api/v1/courses/{course_id}/notes", json=payload)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
 async def create_event(client: AsyncClient, calendar_id: str, **overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "calendar_id": calendar_id,

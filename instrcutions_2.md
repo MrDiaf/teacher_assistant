@@ -982,18 +982,18 @@ Acceptance:
 
 ## M9 — Course materials and separated storage
 
-- [ ] Add CourseSource model.
-- [ ] Add `literature` and `slides` source types.
-- [ ] Add configurable course storage root.
-- [ ] Add safe upload and deletion.
-- [ ] Add Materials tab.
-- [ ] Visually separate literature from slides.
-- [ ] Add source metadata and file status.
-- [ ] Add text extraction adapter.
-- [ ] Support initial PDF, PPTX, TXT, and Markdown extraction.
-- [ ] Add extraction status and retry.
-- [ ] Document exact storage directories in `README.md`.
-- [ ] Add storage, upload, deletion, and extraction tests.
+- [x] Add CourseSource model.
+- [x] Add `literature` and `slides` source types.
+- [x] Add configurable course storage root.
+- [x] Add safe upload and deletion.
+- [x] Add Materials tab.
+- [x] Visually separate literature from slides.
+- [x] Add source metadata and file status.
+- [x] Add text extraction adapter.
+- [x] Support initial PDF, PPTX, TXT, and Markdown extraction.
+- [x] Add extraction status and retry.
+- [x] Document exact storage directories in `README.md`.
+- [x] Add storage, upload, deletion, and extraction tests.
 
 Acceptance:
 
@@ -1006,16 +1006,16 @@ Acceptance:
 
 ## M10 — Notes and slide references
 
-- [ ] Add Note model.
-- [ ] Add note CRUD.
-- [ ] Add Notes tab.
-- [ ] Add safe Markdown or plain-text editor.
-- [ ] Add note-to-slide relation.
-- [ ] Allow a note with no slides.
-- [ ] Allow one or more linked slide ranges.
-- [ ] Validate that linked slides belong to the same course.
-- [ ] Show linked deck names and slide numbers.
-- [ ] Add tests.
+- [x] Add Note model.
+- [x] Add note CRUD.
+- [x] Add Notes tab.
+- [x] Add safe Markdown or plain-text editor.
+- [x] Add note-to-slide relation.
+- [x] Allow a note with no slides.
+- [x] Allow one or more linked slide ranges.
+- [x] Validate that linked slides belong to the same course.
+- [x] Show linked deck names and slide numbers.
+- [x] Add tests.
 
 Acceptance:
 

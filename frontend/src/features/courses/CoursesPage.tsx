@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "../../components/Icon";
 import { CourseDialog } from "./CourseDialog";
+import { CourseMaterials } from "./CourseMaterials";
+import { CourseNotes } from "./CourseNotes";
 import { DeleteCourseDialog } from "./DeleteCourseDialog";
 import { courseApi } from "./api";
 import type { CourseModel, CourseMutation, CourseTab } from "./types";
@@ -14,17 +16,9 @@ const TABS: { id: CourseTab; label: string }[] = [
 ];
 
 const PLACEHOLDER_TABS: Record<
-  Exclude<CourseTab, "overview">,
+  Exclude<CourseTab, "overview" | "notes" | "materials">,
   [string, string]
 > = {
-  notes: [
-    "Notes are coming next",
-    "Course notes and slide references will be added in M10.",
-  ],
-  materials: [
-    "Materials are not enabled yet",
-    "Literature, slides, and safe file storage will be added in M9.",
-  ],
   calendar: [
     "Calendar linking comes later",
     "Existing calendars can be linked to courses when M12 begins.",
@@ -73,7 +67,10 @@ function CourseCard({
         </span>
       </button>
       <footer className="course-card-actions">
-        <span>{course.source_type === "manual" ? "Manual course" : ""}</span>
+        <span>
+          {course.source_count}{" "}
+          {course.source_count === 1 ? "material" : "materials"}
+        </span>
         <div>
           <button disabled={busy} onClick={() => onEdit(course)} type="button">
             Edit
@@ -156,6 +153,7 @@ function CourseDetail({
   onDelete,
   onEdit,
   onRestore,
+  onSourceCountChange,
 }: {
   busy: boolean;
   course: CourseModel;
@@ -164,10 +162,11 @@ function CourseDetail({
   onDelete: () => void;
   onEdit: () => void;
   onRestore: () => void;
+  onSourceCountChange: (count: number) => void;
 }) {
   const [activeTab, setActiveTab] = useState<CourseTab>("overview");
   const placeholder =
-    activeTab === "overview" ? null : PLACEHOLDER_TABS[activeTab];
+    activeTab === "calendar" ? PLACEHOLDER_TABS[activeTab] : null;
 
   return (
     <main className="course-detail-page" aria-labelledby="course-detail-title">
@@ -266,18 +265,29 @@ function CourseDetail({
                   <dt>Source</dt>
                   <dd>Created manually</dd>
                 </div>
+                <div>
+                  <dt>Materials</dt>
+                  <dd>{course.source_count}</dd>
+                </div>
               </dl>
             </article>
             <article className="course-next-steps">
-              <p className="eyebrow">Workspace foundation</p>
-              <h2>Ready for the next milestones</h2>
+              <p className="eyebrow">Course workspace</p>
+              <h2>Build a useful source library</h2>
               <p>
-                This course can be edited and organized now. Materials, notes,
-                and linked calendars stay intentionally unavailable until their
-                dedicated milestones.
+                Literature, slides, and private course notes are ready now.
+                Calendar linking remains unavailable until its dedicated
+                milestone.
               </p>
             </article>
           </div>
+        ) : activeTab === "notes" ? (
+          <CourseNotes course={course} />
+        ) : activeTab === "materials" ? (
+          <CourseMaterials
+            course={course}
+            onSourceCountChange={onSourceCountChange}
+          />
         ) : (
           <div className="course-tab-placeholder">
             <span>
@@ -338,6 +348,22 @@ export function CoursesPage() {
   );
   const selectedCourse =
     courses.find((course) => course.id === selectedCourseId) ?? null;
+  const updateSelectedCourseSourceCount = useCallback(
+    (count: number) => {
+      setCourses((current) => {
+        let changed = false;
+        const next = current.map((course) => {
+          if (course.id !== selectedCourseId || course.source_count === count) {
+            return course;
+          }
+          changed = true;
+          return { ...course, source_count: count };
+        });
+        return changed ? next : current;
+      });
+    },
+    [selectedCourseId],
+  );
 
   function replaceCourse(course: CourseModel) {
     setCourses((current) =>
@@ -406,6 +432,7 @@ export function CoursesPage() {
           onDelete={() => setDeleteCourse(selectedCourse)}
           onEdit={() => setDialogCourse(selectedCourse)}
           onRestore={() => void changeStatus(selectedCourse, "restore")}
+          onSourceCountChange={updateSelectedCourseSourceCount}
         />
         {dialogCourse !== undefined && (
           <CourseDialog

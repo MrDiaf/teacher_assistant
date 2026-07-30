@@ -79,5 +79,6 @@ class CourseResponse(BaseModel):
     color: str
     status: CourseStatus
     source_type: CourseSourceType
+    source_count: int
     created_at: datetime
     updated_at: datetime

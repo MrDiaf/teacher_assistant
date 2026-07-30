@@ -36,6 +36,58 @@ class CourseNotFoundError(ResourceNotFoundError):
         super().__init__("The requested course does not exist.")
 
 
+class CourseSourceNotFoundError(ResourceNotFoundError):
+    code = "course_source_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested course material does not exist.")
+
+
+class NoteNotFoundError(ResourceNotFoundError):
+    code = "note_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested course note does not exist.")
+
+
+class InvalidNoteSlideReferenceError(ApplicationError):
+    code = "invalid_note_slide_reference"
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class CourseSourceFileTooLargeError(ApplicationError):
+    code = "course_source_file_too_large"
+    status_code = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+    def __init__(self, maximum_mb: int) -> None:
+        super().__init__(f"The course file exceeds the {maximum_mb} MB upload limit.")
+
+
+class InvalidCourseSourceFileError(ApplicationError):
+    code = "invalid_course_source_file"
+
+    def __init__(self, message: str = "The uploaded course file is not valid.") -> None:
+        super().__init__(message)
+
+
+class CourseSourceStorageError(ApplicationError):
+    code = "course_source_storage_error"
+    status_code = HTTPStatus.INTERNAL_SERVER_ERROR
+
+    def __init__(self, message: str = "Course file storage is temporarily unavailable.") -> None:
+        super().__init__(message)
+
+
+class CourseSourceExtractionStateError(ApplicationError):
+    code = "course_source_extraction_state"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class CalendarReadOnlyError(ApplicationError):
     code = "calendar_read_only"
     status_code = HTTPStatus.FORBIDDEN

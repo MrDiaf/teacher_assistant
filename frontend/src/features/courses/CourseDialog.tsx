@@ -137,7 +137,7 @@ export function CourseDialog({ course, onClose, onSave }: CourseDialogProps) {
           </label>
 
           <p className="course-form-note">
-            You can add notes, materials, and calendars in later milestones.
+            Notes and materials can be organized after creating the course.
           </p>
 
           {error && (

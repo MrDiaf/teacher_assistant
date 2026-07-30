@@ -9,6 +9,7 @@ htmlcov/
 node_modules/
 dist/
 backups/
+data/
 playwright-report/
 test-results/
 runtime/
