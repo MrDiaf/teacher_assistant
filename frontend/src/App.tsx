@@ -4,16 +4,16 @@ import { AppShell, type ModuleId } from "./components/AppShell";
 import { Icon } from "./components/Icon";
 import { AssistantPage } from "./features/assistant/AssistantPage";
 import { CalendarPage } from "./features/calendar/CalendarPage";
+import { CoursesPage } from "./features/courses/CoursesPage";
 
 const PLACEHOLDER_COPY: Record<
-  Exclude<ModuleId, "calendar" | "assistant">,
+  Exclude<ModuleId, "calendar" | "assistant" | "courses">,
   [string, string]
 > = {
   dashboard: [
     "Dashboard",
     "Your teaching overview will come together here in a later phase.",
   ],
-  courses: ["Courses", "Course organization is planned for a later phase."],
   "study-plan": [
     "Study Plan",
     "Study planning tools are coming in a later phase.",
@@ -27,7 +27,7 @@ const PLACEHOLDER_COPY: Record<
 function PlaceholderPage({
   module,
 }: {
-  module: Exclude<ModuleId, "calendar" | "assistant">;
+  module: Exclude<ModuleId, "calendar" | "assistant" | "courses">;
 }) {
   const [title, copy] = PLACEHOLDER_COPY[module];
   return (
@@ -49,10 +49,13 @@ export default function App() {
   return (
     <AppShell activeModule={activeModule} onNavigate={setActiveModule}>
       {activeModule === "calendar" && <CalendarPage />}
+      {activeModule === "courses" && <CoursesPage />}
       {activeModule === "assistant" && <AssistantPage />}
-      {activeModule !== "calendar" && activeModule !== "assistant" && (
-        <PlaceholderPage module={activeModule} />
-      )}
+      {activeModule !== "calendar" &&
+        activeModule !== "courses" &&
+        activeModule !== "assistant" && (
+          <PlaceholderPage module={activeModule} />
+        )}
     </AppShell>
   );
 }

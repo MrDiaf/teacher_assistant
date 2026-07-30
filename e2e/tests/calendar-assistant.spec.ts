@@ -87,6 +87,53 @@ test("keeps a protected event visible but immutable", async ({
   ).toHaveCount(0);
 });
 
+test("creates and manages a manual course through the UI", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Courses" }).click();
+  await expect(page.getByRole("heading", { name: "Courses" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Create course" }).first().click();
+  const courseDialog = page.getByRole("dialog");
+  await courseDialog.getByLabel("Course name").fill("End-to-end databases");
+  await courseDialog.getByLabel("Course code").fill("E2E101");
+  await courseDialog.getByLabel("Term").fill("Autumn 2026");
+  await courseDialog
+    .getByLabel("Description")
+    .fill("A course created by the end-to-end test.");
+  await courseDialog.getByRole("button", { name: "Create course" }).click();
+
+  await page.getByRole("button", { name: "Open End-to-end databases" }).click();
+  await expect(
+    page.getByRole("heading", { name: "End-to-end databases" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit course" }).click();
+  await courseDialog
+    .getByLabel("Course name")
+    .fill("Edited end-to-end databases");
+  await courseDialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Edited end-to-end databases" }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Archive" }).click();
+  await expect(page.getByRole("button", { name: "Restore" })).toBeVisible();
+  await page.getByRole("button", { name: "Restore" }).click();
+  await expect(page.getByRole("button", { name: "Archive" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Delete" }).click();
+  const deleteDialog = page.getByRole("alertdialog");
+  await expect(
+    deleteDialog.getByText(/Calendars and calendar events are never deleted/),
+  ).toBeVisible();
+  await deleteDialog
+    .getByRole("button", { name: "Delete course", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Create your first course" }),
+  ).toBeVisible();
+});
+
 test("passes an automated accessibility scan and supports subscription sign-in", async ({
   page,
 }) => {

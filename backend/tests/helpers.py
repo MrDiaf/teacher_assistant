@@ -15,6 +15,20 @@ async def create_calendar(client: AsyncClient, **overrides: Any) -> dict[str, An
     return response.json()
 
 
+async def create_course(client: AsyncClient, **overrides: Any) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "name": "Database Systems",
+        "course_code": "DAT101",
+        "description": "Relational data and query design",
+        "term": "Autumn 2026",
+        "color": "#29584c",
+    }
+    payload.update(overrides)
+    response = await client.post("/api/v1/courses", json=payload)
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
 async def create_event(client: AsyncClient, calendar_id: str, **overrides: Any) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "calendar_id": calendar_id,

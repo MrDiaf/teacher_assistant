@@ -26,7 +26,7 @@ async def clean_database() -> AsyncIterator[None]:
             text(
                 "TRUNCATE TABLE assistant_proposal_actions, assistant_proposals, "
                 "assistant_jobs, assistant_messages, "
-                "assistant_conversations, events, calendars CASCADE"
+                "assistant_conversations, courses, events, calendars CASCADE"
             )
         )
     yield

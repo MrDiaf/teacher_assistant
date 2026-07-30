@@ -1,9 +1,10 @@
 # Teacher Assistant
 
-Teacher Assistant is a single-owner, self-hosted calendar with a private
-Codex-powered assistant. Calendar features work without Codex. The Assistant can
-answer questions and propose changes, but every mutation is revalidated by the
-backend and waits for owner confirmation.
+Teacher Assistant is a single-owner, self-hosted workspace with a personal
+calendar, manual course organization, and a private Codex-powered assistant.
+Calendar and course features work without Codex. The Assistant can answer
+calendar questions and propose calendar changes, but every mutation is
+revalidated by the backend and waits for owner confirmation.
 
 ## Requirements
 
@@ -95,6 +96,18 @@ Assistant proposal lifecycle records are available under **Assistant →
 Activity**. They show requested, confirmed, and executed timestamps without
 placing calendar contents in application logs.
 
+## Manual courses
+
+Open **Courses** to create a course with a name, optional course code, term,
+description, and color. Courses can be edited, archived, restored, and
+permanently deleted after an explicit confirmation.
+
+This milestone stores course details in PostgreSQL only. Course literature,
+slides, notes, summaries, and calendar links are not enabled yet, and there are
+no course files on disk to remove. Deleting a course never deletes calendars or
+calendar events. Duplicate course names are supported because course records are
+identified by their private IDs.
+
 ## Backup
 
 Run:
@@ -104,9 +117,9 @@ make backup
 ```
 
 This writes `backups/teacher-assistant.dump` with permissions restricted to the
-current host user. The backup contains private calendars, events, assistant
-conversations, proposal history, and subscription URLs. `backups/` is ignored
-by Git. Copy the dump only to encrypted, access-controlled storage.
+current host user. The backup contains private courses, calendars, events,
+assistant conversations, proposal history, and subscription URLs. `backups/`
+is ignored by Git. Copy the dump only to encrypted, access-controlled storage.
 
 The ChatGPT credential volume is intentionally not included. Reauthenticate
 after restoring to another installation instead of copying renewable access
@@ -126,9 +139,9 @@ docker compose -f compose.yml -f compose.dev.yml exec -T database \
 make dev
 ```
 
-Verify the Calendar and Assistant history after restore, then sign in to ChatGPT
-again if the restored installation does not already have its own private auth
-volume.
+Verify Courses, Calendar, and Assistant history after restore, then sign in to
+ChatGPT again if the restored installation does not already have its own
+private auth volume.
 
 ## Privacy-safe logging
 

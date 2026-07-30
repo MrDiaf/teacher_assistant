@@ -29,6 +29,13 @@ class EventNotFoundError(ResourceNotFoundError):
         super().__init__("The requested event does not exist.")
 
 
+class CourseNotFoundError(ResourceNotFoundError):
+    code = "course_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested course does not exist.")
+
+
 class CalendarReadOnlyError(ApplicationError):
     code = "calendar_read_only"
     status_code = HTTPStatus.FORBIDDEN

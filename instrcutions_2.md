@@ -956,19 +956,19 @@ Implement one milestone at a time.
 
 ## M8 — Course foundation and manual course creation
 
-- [ ] Inspect and preserve the existing application shell.
-- [ ] Add the Course database model.
-- [ ] Add migrations.
-- [ ] Add course CRUD schemas, service, repository, and API routes.
-- [ ] Add archive and restore behavior.
-- [ ] Build the Courses page.
-- [ ] Add create-course form.
-- [ ] Add edit-course form.
-- [ ] Add course cards and empty states.
-- [ ] Add the basic Course detail page with placeholder tabs.
-- [ ] Add backend tests.
-- [ ] Add frontend tests where practical.
-- [ ] Update milestone documentation.
+- [x] Inspect and preserve the existing application shell.
+- [x] Add the Course database model.
+- [x] Add migrations.
+- [x] Add course CRUD schemas, service, repository, and API routes.
+- [x] Add archive and restore behavior.
+- [x] Build the Courses page.
+- [x] Add create-course form.
+- [x] Add edit-course form.
+- [x] Add course cards and empty states.
+- [x] Add the basic Course detail page with placeholder tabs.
+- [x] Add backend tests.
+- [x] Add frontend tests where practical.
+- [x] Update milestone documentation.
 
 Acceptance:
 

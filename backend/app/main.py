@@ -13,6 +13,7 @@ from app.calendar.subscription_routes import router as calendar_subscription_rou
 from app.calendar.subscription_scheduler import subscription_scheduler
 from app.codex_runtime.adapter import get_codex_auth_manager
 from app.core.errors import ApplicationError
+from app.courses.routes import router as course_router
 from app.database.session import session_factory
 
 
@@ -32,6 +33,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Teacher Assistant API", version="1.0.0", lifespan=lifespan)
 app.include_router(calendar_router, prefix="/api/v1", tags=["calendar"])
+app.include_router(course_router, prefix="/api/v1", tags=["courses"])
 app.include_router(assistant_router, prefix="/api/v1", tags=["assistant"])
 app.include_router(calendar_import_router, prefix="/api/v1", tags=["calendar-import"])
 app.include_router(
