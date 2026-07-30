@@ -53,7 +53,11 @@ class AssistantTurn:
     owner_message: AssistantMessage
     assistant_message: AssistantMessage | None
     job: AssistantJob
-    proposal: AssistantProposal | None
+    proposals: list[AssistantProposal]
+
+    @property
+    def proposal(self) -> AssistantProposal | None:
+        return self.proposals[0] if self.proposals else None
 
 
 class AssistantService:
@@ -167,11 +171,11 @@ class AssistantService:
                 await self.session.commit()
                 answer = parse_assistant_answer(runtime_result.final_response)
 
-            prepared_proposal = (
-                await self.proposal_validator.prepare(answer.proposal)
-                if answer.proposal is not None
-                else None
-            )
+            proposal_batches = answer.proposal_batches()
+            prepared_batches = [
+                await self.proposal_validator.prepare(proposal)
+                for proposal in proposal_batches
+            ]
 
             assistant_message = await self.assistant.create_message(
                 job.conversation_id,
@@ -179,22 +183,32 @@ class AssistantService:
                 content=answer.message,
                 job_id=job.id,
             )
-            proposal = None
-            if answer.proposal is not None and prepared_proposal is not None:
+            created_proposals: list[AssistantProposal] = []
+            if proposal_batches:
                 requested_at = datetime.now(UTC)
-                proposal = await self.proposals.create(
-                    job_id=job.id,
-                    conversation_id=job.conversation_id,
-                    summary=answer.proposal.summary,
-                    actions=prepared_proposal.actions,
-                    baselines=prepared_proposal.baselines,
-                    review_items=prepared_proposal.review_items,
-                    warnings=prepared_proposal.warnings,
-                    affected_events=prepared_proposal.affected_events,
-                    expires_at=requested_at
-                    + timedelta(minutes=self.settings.assistant_proposal_ttl_minutes),
-                    requested_at=requested_at,
-                )
+                batch_count = len(proposal_batches)
+                for batch_position, (proposal_batch, prepared_batch) in enumerate(
+                    zip(proposal_batches, prepared_batches, strict=True), start=1
+                ):
+                    created_proposals.append(
+                        await self.proposals.create(
+                            job_id=job.id,
+                            conversation_id=job.conversation_id,
+                            summary=proposal_batch.summary,
+                            batch_position=batch_position,
+                            batch_count=batch_count,
+                            actions=prepared_batch.actions,
+                            baselines=prepared_batch.baselines,
+                            review_items=prepared_batch.review_items,
+                            warnings=prepared_batch.warnings,
+                            affected_events=prepared_batch.affected_events,
+                            expires_at=requested_at
+                            + timedelta(
+                                minutes=self.settings.assistant_proposal_ttl_minutes
+                            ),
+                            requested_at=requested_at,
+                        )
+                    )
                 job_status = AssistantJobStatus.AWAITING_CONFIRMATION
             else:
                 job_status = AssistantJobStatus.COMPLETED
@@ -217,7 +231,7 @@ class AssistantService:
                 owner_message=owner_message,
                 assistant_message=assistant_message,
                 job=job,
-                proposal=proposal,
+                proposals=created_proposals,
             )
         except AssistantRuntimeError as exc:
             await self.session.rollback()
@@ -270,13 +284,13 @@ class AssistantService:
         conversation = await self.assistant.get_conversation(job.conversation_id)
         owner_message = await self.assistant.get_message(job.owner_message_id)
         assistant_message = await self.assistant.get_assistant_message_for_job(job.id)
-        proposal = await self.proposals.get_for_job(job.id)
+        proposals = await self.proposals.list_for_job(job.id)
         return AssistantTurn(
             conversation=conversation,
             owner_message=owner_message,
             assistant_message=assistant_message,
             job=job,
-            proposal=proposal,
+            proposals=proposals,
         )
 
     async def _calendar_context(

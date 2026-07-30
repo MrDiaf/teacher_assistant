@@ -2494,6 +2494,49 @@ textarea:focus-visible {
   box-shadow: 0 8px 20px rgba(22, 61, 52, 0.07);
 }
 
+.assistant-proposal-plan {
+  display: flex;
+  width: calc(100% - 41px);
+  margin-left: 41px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 13px;
+  color: #5f552f;
+  border: 1px solid #e5d7a8;
+  border-radius: 12px;
+  background: #fff8df;
+}
+
+.assistant-proposal-plan > div {
+  min-width: 0;
+}
+
+.assistant-proposal-plan strong,
+.assistant-proposal-plan span {
+  display: block;
+}
+
+.assistant-proposal-plan strong {
+  font-size: 10px;
+}
+
+.assistant-proposal-plan span {
+  margin-top: 2px;
+  color: #7b704e;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.assistant-proposal-plan > span {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f4e8ba;
+  font-weight: 750;
+}
+
 .assistant-proposal-card.completed {
   border-color: #bcd7ca;
   background: #f8fcf8;
@@ -3346,6 +3389,13 @@ textarea:focus-visible {
   .assistant-proposal-card {
     width: 100%;
     margin-left: 0;
+  }
+
+  .assistant-proposal-plan {
+    width: 100%;
+    margin-left: 0;
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .assistant-proposal-header {

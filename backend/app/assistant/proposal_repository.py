@@ -26,6 +26,8 @@ class ProposalRepository:
         job_id: uuid.UUID,
         conversation_id: uuid.UUID,
         summary: str,
+        batch_position: int,
+        batch_count: int,
         actions: list[dict[str, Any]],
         baselines: list[dict[str, Any]],
         review_items: list[dict[str, Any]],
@@ -49,6 +51,8 @@ class ProposalRepository:
             conversation_id=conversation_id,
             status=AssistantProposalStatus.AWAITING_CONFIRMATION,
             summary=summary,
+            batch_position=batch_position,
+            batch_count=batch_count,
             actions=actions,
             baselines=baselines,
             review_items=review_items,
@@ -92,13 +96,18 @@ class ProposalRepository:
         )
         return list(await self.session.scalars(statement))
 
-    async def get_for_job(self, job_id: uuid.UUID) -> AssistantProposal | None:
+    async def list_for_job(
+        self, job_id: uuid.UUID, *, for_update: bool = False
+    ) -> list[AssistantProposal]:
         statement = (
             select(AssistantProposal)
             .where(AssistantProposal.job_id == job_id)
             .options(selectinload(AssistantProposal.action_records))
+            .order_by(AssistantProposal.batch_position)
         )
-        return await self.session.scalar(statement)
+        if for_update:
+            statement = statement.with_for_update()
+        return list(await self.session.scalars(statement))
 
     @staticmethod
     def _uuid_or_none(value: Any) -> uuid.UUID | None:

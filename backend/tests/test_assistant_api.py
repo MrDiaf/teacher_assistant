@@ -5,6 +5,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import AsyncClient
@@ -444,6 +445,165 @@ async def test_create_calendar_proposal_waits_for_confirmation_and_is_idempotent
     assert calendars[0]["source_type"] == "local"
     assert calendars[0]["is_read_only"] is False
     assert first.json()["action_records"][0]["executed_at"] is not None
+
+
+async def test_linked_batches_prepare_and_confirm_thirty_events_independently(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    calendar = await create_calendar(client, name="Testing")
+    conversation = await create_conversation(client)
+    starts_at = datetime(2026, 7, 21, 10, 0, tzinfo=ZoneInfo("Europe/Stockholm"))
+
+    def create_action(position: int) -> dict[str, Any]:
+        start = starts_at + timedelta(days=position)
+        return {
+            "operation": "create_event",
+            "calendar_id": calendar["id"],
+            "event": {
+                "title": f"Test event {position + 1}",
+                "description": f"Linked batch event {position + 1} of 30",
+                "location": None,
+                "start_at": start.isoformat(),
+                "end_at": (start + timedelta(hours=1)).isoformat(),
+                "all_day": False,
+                "timezone": "Europe/Stockholm",
+                "recurrence_rule": None,
+                "status": "confirmed",
+            },
+        }
+
+    batches = [
+        {
+            "type": "calendar_change",
+            "summary": f"Create test events {offset + 1}–{offset + 10}",
+            "actions": [create_action(position) for position in range(offset, offset + 10)],
+        }
+        for offset in (0, 10, 20)
+    ]
+    fake_codex.response = json.dumps(
+        {
+            "message": "I prepared all 30 events as three separately confirmed batches.",
+            "proposal": batches[0],
+            "additional_proposals": batches[1:],
+        }
+    )
+
+    proposed = await ask(client, conversation["id"], "Create 30 daily test events")
+
+    assert proposed.status_code == 200, proposed.text
+    body = proposed.json()
+    assert body["job"]["status"] == "awaiting_confirmation"
+    assert len(body["proposals"]) == 3
+    assert body["proposal"]["id"] == body["proposals"][0]["id"]
+    assert [item["batch_position"] for item in body["proposals"]] == [1, 2, 3]
+    assert all(item["batch_count"] == 3 for item in body["proposals"])
+    assert all(item["affected_events"] == 10 for item in body["proposals"])
+    assert (await client.get("/api/v1/events")).json() == []
+
+    first_id, second_id, third_id = [item["id"] for item in body["proposals"]]
+    first = await client.post(f"/api/v1/assistant/proposals/{first_id}/confirm")
+    duplicate = await client.post(f"/api/v1/assistant/proposals/{first_id}/confirm")
+    assert first.json()["status"] == "completed"
+    assert duplicate.json()["status"] == "completed"
+    assert len((await client.get("/api/v1/events")).json()) == 10
+    assert (await client.get(f"/api/v1/assistant/jobs/{body['job']['id']}")).json()[
+        "status"
+    ] == "awaiting_confirmation"
+
+    await client.post(f"/api/v1/assistant/proposals/{second_id}/confirm")
+    assert len((await client.get("/api/v1/events")).json()) == 20
+    await client.post(f"/api/v1/assistant/proposals/{third_id}/confirm")
+    events = (await client.get("/api/v1/events")).json()
+    assert len(events) == 30
+    assert {event["title"] for event in events} == {
+        f"Test event {position}" for position in range(1, 31)
+    }
+    assert (await client.get(f"/api/v1/assistant/jobs/{body['job']['id']}")).json()[
+        "status"
+    ] == "completed"
+
+
+async def test_linked_batches_reject_edits_and_large_recurring_batches(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    calendar = await create_calendar(client)
+    event = await create_event(client, calendar["id"])
+    conversation = await create_conversation(client)
+    create_action = {
+        "operation": "create_event",
+        "calendar_id": calendar["id"],
+        "event": {
+            "title": "Safe create",
+            "description": None,
+            "location": None,
+            "start_at": "2026-07-28T14:00:00+02:00",
+            "end_at": "2026-07-28T15:00:00+02:00",
+            "all_day": False,
+            "timezone": "Europe/Stockholm",
+            "recurrence_rule": None,
+            "status": "confirmed",
+        },
+    }
+    fake_codex.response = json.dumps(
+        {
+            "message": "Unsafe linked edit.",
+            "proposal": {
+                "type": "calendar_change",
+                "summary": "First batch",
+                "actions": [create_action],
+            },
+            "additional_proposals": [
+                {
+                    "type": "calendar_change",
+                    "summary": "Unsafe edit batch",
+                    "actions": [
+                        {
+                            "operation": "update_event",
+                            "calendar_id": calendar["id"],
+                            "event_id": event["id"],
+                            "changes": {"title": "Changed"},
+                            "recurrence_scope": None,
+                            "occurrence_start_at": None,
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    mixed = await ask(client, conversation["id"], "Create and edit in batches")
+    assert mixed.json()["job"]["status"] == "failed"
+    assert mixed.json()["proposals"] == []
+    assert (await client.get(f"/api/v1/events/{event['id']}")).json()["title"] == (
+        "Planning session"
+    )
+
+    second_conversation = await create_conversation(client)
+    recurring_action = {
+        **create_action,
+        "event": {
+            **create_action["event"],
+            "title": "Too-large recurring series",
+            "recurrence_rule": "FREQ=DAILY;COUNT=11",
+        },
+    }
+    fake_codex.response = json.dumps(
+        {
+            "message": "Create eleven recurring events.",
+            "proposal": {
+                "type": "calendar_change",
+                "summary": "Create an eleven-event series",
+                "actions": [recurring_action],
+            },
+            "additional_proposals": [],
+        }
+    )
+
+    too_large = await ask(client, second_conversation["id"], "Create 11 daily events")
+    assert too_large.json()["job"]["status"] == "failed"
+    assert too_large.json()["job"]["safe_error_code"] == "assistant_proposal_limit"
 
 
 async def test_update_calendar_and_create_event_proposals_execute_only_after_confirmation(

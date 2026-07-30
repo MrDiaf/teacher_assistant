@@ -131,6 +131,7 @@ function ProposalCard({
 }: ProposalCardProps) {
   const awaiting = proposal.status === "awaiting_confirmation";
   const errorCode = proposalErrorCode(proposal);
+  const isLinkedBatch = proposal.batch_count > 1;
   return (
     <section
       aria-label={`Calendar proposal: ${proposal.summary}`}
@@ -141,7 +142,11 @@ function ProposalCard({
           <Icon name="checklist" size={18} />
         </span>
         <div>
-          <small>Calendar change</small>
+          <small>
+            Calendar change
+            {isLinkedBatch &&
+              ` · Batch ${proposal.batch_position} of ${proposal.batch_count}`}
+          </small>
           <h3>{proposal.summary}</h3>
         </div>
         <span className="assistant-proposal-status">
@@ -208,10 +213,14 @@ function ProposalCard({
       {awaiting && (
         <footer className="assistant-proposal-actions">
           <button disabled={busy} onClick={onConfirm} type="button">
-            {busy ? "Working safely…" : "Confirm changes"}
+            {busy
+              ? "Working safely…"
+              : isLinkedBatch
+                ? `Confirm batch ${proposal.batch_position}`
+                : "Confirm changes"}
           </button>
           <button disabled={busy} onClick={onRevise} type="button">
-            Revise
+            {isLinkedBatch ? "Revise plan" : "Revise"}
           </button>
           <button disabled={busy} onClick={onReject} type="button">
             Reject
@@ -940,9 +949,23 @@ export function AssistantPage() {
             {(messages.length > 0 || isSending || failedJob) && (
               <div className="assistant-message-list">
                 {messages.map((message) => {
-                  const proposal = proposals.find(
-                    (item) => item.job_id === message.job_id,
+                  const messageProposals = proposals
+                    .filter((item) => item.job_id === message.job_id)
+                    .sort(
+                      (left, right) =>
+                        left.batch_position - right.batch_position,
+                    );
+                  const isLinkedPlan = messageProposals.length > 1;
+                  const totalAffectedEvents = messageProposals.reduce(
+                    (total, proposal) => total + proposal.affected_events,
+                    0,
                   );
+                  const resolvedBatches = messageProposals.filter(
+                    (proposal) =>
+                      proposal.status !== "awaiting_confirmation" &&
+                      proposal.status !== "confirmed" &&
+                      proposal.status !== "executing",
+                  ).length;
                   return (
                     <Fragment key={message.id}>
                       <article className={`assistant-message ${message.role}`}>
@@ -967,15 +990,36 @@ export function AssistantPage() {
                           <p>{message.content}</p>
                         </div>
                       </article>
-                      {proposal && (
+                      {isLinkedPlan && (
+                        <section
+                          aria-label="Linked calendar plan"
+                          className="assistant-proposal-plan"
+                        >
+                          <div>
+                            <strong>Linked calendar plan</strong>
+                            <span>
+                              {totalAffectedEvents} event
+                              {totalAffectedEvents === 1 ? "" : "s"} across{" "}
+                              {messageProposals.length} separately confirmed
+                              batches
+                            </span>
+                          </div>
+                          <span>
+                            {resolvedBatches} of {messageProposals.length}{" "}
+                            resolved
+                          </span>
+                        </section>
+                      )}
+                      {messageProposals.map((proposal) => (
                         <ProposalCard
                           busy={busyProposalId === proposal.id}
+                          key={proposal.id}
                           onConfirm={() => void confirmProposal(proposal)}
                           onReject={() => void rejectProposal(proposal)}
                           onRevise={() => reviseProposal(proposal)}
                           proposal={proposal}
                         />
-                      )}
+                      ))}
                     </Fragment>
                   );
                 })}

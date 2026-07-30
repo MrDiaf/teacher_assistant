@@ -59,6 +59,10 @@ def turn_response(turn: AssistantTurn) -> AssistantTurnResponse:
             if turn.proposal is not None
             else None
         ),
+        proposals=[
+            AssistantProposalResponse.model_validate(proposal)
+            for proposal in turn.proposals
+        ],
     )
 
 
@@ -227,7 +231,7 @@ async def revise_proposal(
     session: SessionDependency,
     adapter: AdapterDependency,
 ) -> AssistantTurnResponse:
-    proposal = await ProposalService(session).reject(proposal_id)
+    proposal = await ProposalService(session).reject_plan(proposal_id)
     turn = await AssistantService(session, adapter).send_message(
         proposal.conversation_id, payload.content
     )

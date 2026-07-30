@@ -65,6 +65,7 @@ class AssistantTurnResponse(BaseModel):
     assistant_message: AssistantMessageResponse | None
     job: AssistantJobResponse
     proposal: "AssistantProposalResponse | None"
+    proposals: list["AssistantProposalResponse"]
 
 
 class ProposalReviewItem(BaseModel):
@@ -105,6 +106,8 @@ class AssistantProposalResponse(BaseModel):
     conversation_id: uuid.UUID
     status: AssistantProposalStatus
     summary: str
+    batch_position: int
+    batch_count: int
     actions: list[ProposalAction]
     review_items: list[ProposalReviewItem]
     warnings: list[str]

@@ -19,6 +19,7 @@ from app.calendar.models import Calendar, CalendarEvent
 from app.calendar.repository import CalendarRepository, EventRepository
 from app.calendar.service import validate_recurrence_rule
 from app.core.errors import (
+    AssistantProposalLimitError,
     AssistantProposalStateError,
     CalendarReadOnlyError,
     InvalidAssistantResponseError,
@@ -44,7 +45,12 @@ class ProposalValidator:
 
     async def prepare(self, proposal: CalendarChangeProposal) -> PreparedProposal:
         try:
-            return await self._inspect(proposal, for_update=False)
+            prepared = await self._inspect(proposal, for_update=False)
+            if prepared.affected_events > 10:
+                raise AssistantProposalLimitError()
+            return prepared
+        except AssistantProposalLimitError:
+            raise
         except (InvalidAssistantResponseError, InvalidRecurrenceError):
             raise
         except Exception as exc:
@@ -60,6 +66,8 @@ class ProposalValidator:
                 }
             )
             prepared = await self._inspect(parsed, for_update=True)
+            if prepared.affected_events > 10:
+                raise AssistantProposalLimitError()
         except Exception as exc:
             raise AssistantProposalStateError(
                 "The proposal is no longer safe to execute. No calendar data changed."

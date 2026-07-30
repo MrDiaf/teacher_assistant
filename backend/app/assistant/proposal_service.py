@@ -84,14 +84,7 @@ class ProposalService:
             proposal.executed_at = now
             proposal.result = {"actions": results}
             proposal.safe_error = None
-            await self.assistant.update_job(
-                proposal.job_id,
-                {
-                    "status": AssistantJobStatus.COMPLETED,
-                    "safe_error": None,
-                    "safe_error_code": None,
-                },
-            )
+            await self._sync_job_status(proposal.job_id)
             await self.session.commit()
             return await self.proposals.get(proposal.id)
         except ApplicationError as exc:
@@ -130,14 +123,28 @@ class ProposalService:
         proposal.result = {"status": "rejected_by_owner"}
         for record in proposal.action_records:
             record.result = {"status": "rejected_by_owner"}
-        await self.assistant.update_job(
-            proposal.job_id,
-            {
-                "status": AssistantJobStatus.COMPLETED,
-                "safe_error": None,
-                "safe_error_code": None,
-            },
-        )
+        await self._sync_job_status(proposal.job_id)
+        await self.session.commit()
+        return await self.proposals.get(proposal.id)
+
+    async def reject_plan(self, proposal_id: uuid.UUID) -> AssistantProposal:
+        proposal = await self.proposals.get(proposal_id, for_update=True)
+        if await self._expire_if_needed(proposal):
+            return await self.proposals.get(proposal_id)
+        if proposal.status != AssistantProposalStatus.AWAITING_CONFIRMATION:
+            raise AssistantProposalStateError()
+
+        now = datetime.now(UTC)
+        siblings = await self.proposals.list_for_job(proposal.job_id, for_update=True)
+        for sibling in siblings:
+            if sibling.status != AssistantProposalStatus.AWAITING_CONFIRMATION:
+                continue
+            sibling.status = AssistantProposalStatus.REJECTED
+            sibling.rejected_at = now
+            sibling.result = {"status": "rejected_for_plan_revision"}
+            for record in sibling.action_records:
+                record.result = {"status": "rejected_for_plan_revision"}
+        await self._sync_job_status(proposal.job_id)
         await self.session.commit()
         return await self.proposals.get(proposal.id)
 
@@ -240,14 +247,7 @@ class ProposalService:
                 "status": "failed",
                 "error_code": error_code[:80],
             }
-        await self.assistant.update_job(
-            proposal.job_id,
-            {
-                "status": AssistantJobStatus.COMPLETED,
-                "safe_error": None,
-                "safe_error_code": None,
-            },
-        )
+        await self._sync_job_status(proposal.job_id)
         await self.session.commit()
         return await self.proposals.get(proposal.id)
 
@@ -260,14 +260,31 @@ class ProposalService:
             proposal.safe_error = (
                 "This proposal expired before confirmation. Ask the assistant for a new one."
             )
-            await self.assistant.update_job(
-                proposal.job_id,
-                {
-                    "status": AssistantJobStatus.COMPLETED,
-                    "safe_error": None,
-                    "safe_error_code": None,
-                },
-            )
+            await self._sync_job_status(proposal.job_id)
             await self.session.commit()
             return True
         return False
+
+    async def _sync_job_status(self, job_id: uuid.UUID) -> None:
+        proposals = await self.proposals.list_for_job(job_id)
+        has_open_batch = any(
+            proposal.status
+            in {
+                AssistantProposalStatus.AWAITING_CONFIRMATION,
+                AssistantProposalStatus.CONFIRMED,
+                AssistantProposalStatus.EXECUTING,
+            }
+            for proposal in proposals
+        )
+        await self.assistant.update_job(
+            job_id,
+            {
+                "status": (
+                    AssistantJobStatus.AWAITING_CONFIRMATION
+                    if has_open_batch
+                    else AssistantJobStatus.COMPLETED
+                ),
+                "safe_error": None,
+                "safe_error_code": None,
+            },
+        )

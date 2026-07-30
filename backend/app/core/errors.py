@@ -167,6 +167,16 @@ class InvalidAssistantResponseError(AssistantRuntimeError):
         super().__init__("The assistant returned an invalid response. No calendar data changed.")
 
 
+class AssistantProposalLimitError(AssistantRuntimeError):
+    code = "assistant_proposal_limit"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "Each executable proposal may affect at most 10 events. Split independent "
+            "event creations into linked batches and keep every batch at 10 or fewer."
+        )
+
+
 class AssistantJobNotRetryableError(ApplicationError):
     code = "assistant_job_not_retryable"
     status_code = HTTPStatus.CONFLICT

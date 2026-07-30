@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     JSON,
+    CheckConstraint,
     DateTime,
     Enum,
     ForeignKey,
@@ -132,20 +133,34 @@ class AssistantJob(TimestampMixin, Base):
     safe_error_code: Mapped[str | None] = mapped_column(String(80))
 
     conversation: Mapped[AssistantConversation] = relationship(back_populates="jobs")
-    proposal: Mapped["AssistantProposal | None"] = relationship(
-        back_populates="job", uselist=False
+    proposals: Mapped[list["AssistantProposal"]] = relationship(
+        back_populates="job",
+        order_by="AssistantProposal.batch_position",
     )
 
 
 class AssistantProposal(TimestampMixin, Base):
     __tablename__ = "assistant_proposals"
+    __table_args__ = (
+        CheckConstraint(
+            "batch_position >= 1 AND batch_position <= batch_count",
+            name="assistant_proposal_batch_position",
+        ),
+        CheckConstraint(
+            "batch_count >= 1 AND batch_count <= 10",
+            name="assistant_proposal_batch_count",
+        ),
+        UniqueConstraint(
+            "job_id", "batch_position", name="uq_assistant_proposal_job_batch"
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     job_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
         ForeignKey("assistant_jobs.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
+        index=True,
     )
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -166,6 +181,8 @@ class AssistantProposal(TimestampMixin, Base):
         default=AssistantProposalStatus.AWAITING_CONFIRMATION,
     )
     summary: Mapped[str] = mapped_column(String(240), nullable=False)
+    batch_position: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    batch_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     actions: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     baselines: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     review_items: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
@@ -179,7 +196,7 @@ class AssistantProposal(TimestampMixin, Base):
     safe_error: Mapped[str | None] = mapped_column(Text)
 
     conversation: Mapped[AssistantConversation] = relationship(back_populates="proposals")
-    job: Mapped[AssistantJob] = relationship(back_populates="proposal")
+    job: Mapped[AssistantJob] = relationship(back_populates="proposals")
     action_records: Mapped[list["AssistantProposalAction"]] = relationship(
         back_populates="proposal",
         cascade="all, delete-orphan",

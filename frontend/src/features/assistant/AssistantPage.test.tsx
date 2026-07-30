@@ -52,6 +52,8 @@ const awaitingProposal: AssistantProposal = {
   conversation_id: conversation.id,
   status: "awaiting_confirmation",
   summary: "Move the planning session",
+  batch_position: 1,
+  batch_count: 1,
   actions: [
     {
       operation: "update_event",
@@ -388,6 +390,87 @@ describe("AssistantPage", () => {
           ) && init?.method === "POST",
       ),
     ).toBe(true);
+  });
+
+  it("shows linked batches together and confirms each batch separately", async () => {
+    const firstBatch: AssistantProposal = {
+      ...awaitingProposal,
+      summary: "Create events 1–10",
+      batch_count: 2,
+    };
+    const secondBatch: AssistantProposal = {
+      ...awaitingProposal,
+      id: "proposal-2",
+      summary: "Create events 11–20",
+      batch_position: 2,
+      batch_count: 2,
+      action_records: awaitingProposal.action_records.map((record) => ({
+        ...record,
+        id: "action-2",
+      })),
+    };
+    const completedFirstBatch: AssistantProposal = {
+      ...firstBatch,
+      status: "completed",
+      confirmed_at: now,
+      executed_at: now,
+    };
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/v1/assistant/auth") && method === "GET") {
+          return response(connectedAuth);
+        }
+        if (
+          url.endsWith("/api/v1/assistant/conversations") &&
+          method === "GET"
+        ) {
+          return response([conversation]);
+        }
+        if (
+          url.endsWith(`/api/v1/assistant/conversations/${conversation.id}`) &&
+          method === "GET"
+        ) {
+          return response({
+            ...conversation,
+            messages: [ownerMessage, assistantMessage],
+            jobs: [job("awaiting_confirmation")],
+            proposals: [firstBatch, secondBatch],
+          });
+        }
+        if (
+          url.endsWith(
+            `/api/v1/assistant/proposals/${firstBatch.id}/confirm`,
+          ) &&
+          method === "POST"
+        ) {
+          return response(completedFirstBatch);
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    const plan = await screen.findByRole("region", {
+      name: "Linked calendar plan",
+    });
+    expect(within(plan).getByText(/2 events across 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Batch 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Batch 2 of 2/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm batch 1" }));
+
+    expect(
+      await screen.findByText(
+        "Confirmed and completed by the calendar service.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Confirm batch 2" }),
+    ).toBeInTheDocument();
   });
 
   it("loads persistent proposal activity and exposes action timestamps", async () => {

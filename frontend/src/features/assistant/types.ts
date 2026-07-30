@@ -63,6 +63,7 @@ export interface AssistantTurn {
   assistant_message: AssistantMessage | null;
   job: AssistantJob;
   proposal: AssistantProposal | null;
+  proposals: AssistantProposal[];
 }
 
 export interface ProposalReviewItem {
@@ -99,6 +100,8 @@ export interface AssistantProposal {
   conversation_id: string;
   status: AssistantProposalStatus;
   summary: string;
+  batch_position: number;
+  batch_count: number;
   actions: Array<Record<string, unknown> & { operation: ProposalOperation }>;
   review_items: ProposalReviewItem[];
   warnings: string[];

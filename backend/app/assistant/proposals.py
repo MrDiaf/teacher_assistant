@@ -262,6 +262,9 @@ class CalendarChangeProposal(StrictProposalModel):
 class AssistantAnswer(StrictProposalModel):
     message: str = Field(min_length=1, max_length=8000)
     proposal: CalendarChangeProposal | None
+    additional_proposals: list[CalendarChangeProposal] = Field(
+        default_factory=list, max_length=9
+    )
 
     @field_validator("message")
     @classmethod
@@ -270,6 +273,28 @@ class AssistantAnswer(StrictProposalModel):
         if not normalized:
             raise ValueError("The assistant message cannot be blank.")
         return normalized
+
+    @model_validator(mode="after")
+    def require_safe_linked_batches(self) -> AssistantAnswer:
+        if not self.additional_proposals:
+            return self
+        if self.proposal is None:
+            raise ValueError("Linked batches require a first proposal.")
+        proposals = [self.proposal, *self.additional_proposals]
+        if any(
+            action.operation != "create_event"
+            for proposal in proposals
+            for action in proposal.actions
+        ):
+            raise ValueError(
+                "Linked batches may contain only independent event creations."
+            )
+        return self
+
+    def proposal_batches(self) -> list[CalendarChangeProposal]:
+        if self.proposal is None:
+            return []
+        return [self.proposal, *self.additional_proposals]
 
 
 def _strict_output_schema(schema: dict[str, Any]) -> dict[str, Any]:

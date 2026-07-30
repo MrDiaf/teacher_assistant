@@ -80,7 +80,11 @@ than a ChatGPT subscription.
 - The backend rechecks IDs, permissions, and stale timestamps at confirmation.
 - Codex cannot delete calendars or bulk-delete events.
 - A deletion proposal may target only one event.
-- Multi-action proposals execute in one database transaction.
+- One executable proposal may affect at most 10 events and executes in one
+  database transaction.
+- Requests for 11–100 independent event creations may be shown as one linked
+  plan of separately confirmed batches. Confirming one batch never confirms the
+  others.
 - Confirmation is idempotent.
 - Recent manual event edits expose a short-lived **Undo** action where restoring
   the prior state is safe and practical.
