@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "../../components/Icon";
-import { courseApi } from "./api";
+import { ErrorAssistantAction } from "../assistant/ErrorAssistantAction";
+import { CourseApiError, courseApi } from "./api";
 import type {
   CourseMaterialType,
   CourseModel,
@@ -34,6 +35,18 @@ const STATUS_LABELS: Record<ExtractionStatus, string> = {
   failed: "Extraction failed",
   unsupported: "Stored · extraction unavailable",
 };
+
+interface CourseMaterialError {
+  message: string;
+  errorId: string | null;
+}
+
+function materialError(error: unknown, fallback: string): CourseMaterialError {
+  return {
+    message: error instanceof Error ? error.message : fallback,
+    errorId: error instanceof CourseApiError ? error.errorId : null,
+  };
+}
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -184,7 +197,7 @@ export function CourseMaterials({
   );
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [confirmSourceId, setConfirmSourceId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<CourseMaterialError | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -202,9 +215,7 @@ export function CourseMaterials({
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "Course materials could not be loaded.",
+            materialError(loadError, "Course materials could not be loaded."),
           );
         }
       } finally {
@@ -227,9 +238,10 @@ export function CourseMaterials({
       setSources((current) => [source, ...current]);
     } catch (uploadError) {
       setError(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "The course material could not be uploaded.",
+        materialError(
+          uploadError,
+          "The course material could not be uploaded.",
+        ),
       );
     } finally {
       setUploadingType(null);
@@ -246,9 +258,7 @@ export function CourseMaterials({
       );
     } catch (retryError) {
       setError(
-        retryError instanceof Error
-          ? retryError.message
-          : "Text extraction could not be retried.",
+        materialError(retryError, "Text extraction could not be retried."),
       );
     } finally {
       setBusySourceId(null);
@@ -264,9 +274,7 @@ export function CourseMaterials({
       setConfirmSourceId(null);
     } catch (deleteError) {
       setError(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "The course material could not be deleted.",
+        materialError(deleteError, "The course material could not be deleted."),
       );
     } finally {
       setBusySourceId(null);
@@ -290,7 +298,8 @@ export function CourseMaterials({
 
       {error && (
         <div className="course-materials-error" role="alert">
-          {error}
+          <p>{error.message}</p>
+          {error.errorId && <ErrorAssistantAction errorId={error.errorId} />}
         </div>
       )}
 

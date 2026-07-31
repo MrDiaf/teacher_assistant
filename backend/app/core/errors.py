@@ -1,12 +1,14 @@
 from http import HTTPStatus
+from typing import Any
 
 
 class ApplicationError(Exception):
     code = "application_error"
     status_code = HTTPStatus.BAD_REQUEST
 
-    def __init__(self, message: str) -> None:
+    def __init__(self, message: str, details: dict[str, Any] | None = None) -> None:
         self.message = message
+        self.details = details or {}
         super().__init__(message)
 
 
@@ -101,7 +103,10 @@ class CourseSourceFileTooLargeError(ApplicationError):
     status_code = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
 
     def __init__(self, maximum_mb: int) -> None:
-        super().__init__(f"The course file exceeds the {maximum_mb} MB upload limit.")
+        super().__init__(
+            f"The course file exceeds the {maximum_mb} MB upload limit.",
+            {"maximum_size_mb": maximum_mb},
+        )
 
 
 class InvalidCourseSourceFileError(ApplicationError):
@@ -269,9 +274,23 @@ class InvalidNoteSummaryResponseError(AssistantRuntimeError):
     code = "invalid_note_summary_response"
 
     def __init__(self) -> None:
+        super().__init__("The summary response was invalid, so no summary was saved. Retry safely.")
+
+
+class InvalidDiagnosticExplanationError(AssistantRuntimeError):
+    code = "invalid_diagnostic_explanation"
+
+    def __init__(self) -> None:
         super().__init__(
-            "The summary response was invalid, so no summary was saved. Retry safely."
+            "The Assistant returned an invalid error explanation. The application was not changed."
         )
+
+
+class DiagnosticErrorNotFoundError(ResourceNotFoundError):
+    code = "diagnostic_error_not_found"
+
+    def __init__(self) -> None:
+        super().__init__("The requested sanitized error report does not exist.")
 
 
 class AssistantProposalLimitError(AssistantRuntimeError):

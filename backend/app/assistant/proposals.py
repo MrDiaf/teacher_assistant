@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from copy import deepcopy
 from datetime import datetime
@@ -41,9 +42,7 @@ class CalendarChanges(StrictProposalModel):
             for field in {"name", "description", "color"} - fields:
                 if getattr(self, field) is not None:
                     raise ValueError("Unselected calendar changes must be null.")
-        if ("name" in fields and self.name is None) or (
-            "color" in fields and self.color is None
-        ):
+        if ("name" in fields and self.name is None) or ("color" in fields and self.color is None):
             raise ValueError("Calendar name and color cannot be cleared.")
         return self
 
@@ -102,20 +101,23 @@ class EventChanges(StrictProposalModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
     recurrence_rule: str | None = None
     status: EventStatus | None = None
-    changed_fields: list[
-        Literal[
-            "calendar_id",
-            "title",
-            "description",
-            "location",
-            "start_at",
-            "end_at",
-            "all_day",
-            "timezone",
-            "recurrence_rule",
-            "status",
+    changed_fields: (
+        list[
+            Literal[
+                "calendar_id",
+                "title",
+                "description",
+                "location",
+                "start_at",
+                "end_at",
+                "all_day",
+                "timezone",
+                "recurrence_rule",
+                "status",
+            ]
         ]
-    ] | None = None
+        | None
+    ) = None
 
     @field_validator("start_at", "end_at")
     @classmethod
@@ -259,12 +261,32 @@ class CalendarChangeProposal(StrictProposalModel):
         return self
 
 
+class CourseCitation(StrictProposalModel):
+    course_id: uuid.UUID
+    course_name: str = Field(min_length=1, max_length=160)
+    note_id: uuid.UUID
+    note_title: str = Field(min_length=1, max_length=240)
+    source_id: uuid.UUID | None
+    source_name: str | None = Field(default=None, min_length=1, max_length=240)
+    slide_number: int | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def require_complete_slide_reference(self) -> CourseCitation:
+        supplied = (
+            self.source_id is not None,
+            self.source_name is not None,
+            self.slide_number is not None,
+        )
+        if any(supplied) and not all(supplied):
+            raise ValueError("A slide citation requires source ID, source name, and slide number.")
+        return self
+
+
 class AssistantAnswer(StrictProposalModel):
     message: str = Field(min_length=1, max_length=8000)
     proposal: CalendarChangeProposal | None
-    additional_proposals: list[CalendarChangeProposal] = Field(
-        default_factory=list, max_length=9
-    )
+    additional_proposals: list[CalendarChangeProposal] = Field(default_factory=list, max_length=9)
+    citations: list[CourseCitation] = Field(default_factory=list, max_length=20)
 
     @field_validator("message")
     @classmethod
@@ -286,9 +308,7 @@ class AssistantAnswer(StrictProposalModel):
             for proposal in proposals
             for action in proposal.actions
         ):
-            raise ValueError(
-                "Linked batches may contain only independent event creations."
-            )
+            raise ValueError("Linked batches may contain only independent event creations.")
         return self
 
     def proposal_batches(self) -> list[CalendarChangeProposal]:
@@ -326,6 +346,9 @@ def parse_assistant_answer(raw_response: str | None) -> AssistantAnswer:
     if raw_response is None:
         raise InvalidAssistantResponseError()
     try:
-        return AssistantAnswer.model_validate_json(raw_response)
-    except ValidationError as exc:
+        payload = json.loads(raw_response)
+        if isinstance(payload, dict) and "citations" not in payload:
+            payload["citations"] = []
+        return AssistantAnswer.model_validate(payload)
+    except (json.JSONDecodeError, ValidationError) as exc:
         raise InvalidAssistantResponseError() from exc

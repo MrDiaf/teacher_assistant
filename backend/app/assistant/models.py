@@ -91,6 +91,7 @@ class AssistantMessage(TimestampMixin, Base):
         nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    citations: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
     job_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey("assistant_jobs.id", ondelete="SET NULL", use_alter=True),
@@ -151,9 +152,7 @@ class AssistantProposal(TimestampMixin, Base):
             "batch_count >= 1 AND batch_count <= 10",
             name="assistant_proposal_batch_count",
         ),
-        UniqueConstraint(
-            "job_id", "batch_position", name="uq_assistant_proposal_job_batch"
-        ),
+        UniqueConstraint("job_id", "batch_position", name="uq_assistant_proposal_job_batch"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -223,12 +222,34 @@ class AssistantProposalAction(Base):
     operation: Mapped[str] = mapped_column(String(40), nullable=False)
     target_calendar_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     target_event_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    requested_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     result: Mapped[dict | None] = mapped_column(JSON)
     safe_error: Mapped[str | None] = mapped_column(Text)
 
     proposal: Mapped[AssistantProposal] = relationship(back_populates="action_records")
+
+
+class AssistantContextAudit(Base):
+    __tablename__ = "assistant_context_audits"
+    __table_args__ = (
+        UniqueConstraint(
+            "job_id",
+            name="uq_assistant_context_audits_job_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("assistant_jobs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    course_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    note_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    source_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    slide_numbers: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    requires_clarification: Mapped[bool] = mapped_column(nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

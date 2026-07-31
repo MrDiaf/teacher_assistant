@@ -2483,6 +2483,28 @@ textarea:focus-visible {
   background: var(--sidebar-active);
 }
 
+.assistant-citations {
+  display: flex;
+  margin: 7px 0 0;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+}
+
+.assistant-citations li {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 8px;
+  color: #315c50;
+  border: 1px solid #cfddd7;
+  border-radius: 999px;
+  background: #f5faf7;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
 .assistant-proposal-card {
   width: calc(100% - 41px);
   margin-left: 41px;
@@ -3780,6 +3802,84 @@ textarea:focus-visible {
   background: #fff0ed;
   font-size: 11px;
   line-height: 1.5;
+}
+
+.course-materials-error > p {
+  margin: 0;
+}
+
+.assistant-error-action {
+  margin-top: 9px;
+}
+
+.assistant-error-action button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  background: var(--sidebar-active);
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.assistant-error-action button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.assistant-error-action p {
+  margin: 7px 0 0;
+}
+
+.assistant-error-explanation {
+  margin-top: 10px;
+  padding: 12px;
+  color: var(--primary-text);
+  border: 1px solid #cadbd4;
+  border-radius: 10px;
+  background: #f7fbf8;
+}
+
+.assistant-error-explanation header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  color: var(--sidebar-active);
+}
+
+.assistant-error-explanation > p {
+  margin: 5px 0;
+}
+
+.assistant-error-columns {
+  display: grid;
+  margin: 10px 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.assistant-error-columns > div {
+  padding: 9px;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.assistant-error-columns ul {
+  margin: 6px 0 0;
+  padding-left: 17px;
+}
+
+.assistant-error-columns p {
+  margin: 6px 0 0;
+}
+
+.assistant-error-explanation small {
+  color: var(--secondary-text);
 }
 
 .course-materials-loading {

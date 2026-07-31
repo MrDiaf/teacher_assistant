@@ -35,10 +35,12 @@ async def test_calendar_crud(client: AsyncClient) -> None:
 async def test_unknown_calendar_returns_clear_error(client: AsyncClient) -> None:
     response = await client.get(f"/api/v1/calendars/{uuid.uuid4()}")
     assert response.status_code == 404
-    assert response.json() == {
-        "code": "calendar_not_found",
-        "message": "The requested calendar does not exist.",
-    }
+    body = response.json()
+    assert body["code"] == "calendar_not_found"
+    assert body["message"] == "The requested calendar does not exist."
+    assert body["details"] == {"status_code": 404}
+    assert uuid.UUID(body["error_id"])
+    assert uuid.UUID(body["request_id"])
 
 
 async def test_imported_calendar_defaults_to_read_only_and_cannot_unlock(

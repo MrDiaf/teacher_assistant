@@ -38,6 +38,7 @@ const ownerMessage: AssistantMessage = {
   conversation_id: conversation.id,
   role: "owner",
   content: "What do I have tomorrow?",
+  citations: [],
   job_id: null,
   created_at: now,
 };
@@ -46,6 +47,7 @@ const assistantMessage: AssistantMessage = {
   conversation_id: conversation.id,
   role: "assistant",
   content: "You have a planning session from 10:00 to 11:00.",
+  citations: [],
   job_id: "job-1",
   created_at: now,
 };
@@ -145,6 +147,20 @@ afterEach(() => {
 describe("AssistantPage", () => {
   it("sends an owner message through FastAPI and displays the validated answer", async () => {
     let messages: AssistantMessage[] = [];
+    const citedAssistantMessage: AssistantMessage = {
+      ...assistantMessage,
+      citations: [
+        {
+          course_id: "course-1",
+          course_name: "Datasekretess",
+          note_id: "note-1",
+          note_title: "Normalization",
+          source_id: "source-1",
+          source_name: "Lecture 4",
+          slide_number: 12,
+        },
+      ],
+    };
     const renamedConversation = {
       ...conversation,
       title: "What do I have tomorrow?",
@@ -174,11 +190,11 @@ describe("AssistantPage", () => {
           ) &&
           method === "POST"
         ) {
-          messages = [ownerMessage, assistantMessage];
+          messages = [ownerMessage, citedAssistantMessage];
           return response({
             conversation: renamedConversation,
             owner_message: ownerMessage,
-            assistant_message: assistantMessage,
+            assistant_message: citedAssistantMessage,
             job: job("completed"),
           });
         }
@@ -220,6 +236,9 @@ describe("AssistantPage", () => {
         "You have a planning session from 10:00 to 11:00.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("list", { name: "Course note citations" }),
+    ).toHaveTextContent("Datasekretess · Normalization · Lecture 4, slide 12");
     const messageCall = fetchMock.mock.calls.find(
       ([url, init]) =>
         String(url).endsWith(

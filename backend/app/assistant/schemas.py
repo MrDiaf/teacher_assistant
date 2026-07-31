@@ -9,7 +9,7 @@ from app.assistant.models import (
     AssistantMessageRole,
     AssistantProposalStatus,
 )
-from app.assistant.proposals import ProposalAction
+from app.assistant.proposals import CourseCitation, ProposalAction
 
 
 class ConversationCreate(BaseModel):
@@ -37,6 +37,7 @@ class AssistantMessageResponse(BaseModel):
     conversation_id: uuid.UUID
     role: AssistantMessageRole
     content: str
+    citations: list[CourseCitation]
     job_id: uuid.UUID | None
     created_at: datetime
 

@@ -1073,18 +1073,18 @@ Acceptance:
 
 ## M13 — Course-aware Assistant and diagnostics
 
-- [ ] Extend Assistant context with relevant course notes.
-- [ ] Add course-aware clarification behavior.
-- [ ] Add note and slide citations.
-- [ ] Add structured safe error reports.
-- [ ] Add redaction.
-- [ ] Add `Ask Assistant about this error`.
-- [ ] Add input-fix and application-improvement output.
-- [ ] Prevent runtime source-code editing.
-- [ ] Add audit records.
-- [ ] Add privacy and safety tests.
-- [ ] Add end-to-end tests.
-- [ ] Update setup, backup, restore, and troubleshooting documentation.
+- [x] Extend Assistant context with relevant course notes.
+- [x] Add course-aware clarification behavior.
+- [x] Add note and slide citations.
+- [x] Add structured safe error reports.
+- [x] Add redaction.
+- [x] Add `Ask Assistant about this error`.
+- [x] Add input-fix and application-improvement output.
+- [x] Prevent runtime source-code editing.
+- [x] Add audit records.
+- [x] Add privacy and safety tests.
+- [x] Add end-to-end tests.
+- [x] Update setup, backup, restore, and troubleshooting documentation.
 
 Acceptance:
 

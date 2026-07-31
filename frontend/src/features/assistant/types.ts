@@ -36,8 +36,31 @@ export interface AssistantMessage {
   conversation_id: string;
   role: AssistantMessageRole;
   content: string;
+  citations: AssistantCitation[];
   job_id: string | null;
   created_at: string;
+}
+
+export interface AssistantCitation {
+  course_id: string;
+  course_name: string;
+  note_id: string;
+  note_title: string;
+  source_id: string | null;
+  source_name: string | null;
+  slide_number: number | null;
+}
+
+export interface DiagnosticExplanation {
+  error_id: string;
+  request_id: string;
+  model: string;
+  explained_at: string;
+  plain_explanation: string;
+  likely_cause: string;
+  input_fixes: string[];
+  application_improvements: string[];
+  retry_is_safe: boolean;
 }
 
 export interface AssistantJob {

@@ -3,7 +3,8 @@
 Teacher Assistant is a single-owner, self-hosted workspace with a personal
 calendar, manual course organization, and a private Codex-powered assistant.
 Calendar and course features work without Codex. The Assistant can answer
-calendar questions and propose calendar changes, but every mutation is
+calendar questions, use relevant course notes with validated citations, explain
+sanitized application errors, and propose calendar changes. Every mutation is
 revalidated by the backend and waits for owner confirmation.
 
 ## Requirements
@@ -101,6 +102,21 @@ Assistant proposal lifecycle records are available under **Assistant →
 Activity**. They show requested, confirmed, and executed timestamps without
 placing calendar contents in application logs.
 
+## Course-aware Assistant
+
+The main Assistant can answer note questions such as “Summarize my latest notes
+from Datasekretess” or “What did I write about normalization?” The backend
+selects a bounded set of matching notes before starting Codex. Only those notes,
+their explicitly linked slide ranges, and calendars linked to the selected
+course are supplied. Unrelated courses, literature, source files, and private
+calendar data are excluded. If matching notes belong to several courses, the
+Assistant asks which course you mean before any runtime job starts.
+
+Course answers display validated note-title citations and, where used, the exact
+slide deck and slide number. An invented or out-of-scope ID or citation fails
+the Assistant job safely and does not save the answer or alter any data. Notes,
+sources, courses, and slide links remain read-only to the runtime Assistant.
+
 ## Manual courses
 
 Open **Courses** to create a course with a name, optional course code, term,
@@ -119,7 +135,11 @@ rendered. AI summaries use only the note body and explicitly linked extracted
 slide text. Every stored bullet is labeled **From note**, **From slides**, or
 **From note + slides** with its exact source references. Summaries retain the
 selected model and source hashes, and are marked stale after their note or
-linked slide text changes. Course-linked calendars are not enabled yet.
+linked slide text changes.
+
+The **Calendar** tab links a course to existing calendars without copying
+events. Unlinking or deleting a course does not delete a calendar or its events,
+and read-only calendar protections remain unchanged.
 
 Deleting one source removes only that source file, its metadata, and its
 extracted text. Deleting a slide source also removes references to that source,
@@ -178,8 +198,9 @@ make backup
 
 This writes `backups/teacher-assistant.dump` with permissions restricted to the
 current host user. The backup contains private courses, calendars, events,
-assistant conversations, proposal history, and subscription URLs. `backups/`
-is ignored by Git. Copy the dump only to encrypted, access-controlled storage.
+assistant conversations, citations, context-audit IDs, sanitized diagnostic
+reports, proposal history, and subscription URLs. `backups/` is ignored by Git.
+Copy the dump only to encrypted, access-controlled storage.
 
 Course source files are stored outside PostgreSQL and require a separate backup.
 For a consistent pair of backups, briefly stop writes, create both archives,
@@ -215,11 +236,51 @@ docker compose -f compose.yml -f compose.dev.yml exec -T database \
 make dev
 ```
 
-Verify Courses, Calendar, and Assistant history after restore, then sign in to
-ChatGPT again if the restored installation does not already have its own
+Run `make migrate`, then verify Courses, linked course calendars, Calendar,
+Assistant history and citations, and diagnostic history after restore. Sign in
+to ChatGPT again if the restored installation does not already have its own
 private auth volume. If the database contains course sources, also restore the
 matching `teacher-assistant-course-content.tar.gz`; otherwise those source
 records will report missing raw files and extraction retries will fail safely.
+
+## Safe error explanations
+
+Handled API failures return a public error code and message plus opaque
+`error_id` and `request_id` values. The persisted report contains only
+allowlisted operation metadata, validation fields, relevant content type/size,
+safe constraints, and a sanitized exception type. Passwords, tokens, cookies,
+authorization headers, request bodies, credentials, environment variables,
+source paths, and unrelated files are redacted or never collected.
+
+When a Materials error shows **Ask Assistant about this error**, the backend
+starts an explanation-only Codex job from that stored report. The result clearly
+separates changes you can make to the input from possible future application
+improvements and states whether retrying is safe. The runtime can suggest an
+improvement, but it cannot inspect or edit application source code and never
+claims a suggestion was implemented.
+
+Sanitized reports and their audit records are retained with the owner database
+and included in database backups; this phase has no separate diagnostic purge
+UI. Temporary Codex workspaces are still deleted immediately after each job.
+
+## Troubleshooting
+
+- If a course-note question asks which course you mean, reply with the exact
+  course name or course code. This is an intentional privacy boundary.
+- If expected note context is missing, confirm that the course is active, the
+  note contains the search term, and any slide range is linked to a Slides
+  source with completed text extraction.
+- If **Ask Assistant about this error** cannot generate an explanation, sign in
+  again on the Assistant page and retry. The original operation is not repeated
+  by the explanation action.
+- If an error report cannot be found, it may belong to another restored database
+  or installation. Repeat the failing operation to create a new sanitized
+  report; do not paste credentials, `.env`, logs, or private files into chat.
+- After restoring a database, run `make migrate` and check `make logs` for an
+  Alembic error before using the app. Restore the matching course-content
+  archive when source rows exist.
+- A report ID is safer than raw logs, but diagnostic reports are still private
+  owner data. Do not publish database dumps or diagnostic API responses.
 
 ## Privacy-safe logging
 
@@ -228,7 +289,9 @@ can contain private values. Application failures log opaque record IDs and error
 types, not calendar content, ICS URLs, model output, credentials, or request
 bodies. Keep Docker logs private and review them before sharing.
 
-Runtime Codex workspaces are private temporary directories containing only the
-relevant bounded calendar context, or one note body plus its explicitly linked
-slide text. Tools, network access, repository access, and host filesystem access
-are disabled; each workspace is deleted immediately after the job.
+Runtime Codex workspaces are private temporary directories containing one of:
+bounded calendar/course context selected for the question, one note body plus
+its explicitly linked slide text, or one sanitized error report. Diagnostic
+workspaces never contain calendars or course files. Tools, network access,
+repository access, source editing, and host filesystem access are disabled;
+each workspace is deleted immediately after the job.

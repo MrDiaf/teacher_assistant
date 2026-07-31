@@ -28,6 +28,11 @@ from app.codex_runtime.adapter import (
     get_codex_auth_manager,
 )
 from app.database.session import get_session
+from app.diagnostics.schemas import (
+    DiagnosticExplainRequest,
+    DiagnosticExplanationResponse,
+)
+from app.diagnostics.service import DiagnosticService
 
 router = APIRouter()
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]
@@ -61,8 +66,7 @@ def turn_response(turn: AssistantTurn) -> AssistantTurnResponse:
             else None
         ),
         proposals=[
-            AssistantProposalResponse.model_validate(proposal)
-            for proposal in turn.proposals
+            AssistantProposalResponse.model_validate(proposal) for proposal in turn.proposals
         ],
     )
 
@@ -244,3 +248,26 @@ async def revise_proposal(
         selected_model,
     )
     return turn_response(turn)
+
+
+@router.post(
+    "/assistant/errors/{error_id}/explain",
+    response_model=DiagnosticExplanationResponse,
+)
+async def explain_diagnostic_error(
+    error_id: uuid.UUID,
+    payload: DiagnosticExplainRequest,
+    session: SessionDependency,
+    adapter: AdapterDependency,
+) -> DiagnosticExplanationResponse:
+    error, explanation = await DiagnosticService(session, adapter).explain(
+        error_id,
+        model=payload.model,
+    )
+    return DiagnosticExplanationResponse(
+        **explanation.model_dump(),
+        error_id=error.id,
+        request_id=error.request_id,
+        model=error.explanation_model or "",
+        explained_at=error.explained_at,
+    )

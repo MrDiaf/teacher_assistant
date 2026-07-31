@@ -17,9 +17,7 @@ from app.main import app
 async def clean_database() -> AsyncIterator[None]:
     settings = get_settings()
     if not settings.testing:
-        raise RuntimeError(
-            "Refusing to run destructive database fixtures without TESTING=true."
-        )
+        raise RuntimeError("Refusing to run destructive database fixtures without TESTING=true.")
     async with engine.begin() as connection:
         database_name = await connection.scalar(text("SELECT current_database()"))
         if not str(database_name).endswith("_test"):
@@ -28,8 +26,9 @@ async def clean_database() -> AsyncIterator[None]:
             )
         await connection.execute(
             text(
-                "TRUNCATE TABLE note_summaries, assistant_proposal_actions, assistant_proposals, "
-                "assistant_jobs, assistant_messages, "
+                "TRUNCATE TABLE diagnostic_audit_records, diagnostic_errors, "
+                "assistant_context_audits, note_summaries, assistant_proposal_actions, "
+                "assistant_proposals, assistant_jobs, assistant_messages, "
                 "assistant_conversations, note_source_links, notes, "
                 "course_source_text, course_sources, course_calendar_links, "
                 "courses, events, calendars CASCADE"

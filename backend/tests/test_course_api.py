@@ -71,10 +71,12 @@ async def test_course_archive_restore_filter_and_delete(client: AsyncClient) -> 
     assert deleted.status_code == 204
     missing = await client.get(f"/api/v1/courses/{course['id']}")
     assert missing.status_code == 404
-    assert missing.json() == {
-        "code": "course_not_found",
-        "message": "The requested course does not exist.",
-    }
+    missing_body = missing.json()
+    assert missing_body["code"] == "course_not_found"
+    assert missing_body["message"] == "The requested course does not exist."
+    assert missing_body["details"] == {"status_code": 404}
+    assert uuid.UUID(missing_body["error_id"])
+    assert uuid.UUID(missing_body["request_id"])
 
 
 async def test_course_delete_does_not_delete_calendar_or_events(client: AsyncClient) -> None:
@@ -128,7 +130,9 @@ async def test_unknown_course_returns_clear_error(client: AsyncClient) -> None:
     response = await client.post(f"/api/v1/courses/{course_id}/archive")
 
     assert response.status_code == 404
-    assert response.json() == {
-        "code": "course_not_found",
-        "message": "The requested course does not exist.",
-    }
+    body = response.json()
+    assert body["code"] == "course_not_found"
+    assert body["message"] == "The requested course does not exist."
+    assert body["details"] == {"status_code": 404}
+    assert uuid.UUID(body["error_id"])
+    assert uuid.UUID(body["request_id"])

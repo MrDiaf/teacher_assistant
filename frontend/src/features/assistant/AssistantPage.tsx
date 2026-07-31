@@ -528,6 +528,7 @@ export function AssistantPage() {
         conversation_id: conversation.id,
         role: "owner",
         content: normalized,
+        citations: [],
         job_id: null,
         created_at: new Date().toISOString(),
       };
@@ -944,9 +945,9 @@ export function AssistantPage() {
                 <p className="eyebrow">Ready when you are</p>
                 <h2>What would you like to know?</h2>
                 <p>
-                  I can explain your schedule, identify protected calendars, and
-                  propose safe calendar changes. Every change waits for your
-                  confirmation.
+                  I can explain your schedule, use relevant course notes with
+                  citations, identify protected calendars, and propose safe
+                  calendar changes. Every change waits for your confirmation.
                 </p>
                 <div className="assistant-suggestions">
                   {SUGGESTIONS.map((suggestion) => (
@@ -1004,6 +1005,36 @@ export function AssistantPage() {
                             </time>
                           </header>
                           <p>{message.content}</p>
+                          {message.citations.length > 0 && (
+                            <ul
+                              aria-label="Course note citations"
+                              className="assistant-citations"
+                            >
+                              {message.citations.map((citation) => (
+                                <li
+                                  key={[
+                                    citation.note_id,
+                                    citation.source_id,
+                                    citation.slide_number,
+                                  ].join("-")}
+                                >
+                                  <Icon name="file" size={12} />
+                                  <span>
+                                    {citation.course_name} ·{" "}
+                                    {citation.note_title}
+                                    {citation.source_name &&
+                                      citation.slide_number && (
+                                        <>
+                                          {" "}
+                                          · {citation.source_name}, slide{" "}
+                                          {citation.slide_number}
+                                        </>
+                                      )}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       </article>
                       {isLinkedPlan && (

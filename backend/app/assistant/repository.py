@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.assistant.models import (
+    AssistantContextAudit,
     AssistantConversation,
     AssistantJob,
     AssistantJobStatus,
@@ -62,12 +64,14 @@ class AssistantRepository:
         role: AssistantMessageRole,
         content: str,
         job_id: uuid.UUID | None = None,
+        citations: list[dict[str, Any]] | None = None,
     ) -> AssistantMessage:
         message = AssistantMessage(
             conversation_id=conversation_id,
             role=role,
             content=content,
             job_id=job_id,
+            citations=citations or [],
         )
         self.session.add(message)
         await self.session.flush()
@@ -125,5 +129,52 @@ class AssistantRepository:
             select(AssistantMessage).where(
                 AssistantMessage.job_id == job_id,
                 AssistantMessage.role == AssistantMessageRole.ASSISTANT,
+            )
+        )
+
+    async def record_context_audit(
+        self,
+        job_id: uuid.UUID,
+        *,
+        course_ids: list[str],
+        note_ids: list[str],
+        source_ids: list[str],
+        slide_numbers: list[dict[str, Any]],
+        requires_clarification: bool,
+    ) -> AssistantContextAudit:
+        audit = await self.session.scalar(
+            select(AssistantContextAudit).where(AssistantContextAudit.job_id == job_id)
+        )
+        if audit is None:
+            audit = AssistantContextAudit(
+                job_id=job_id,
+                course_ids=course_ids,
+                note_ids=note_ids,
+                source_ids=source_ids,
+                slide_numbers=slide_numbers,
+                requires_clarification=requires_clarification,
+                created_at=datetime.now(UTC),
+            )
+            self.session.add(audit)
+        else:
+            audit.course_ids = course_ids
+            audit.note_ids = note_ids
+            audit.source_ids = source_ids
+            audit.slide_numbers = slide_numbers
+            audit.requires_clarification = requires_clarification
+        await self.session.flush()
+        return audit
+
+    async def list_context_audits(
+        self,
+        job_ids: list[uuid.UUID],
+    ) -> list[AssistantContextAudit]:
+        if not job_ids:
+            return []
+        return list(
+            await self.session.scalars(
+                select(AssistantContextAudit).where(
+                    AssistantContextAudit.job_id.in_(job_ids)
+                )
             )
         )

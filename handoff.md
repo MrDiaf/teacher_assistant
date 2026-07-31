@@ -8,9 +8,9 @@ Repository: `/home/ronny/Public/projects/teacher_assitant`
 1. Read `AGENTS.md` completely and follow its session-canary instruction.
 2. Read `instrcutions_2.md` (the filename is intentionally misspelled).
 3. Inspect the worktree before editing. Do not discard, reset, or overwrite the
-   uncommitted M12 work described below.
-4. Continue with one milestone only. M8 through M12 are complete. The next
-   milestone is M13.
+   uncommitted M13 work described below.
+4. M8 through M13 are complete. Do not begin another product phase without an
+   explicit owner request.
 5. Do not commit, push, merge, rebase, or delete branches unless the owner asks.
 
 The stale “Implement M8 only” text near the bottom of `instrcutions_2.md` has
@@ -19,16 +19,16 @@ M8–M12 checklists.
 
 ## Current repository and runtime state
 
-- Current Git `HEAD`: `4cb8e42 handoff done`
-- M12 is implemented and verified but remains uncommitted in the worktree.
-- M11 is included in the current `HEAD`.
+- Current Git `HEAD`: `723f5fe M12 done Course linked calenders`
+- M13 is implemented and verified but remains uncommitted in the worktree.
+- M8 through M12 are included in the current `HEAD`.
 - Development services are running:
   - Frontend: `http://localhost:5173`
   - Backend: `http://localhost:8000`
   - Backend health: passing
   - PostgreSQL: healthy
-- Alembic is at `20260730_0014 (head)`.
-- No M13 implementation has started.
+- Alembic is at `20260730_0015 (head)`.
+- No post-M13 product phase has started.
 - No `.openai/hosting.json` exists. This is a self-hosted Docker application;
   do not deploy it through Sites.
 
@@ -228,22 +228,91 @@ frontend/src/features/calendar/CalendarPage.tsx
 e2e/tests/calendar-assistant.spec.ts
 ```
 
+### M13 — Course-aware Assistant and diagnostics
+
+All M13 checklist items in `instrcutions_2.md` are checked and acceptance was
+verified.
+
+Implemented behavior:
+
+- Course-note questions use a bounded backend-selected context:
+  - up to 8 relevant/latest notes
+  - up to 40 explicitly linked extracted slides
+  - at most 24,000 note characters and 20,000 slide characters
+  - only calendars linked to the selected course
+- Generic calendar turns do not receive course files. Course calendar questions
+  receive course metadata and linked calendars without loading note bodies.
+- Cross-course matches trigger a deterministic clarification before Codex is
+  called. Conversation history is scoped by audited course/note IDs so an
+  unrelated earlier course answer is not carried into a later turn.
+- Note and slide citations are strict structured output. IDs, names, note
+  titles, source names, and slide numbers must match the supplied context.
+  Course-note answers with no citation, invented citations, and duplicate
+  citations fail safely without saving the answer.
+- Secrets are redacted from relevant notes, selected slide text, owner
+  questions, linked calendar fields, backend feedback, and diagnostic context.
+- Assistant messages persist citation snapshots. Assistant context audits store
+  only selected course/note/source IDs, slide numbers, and clarification state,
+  never note or slide content.
+- Handled API errors use:
+  - `error_id`
+  - `code`
+  - safe `message`
+  - redacted `details`
+  - `request_id`
+- Diagnostic records and lifecycle audits are persisted. Explanation workspaces
+  contain only `ERROR_CONTEXT.json`, the strict schema, and runtime policy—no
+  calendars, courses, source files, request bodies, repository, or credentials.
+- Diagnostic output separates owner-controlled `input_fixes` from possible
+  `application_improvements` and includes `retry_is_safe`.
+- The Materials UI exposes **Ask Assistant about this error** and renders the
+  structured explanation inline.
+- Runtime policy and the existing read-only Codex adapter prohibit source-code
+  access/editing and prevent the runtime from claiming improvements were
+  implemented.
+- Setup, privacy, retention, backup, restore, and troubleshooting guidance is
+  documented in `README.md`.
+
+Key M13 backend files:
+
+```text
+backend/app/assistant/course_context.py
+backend/app/diagnostics/
+backend/app/assistant/
+backend/app/codex_runtime/workspace.py
+backend/app/codex_runtime/workspace_template/AGENT.md
+backend/app/main.py
+backend/alembic/versions/20260730_0015_assistant_context_diagnostics.py
+backend/tests/test_assistant_api.py
+backend/tests/test_diagnostics.py
+```
+
+Key M13 frontend and end-to-end files:
+
+```text
+frontend/src/features/assistant/ErrorAssistantAction.tsx
+frontend/src/features/assistant/AssistantPage.tsx
+frontend/src/features/courses/CourseMaterials.tsx
+frontend/src/styles.css
+e2e/tests/calendar-assistant.spec.ts
+```
+
 ## Latest verification results
 
-The exact M12 source state was verified with:
+The exact M13 source state was verified with:
 
 ```text
 make test
-  Backend: 96 passed
-  Frontend: 37 passed
+  Backend: 103 passed
+  Frontend: 38 passed
 
 make e2e
-  Playwright/accessibility: 5 passed
+  Playwright/accessibility: 6 passed
 
 make lint: passed
 Frontend production build: passed
 git diff --check: passed
-Alembic current: 20260730_0014 (head)
+Alembic current: 20260730_0015 (head)
 Backend health: passed
 Frontend HTTP check: passed
 ```
@@ -254,9 +323,9 @@ configure the optional API-key fallback.
 
 ## Uncommitted worktree scope
 
-The modified/untracked files at handoff are the M12 implementation, migration,
-tests, checklist update, and this handoff update. Treat them as intentional
-owner work.
+The modified/untracked files at handoff are the M13 implementation, migration,
+tests, documentation, checklist update, and this handoff update. Treat them as
+intentional owner work.
 
 Do not use destructive Git commands. In particular, do not run:
 
@@ -269,30 +338,15 @@ git clean -fd
 Use `git status --short` and `git diff` to inspect changes. Do not assume an
 untracked M12 file is disposable.
 
-## Next milestone: M13 only
+## Next step
 
-M13 is “Course-aware Assistant and diagnostics”. Required checklist:
-
-- Extend Assistant context with relevant course notes.
-- Add course-aware clarification behavior.
-- Add note and slide citations.
-- Add structured safe error reports and redaction.
-- Add `Ask Assistant about this error`.
-- Separate input fixes from application-improvement suggestions.
-- Prevent runtime source-code editing.
-- Add audit records, privacy tests, and end-to-end coverage.
-- Update setup, backup, restore, and troubleshooting documentation.
-
-Acceptance:
-
-- The Assistant answers questions using only relevant course notes and supplied
-  slide text.
-- Sanitized application errors can be explained safely.
-- Secrets and unrelated private data are excluded.
-- Existing Calendar and Assistant safety rules remain enforced.
+There is no defined M14. M8 through M13 are complete. The next development
+session should review the uncommitted M13 diff and wait for the owner to define
+a new product phase. Do not implement the future automatic course import
+section without an explicit owner request.
 
 Recommended next owner prompt:
 
 ```text
-Read AGENTS.md and handoff.md, then proceed with M13 only.
+Read AGENTS.md and handoff.md, then review the completed M13 work.
 ```

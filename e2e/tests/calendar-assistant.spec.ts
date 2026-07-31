@@ -305,6 +305,98 @@ test("creates and manages a manual course through the UI", async ({
   ).toBeTruthy();
 });
 
+test("explains a sanitized course-material error without exposing private input", async ({
+  page,
+  request,
+}) => {
+  const courseResponse = await request.post("/api/v1/courses", {
+    data: {
+      name: "Diagnostic E2E course",
+      course_code: "DIAG101",
+      description: "Exercises the sanitized error Assistant flow.",
+      term: "Autumn 2026",
+      color: "#29584c",
+    },
+  });
+  expect(courseResponse.ok()).toBeTruthy();
+  const course = (await courseResponse.json()) as { id: string };
+
+  await page.route(
+    `**/api/v1/courses/${course.id}/sources?**`,
+    async (route) => {
+      await route.fulfill({
+        status: 413,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error_id: "e2e-sanitized-error",
+          code: "course_source_file_too_large",
+          message: "The course file exceeds the 25 MB upload limit.",
+          details: {
+            content_type: "application/pdf",
+            maximum_size_mb: 25,
+          },
+          request_id: "e2e-request",
+        }),
+      });
+    },
+  );
+  await page.route(
+    "**/api/v1/assistant/errors/e2e-sanitized-error/explain",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error_id: "e2e-sanitized-error",
+          request_id: "e2e-request",
+          model: "gpt-5.6-sol",
+          explained_at: new Date().toISOString(),
+          plain_explanation:
+            "The selected file is larger than the upload limit.",
+          likely_cause: "Its size exceeds 25 MB.",
+          input_fixes: ["Choose a smaller or compressed PDF."],
+          application_improvements: [
+            "Show the file-size limit beside the picker.",
+          ],
+          retry_is_safe: true,
+        }),
+      });
+    },
+  );
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Courses" }).click();
+  await page
+    .getByRole("button", { name: "Open Diagnostic E2E course" })
+    .click();
+  await page.getByRole("tab", { name: "Materials" }).click();
+  await page.getByLabel("Upload literature").setInputFiles({
+    name: "private-course-handout.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from("private content must not enter the diagnostic report"),
+  });
+  await expect(
+    page.getByText("The course file exceeds the 25 MB upload limit."),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: "Ask Assistant about this error" })
+    .click();
+  const explanation = page.getByRole("region", {
+    name: "Assistant error explanation",
+  });
+  await expect(explanation).toContainText(
+    "Choose a smaller or compressed PDF.",
+  );
+  await expect(explanation).toContainText(
+    "Show the file-size limit beside the picker.",
+  );
+  await expect(page.getByText("private content must not enter")).toHaveCount(0);
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expectNoAccessibilityViolations(accessibility.violations);
+});
+
 test("passes an automated accessibility scan and supports subscription sign-in", async ({
   page,
 }) => {

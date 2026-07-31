@@ -593,6 +593,101 @@ describe("CoursesPage", () => {
     expect(screen.getByText("lecture-assets")).toBeInTheDocument();
   });
 
+  it("asks the Assistant to explain a sanitized material error", async () => {
+    const successfulFetch = installCourseApi([activeCourse]);
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (
+          url.includes(`/api/v1/courses/${activeCourse.id}/sources?`) &&
+          method === "POST"
+        ) {
+          return jsonResponse(
+            {
+              error_id: "diagnostic-error-1",
+              code: "course_source_file_too_large",
+              message: "The course file exceeds the 25 MB upload limit.",
+              details: {
+                file_type: "application/pdf",
+                maximum_size_mb: 25,
+              },
+              request_id: "request-1",
+            },
+            413,
+          );
+        }
+        if (
+          url.endsWith("/api/v1/assistant/errors/diagnostic-error-1/explain") &&
+          method === "POST"
+        ) {
+          return jsonResponse({
+            error_id: "diagnostic-error-1",
+            request_id: "request-1",
+            model: "gpt-5.6-sol",
+            explained_at: now,
+            plain_explanation:
+              "The selected file is larger than the upload limit.",
+            likely_cause: "Its size exceeds 25 MB.",
+            input_fixes: ["Choose a smaller or compressed PDF."],
+            application_improvements: [
+              "Show the file-size limit beside the picker.",
+            ],
+            retry_is_safe: true,
+          });
+        }
+        return successfulFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CoursesPage />);
+
+    await screen.findByText("Database Systems");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Database Systems" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Materials" }));
+    await screen.findByText("No literature uploaded yet.");
+    fireEvent.change(screen.getByLabelText("Upload literature"), {
+      target: {
+        files: [
+          new File(["too large"], "oversized.pdf", {
+            type: "application/pdf",
+          }),
+        ],
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "The course file exceeds the 25 MB upload limit.",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Ask Assistant about this error",
+      }),
+    );
+
+    expect(
+      await screen.findByRole("region", {
+        name: "Assistant error explanation",
+      }),
+    ).toHaveTextContent("Choose a smaller or compressed PDF.");
+    expect(
+      screen.getByText("Possible application improvements"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Show the file-size limit beside the picker."),
+    ).toBeInTheDocument();
+    const explainCall = fetchMock.mock.calls.find(([url]) =>
+      String(url).endsWith(
+        "/api/v1/assistant/errors/diagnostic-error-1/explain",
+      ),
+    );
+    expect(JSON.parse(String(explainCall?.[1]?.body))).toEqual({});
+  });
+
   it("creates, edits, links, and explicitly deletes a course note", async () => {
     const fetchMock = installCourseApi([activeCourse], [slideSource]);
     vi.stubGlobal("fetch", fetchMock);

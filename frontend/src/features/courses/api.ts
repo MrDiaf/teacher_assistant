@@ -10,14 +10,29 @@ import type {
 import type { CalendarEvent, CalendarModel } from "../calendar/types";
 
 interface ApiErrorPayload {
+  error_id?: string;
+  code?: string;
   message?: string;
+  details?: Record<string, unknown>;
+  request_id?: string;
   detail?: string | { msg?: string }[];
 }
 
-class CourseApiError extends Error {
-  constructor(message: string) {
+export class CourseApiError extends Error {
+  readonly status: number;
+  readonly errorId: string | null;
+  readonly code: string | null;
+  readonly details: Record<string, unknown>;
+  readonly requestId: string | null;
+
+  constructor(message: string, response: Response, payload?: ApiErrorPayload) {
     super(message);
     this.name = "CourseApiError";
+    this.status = response.status;
+    this.errorId = payload?.error_id ?? null;
+    this.code = payload?.code ?? null;
+    this.details = payload?.details ?? {};
+    this.requestId = payload?.request_id ?? null;
   }
 }
 
@@ -35,6 +50,8 @@ async function readApiError(response: Response): Promise<CourseApiError> {
     payload?.message ??
       validationMessage ??
       "The course request could not be completed.",
+    response,
+    payload,
   );
 }
 

@@ -99,10 +99,15 @@ async def test_course_calendar_routes_validate_course_calendar_and_link_scope(
     assert missing_calendar.status_code == 404
     assert missing_calendar.json()["code"] == "calendar_not_found"
     assert unlinked_filter.status_code == 404
-    assert unlinked_filter.json() == {
-        "code": "course_calendar_not_linked",
-        "message": "The requested calendar is not linked to this course.",
-    }
+    unlinked_body = unlinked_filter.json()
+    assert unlinked_body["code"] == "course_calendar_not_linked"
+    assert (
+        unlinked_body["message"]
+        == "The requested calendar is not linked to this course."
+    )
+    assert unlinked_body["details"] == {"status_code": 404}
+    assert uuid.UUID(unlinked_body["error_id"])
+    assert uuid.UUID(unlinked_body["request_id"])
 
 
 async def test_unlink_and_course_delete_preserve_calendar_and_event_data(

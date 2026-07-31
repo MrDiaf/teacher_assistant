@@ -4,13 +4,18 @@ import type {
   AssistantConversation,
   AssistantConversationDetail,
   AssistantDeviceLogin,
+  DiagnosticExplanation,
   AssistantJob,
   AssistantProposal,
   AssistantTurn,
 } from "./types";
 
 interface ApiErrorPayload {
+  error_id?: string;
+  code?: string;
   message?: string;
+  details?: Record<string, unknown>;
+  request_id?: string;
   detail?: string | { msg?: string }[];
 }
 
@@ -37,6 +42,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         validationMessage ??
         "The assistant request could not be completed.",
       response.status,
+      {
+        errorId: payload?.error_id,
+        code: payload?.code,
+        details: payload?.details,
+        requestId: payload?.request_id,
+      },
     );
   }
   return (await response.json()) as T;
@@ -133,5 +144,15 @@ export const assistantApi = {
       method: "POST",
       body: JSON.stringify({ content, model }),
     });
+  },
+
+  explainError(errorId: string, model?: string) {
+    return request<DiagnosticExplanation>(
+      `/assistant/errors/${encodeURIComponent(errorId)}/explain`,
+      {
+        method: "POST",
+        body: JSON.stringify(model ? { model } : {}),
+      },
+    );
   },
 };

@@ -9,9 +9,10 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.assistant.models import AssistantProposal
+from app.assistant.models import AssistantContextAudit, AssistantProposal
 from app.codex_runtime.adapter import (
     CodexAccountStatus,
     CodexDeviceLoginAttempt,
@@ -36,15 +37,28 @@ class FakeCodexAdapter:
         self.fail_with: AssistantRuntimeError | None = None
 
     async def answer(self, workspace, model=None) -> CodexRuntimeResult:
+        def read_text(name: str) -> str | None:
+            path = workspace.job_directory / name
+            return path.read_text() if path.exists() else None
+
+        def read_json(name: str, fallback):
+            content = read_text(name)
+            return json.loads(content) if content is not None else fallback
+
         snapshot = {
             "model": model,
             "root": workspace.root,
             "job_directory": workspace.job_directory,
             "policy": (workspace.job_directory / "AGENT.md").read_text(),
-            "request": (workspace.job_directory / "REQUEST.md").read_text(),
-            "calendars": json.loads((workspace.job_directory / "CALENDARS.json").read_text()),
-            "events": json.loads((workspace.job_directory / "EVENTS.json").read_text()),
-            "schema": json.loads((workspace.job_directory / "OUTPUT_SCHEMA.json").read_text()),
+            "request": read_text("REQUEST.md"),
+            "calendars": read_json("CALENDARS.json", []),
+            "events": read_json("EVENTS.json", []),
+            "courses": read_json("COURSES.json", []),
+            "notes": read_json("NOTES.json", []),
+            "slide_references": read_json("SLIDE_REFERENCES.json", []),
+            "selected_slide_text": read_json("SELECTED_SLIDE_TEXT.json", []),
+            "error_context": read_json("ERROR_CONTEXT.json", None),
+            "schema": read_json("OUTPUT_SCHEMA.json", {}),
             "files": sorted(
                 str(path.relative_to(workspace.job_directory))
                 for path in workspace.job_directory.rglob("*")
@@ -131,6 +145,62 @@ async def ask(
         f"/api/v1/assistant/conversations/{conversation_id}/messages",
         json=payload,
     )
+
+
+async def create_course_note_context(
+    client: AsyncClient,
+    *,
+    course_name: str,
+    course_code: str,
+    note_title: str,
+    note_body: str,
+    slide_text: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any] | None]:
+    course_response = await client.post(
+        "/api/v1/courses",
+        json={
+            "name": course_name,
+            "course_code": course_code,
+            "description": None,
+            "term": "Autumn 2026",
+            "color": "#29584c",
+        },
+    )
+    assert course_response.status_code == 201, course_response.text
+    course = course_response.json()
+    source: dict[str, Any] | None = None
+    references: list[dict[str, Any]] = []
+    if slide_text is not None:
+        source_response = await client.post(
+            f"/api/v1/courses/{course['id']}/sources",
+            params={
+                "source_type": "slides",
+                "file_name": f"{course_code.lower()}-slides.txt",
+                "display_name": f"{course_name} lecture deck",
+            },
+            content=slide_text,
+            headers={"Content-Type": "text/plain"},
+        )
+        assert source_response.status_code == 201, source_response.text
+        source = source_response.json()
+        references = [
+            {
+                "source_id": source["id"],
+                "start_slide": 1,
+                "end_slide": 1,
+                "label": "Relevant lecture",
+            }
+        ]
+    note_response = await client.post(
+        f"/api/v1/courses/{course['id']}/notes",
+        json={
+            "title": note_title,
+            "body": note_body,
+            "slide_references": references,
+        },
+    )
+    assert note_response.status_code == 201, note_response.text
+    return course, note_response.json(), source
 
 
 def assert_strict_object_schemas(node: Any) -> None:
@@ -1142,3 +1212,305 @@ async def test_invalid_model_content_is_not_written_to_application_logs(
     assert response.json()["job"]["status"] == "failed"
     assert private_marker not in caplog.text
     assert "invalid_assistant_response" in caplog.text
+
+
+async def test_course_question_uses_only_relevant_notes_slides_and_linked_calendar(
+    client: AsyncClient,
+    session: AsyncSession,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    course, note, source = await create_course_note_context(
+        client,
+        course_name="Datasekretess",
+        course_code="DATSEC",
+        note_title="Normalization and disclosure",
+        note_body=(
+            "Normalization reduces duplicate personal data. "
+            "API_KEY=sk-relevant-note-secret"
+        ),
+        slide_text=(
+            "Third normal form reduces update anomalies. "
+            "Bearer relevant-slide-token"
+        ),
+    )
+    assert source is not None
+    unrelated_course, unrelated_note, _ = await create_course_note_context(
+        client,
+        course_name="Operating Systems",
+        course_code="OS101",
+        note_title="Normalization elsewhere",
+        note_body="OWNER_API_TOKEN=sk-unrelated-private-value",
+    )
+    relevant_calendar = await create_calendar(client, name="Datasekretess schedule")
+    unrelated_calendar = await create_calendar(client, name="Private errands")
+    linked = await client.post(
+        f"/api/v1/courses/{course['id']}/calendars",
+        json={"calendar_id": relevant_calendar["id"]},
+    )
+    assert linked.status_code == 201
+    await create_event(
+        client,
+        relevant_calendar["id"],
+        title="Privacy lecture",
+        description="TOKEN=sk-relevant-calendar-secret",
+    )
+    await create_event(client, unrelated_calendar["id"], title="Private appointment")
+
+    conversation = await create_conversation(client)
+    fake_codex.response = json.dumps(
+        {
+            "message": "PRIOR-OPERATING-SYSTEMS-ANSWER",
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [
+                {
+                    "course_id": unrelated_course["id"],
+                    "course_name": unrelated_course["name"],
+                    "note_id": unrelated_note["id"],
+                    "note_title": unrelated_note["title"],
+                    "source_id": None,
+                    "source_name": None,
+                    "slide_number": None,
+                }
+            ],
+        }
+    )
+    prior = await ask(
+        client,
+        conversation["id"],
+        "Summarize the Operating Systems note about normalization.",
+    )
+    assert prior.status_code == 200, prior.text
+    assert prior.json()["job"]["status"] == "completed"
+
+    fake_codex.response = json.dumps(
+        {
+            "message": (
+                "Your note says normalization reduces duplicate personal data, "
+                "and the linked deck connects third normal form to update anomalies."
+            ),
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [
+                {
+                    "course_id": course["id"],
+                    "course_name": course["name"],
+                    "note_id": note["id"],
+                    "note_title": note["title"],
+                    "source_id": source["id"],
+                    "source_name": source["display_name"],
+                    "slide_number": 1,
+                }
+            ],
+        }
+    )
+    response = await ask(
+        client,
+        conversation["id"],
+        (
+            "What did I write about normalization in Datasekretess? "
+            "token=sk-relevant-question-secret"
+        ),
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "completed"
+    assert body["assistant_message"]["citations"][0]["note_id"] == note["id"]
+    call = fake_codex.calls[-1]
+    assert [item["id"] for item in call["courses"]] == [course["id"]]
+    assert [item["id"] for item in call["notes"]] == [note["id"]]
+    assert call["selected_slide_text"] == [
+        {
+            "note_id": note["id"],
+            "source_id": source["id"],
+            "source_name": source["display_name"],
+            "slide_number": 1,
+            "text": "Third normal form reduces update anomalies. [REDACTED]",
+        }
+    ]
+    assert [item["id"] for item in call["calendars"]] == [relevant_calendar["id"]]
+    assert [item["title"] for item in call["events"]] == ["Privacy lecture"]
+    supplied_context = json.dumps(
+        {
+            key: call[key]
+            for key in (
+                "request",
+                "calendars",
+                "events",
+                "courses",
+                "notes",
+                "slide_references",
+                "selected_slide_text",
+            )
+        }
+    )
+    assert unrelated_course["id"] not in supplied_context
+    assert "sk-unrelated-private-value" not in supplied_context
+    assert "sk-relevant-note-secret" not in supplied_context
+    assert "relevant-slide-token" not in supplied_context
+    assert "sk-relevant-calendar-secret" not in supplied_context
+    assert "sk-relevant-question-secret" not in supplied_context
+    assert "[REDACTED]" in supplied_context
+    assert "PRIOR-OPERATING-SYSTEMS-ANSWER" not in supplied_context
+    assert "Private appointment" not in supplied_context
+    assert "COURSES.json" in call["files"]
+    assert "SELECTED_SLIDE_TEXT.json" in call["files"]
+
+    fake_codex.response = json.dumps(
+        {
+            "message": "The linked course calendar contains the privacy lecture.",
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [],
+        }
+    )
+    calendar_question = await ask(
+        client,
+        conversation["id"],
+        "What is on the Datasekretess calendar?",
+    )
+    assert calendar_question.status_code == 200, calendar_question.text
+    calendar_call = fake_codex.calls[-1]
+    assert calendar_call["notes"] == []
+    assert calendar_call["selected_slide_text"] == []
+    assert [item["id"] for item in calendar_call["calendars"]] == [
+        relevant_calendar["id"]
+    ]
+    assert "Your note says normalization" not in calendar_call["request"]
+
+    audit = await session.scalar(
+        select(AssistantContextAudit).where(
+            AssistantContextAudit.job_id == uuid.UUID(body["job"]["id"])
+        )
+    )
+    assert audit is not None
+    assert audit.course_ids == [course["id"]]
+    assert audit.note_ids == [note["id"]]
+    assert audit.source_ids == [source["id"]]
+    assert audit.requires_clarification is False
+
+
+async def test_course_question_asks_for_clarification_before_runtime(
+    client: AsyncClient,
+    session: AsyncSession,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    first_course, _, _ = await create_course_note_context(
+        client,
+        course_name="Datasekretess",
+        course_code="DATSEC",
+        note_title="Database design",
+        note_body="Normalization avoids update anomalies.",
+    )
+    second_course, _, _ = await create_course_note_context(
+        client,
+        course_name="Data Engineering",
+        course_code="DE201",
+        note_title="Warehouse design",
+        note_body="Normalization can reduce duplication.",
+    )
+    conversation = await create_conversation(client)
+
+    response = await ask(
+        client,
+        conversation["id"],
+        "What did I write about normalization?",
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "completed"
+    assert "Which course do you mean?" in body["assistant_message"]["content"]
+    assert first_course["name"] in body["assistant_message"]["content"]
+    assert second_course["name"] in body["assistant_message"]["content"]
+    assert body["assistant_message"]["citations"] == []
+    assert fake_codex.calls == []
+    audit = await session.scalar(
+        select(AssistantContextAudit).where(
+            AssistantContextAudit.job_id == uuid.UUID(body["job"]["id"])
+        )
+    )
+    assert audit is not None
+    assert set(audit.course_ids) == {first_course["id"], second_course["id"]}
+    assert audit.note_ids == []
+    assert audit.requires_clarification is True
+
+
+async def test_invented_course_citation_fails_without_saving_answer(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    course, note, _ = await create_course_note_context(
+        client,
+        course_name="Datasekretess",
+        course_code="DATSEC",
+        note_title="Privacy principles",
+        note_body="Data minimization limits unnecessary collection.",
+    )
+    fake_codex.response = json.dumps(
+        {
+            "message": "A claim with an invented citation.",
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [
+                {
+                    "course_id": course["id"],
+                    "course_name": course["name"],
+                    "note_id": str(uuid.uuid4()),
+                    "note_title": note["title"],
+                    "source_id": None,
+                    "source_name": None,
+                    "slide_number": None,
+                }
+            ],
+        }
+    )
+    conversation = await create_conversation(client)
+
+    response = await ask(
+        client,
+        conversation["id"],
+        "Summarize my latest notes from Datasekretess.",
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "failed"
+    assert body["job"]["safe_error_code"] == "invalid_assistant_response"
+    assert body["assistant_message"] is None
+    assert body["proposals"] == []
+
+
+async def test_course_note_answer_requires_at_least_one_valid_citation(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    await create_course_note_context(
+        client,
+        course_name="Datasekretess",
+        course_code="DATSEC",
+        note_title="Privacy principles",
+        note_body="Purpose limitation constrains later data use.",
+    )
+    fake_codex.response = json.dumps(
+        {
+            "message": "An uncited course-note answer.",
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [],
+        }
+    )
+    conversation = await create_conversation(client)
+
+    response = await ask(
+        client,
+        conversation["id"],
+        "Summarize my latest notes from Datasekretess.",
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "failed"
+    assert body["job"]["safe_error_code"] == "invalid_assistant_response"
+    assert body["assistant_message"] is None
