@@ -54,7 +54,18 @@ class ProposalValidator:
         except (InvalidAssistantResponseError, InvalidRecurrenceError):
             raise
         except Exception as exc:
-            raise InvalidAssistantResponseError() from exc
+            raise InvalidAssistantResponseError(
+                "The proposed calendar change could not be matched safely to current "
+                "calendar data.",
+                validation_stage="proposal_target_validation",
+                validation_errors=[
+                    {
+                        "field": "proposal.actions",
+                        "message": "A referenced calendar or event could not be safely validated.",
+                        "type": type(exc).__name__,
+                    }
+                ],
+            ) from exc
 
     async def revalidate(self, proposal: AssistantProposal) -> list[ProposalAction]:
         try:
@@ -132,7 +143,17 @@ class ProposalValidator:
 
             if isinstance(action, UpdateCalendarAction):
                 if action.calendar_id in calendar_targets:
-                    raise InvalidAssistantResponseError()
+                    raise InvalidAssistantResponseError(
+                        "The proposal tried to update the same calendar more than once.",
+                        validation_stage="proposal_safety_validation",
+                        validation_errors=[
+                            {
+                                "field": "proposal.actions",
+                                "message": "Duplicate calendar targets are not allowed.",
+                                "type": "duplicate_calendar_target",
+                            }
+                        ],
+                    )
                 calendar_targets.add(action.calendar_id)
                 calendar = await self.calendars.get(
                     action.calendar_id, for_update=for_update
@@ -204,7 +225,17 @@ class ProposalValidator:
                 continue
 
             if action.event_id in event_targets:
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "The proposal tried to change the same event more than once.",
+                    validation_stage="proposal_safety_validation",
+                    validation_errors=[
+                        {
+                            "field": "proposal.actions",
+                            "message": "Duplicate event targets are not allowed.",
+                            "type": "duplicate_event_target",
+                        }
+                    ],
+                )
             event_targets.add(action.event_id)
             event = await self.events.get(action.event_id, for_update=for_update)
             parent = (
@@ -219,7 +250,17 @@ class ProposalValidator:
             )
             self._ensure_writable(calendar)
             if action.calendar_id != parent.calendar_id:
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "The proposal's calendar ID did not match the targeted event.",
+                    validation_stage="proposal_target_validation",
+                    validation_errors=[
+                        {
+                            "field": "proposal.actions.calendar_id",
+                            "message": "The event belongs to a different calendar.",
+                            "type": "event_calendar_mismatch",
+                        }
+                    ],
+                )
             is_recurring = parent.recurrence_rule is not None
             self._validate_recurrence_scope(action, is_recurring)
 
@@ -302,19 +343,74 @@ class ProposalValidator:
     ) -> None:
         if not is_recurring:
             if action.recurrence_scope is not None or action.occurrence_start_at is not None:
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "The proposal supplied recurrence fields for an event that does not recur.",
+                    validation_stage="recurrence_scope_validation",
+                    validation_errors=[
+                        {
+                            "field": "proposal.actions.recurrence_scope",
+                            "message": "Non-recurring events cannot use recurrence scope fields.",
+                            "type": "unexpected_recurrence_scope",
+                        }
+                    ],
+                )
             return
         if action.recurrence_scope is None:
-            raise InvalidAssistantResponseError()
+            raise InvalidAssistantResponseError(
+                "The proposal did not say whether one occurrence or the whole series "
+                "should change.",
+                validation_stage="recurrence_scope_validation",
+                validation_errors=[
+                    {
+                        "field": "proposal.actions.recurrence_scope",
+                        "message": "Recurring changes require occurrence or series scope.",
+                        "type": "recurrence_scope_missing",
+                    }
+                ],
+            )
         if action.recurrence_scope == "occurrence":
             if action.occurrence_start_at is None:
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "The proposal selected one occurrence but did not identify its start time.",
+                    validation_stage="recurrence_scope_validation",
+                    validation_errors=[
+                        {
+                            "field": "proposal.actions.occurrence_start_at",
+                            "message": "Occurrence start time is required for one occurrence.",
+                            "type": "occurrence_start_missing",
+                        }
+                    ],
+                )
             if isinstance(action, UpdateEventAction):
                 changed = action.changes.selected_fields()
                 if "calendar_id" in changed or "recurrence_rule" in changed:
-                    raise InvalidAssistantResponseError()
+                    raise InvalidAssistantResponseError(
+                        "A one-occurrence update tried to move calendars or change the "
+                        "series rule.",
+                        validation_stage="recurrence_scope_validation",
+                        validation_errors=[
+                            {
+                                "field": "proposal.actions.changes",
+                                "message": (
+                                    "Calendar and recurrence-rule changes require "
+                                    "full-series scope."
+                                ),
+                                "type": "occurrence_change_not_allowed",
+                            }
+                        ],
+                    )
         elif action.occurrence_start_at is not None:
-            raise InvalidAssistantResponseError()
+            raise InvalidAssistantResponseError(
+                "The proposal supplied an occurrence start time for a full-series change.",
+                validation_stage="recurrence_scope_validation",
+                validation_errors=[
+                    {
+                        "field": "proposal.actions.occurrence_start_at",
+                        "message": "Full-series changes must not identify one occurrence.",
+                        "type": "unexpected_occurrence_start",
+                    }
+                ],
+            )
 
     @staticmethod
     def _calendar_state(calendar: Calendar) -> dict[str, Any]:

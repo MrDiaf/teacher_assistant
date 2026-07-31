@@ -36,6 +36,7 @@ from app.core.errors import (
 )
 from app.course_calendars.repository import CourseCalendarRepository
 from app.diagnostics.redaction import redact, redact_text
+from app.diagnostics.service import DiagnosticService
 
 logger = logging.getLogger(__name__)
 CONTEXT_PAST_DAYS = 30
@@ -138,6 +139,8 @@ class AssistantService:
         job.status = AssistantJobStatus.QUEUED
         job.safe_error = None
         job.safe_error_code = None
+        job.safe_error_details = {}
+        job.diagnostic_error_id = None
         await self.session.commit()
         return await self._execute_job(job.id, retry_feedback=retry_feedback)
 
@@ -153,6 +156,8 @@ class AssistantService:
                 "status": AssistantJobStatus.PREPARING_CONTEXT,
                 "safe_error": None,
                 "safe_error_code": None,
+                "safe_error_details": {},
+                "diagnostic_error_id": None,
             },
         )
         await self.session.commit()
@@ -276,6 +281,8 @@ class AssistantService:
                     "status": job_status,
                     "safe_error": None,
                     "safe_error_code": None,
+                    "safe_error_details": {},
+                    "diagnostic_error_id": None,
                 },
             )
             conversation = await self.assistant.get_conversation(job.conversation_id)
@@ -298,7 +305,13 @@ class AssistantService:
                 job_id,
                 exc.code,
             )
-            return await self._fail_job(job_id, exc.message, exc.code)
+            return await self._fail_job(
+                job_id,
+                exc.message,
+                exc.code,
+                details=exc.details,
+                exception_type=type(exc).__name__,
+            )
         except ApplicationError as exc:
             await self.session.rollback()
             logger.warning(
@@ -306,7 +319,13 @@ class AssistantService:
                 job_id,
                 exc.code,
             )
-            return await self._fail_job(job_id, exc.message, exc.code)
+            return await self._fail_job(
+                job_id,
+                exc.message,
+                exc.code,
+                details=exc.details,
+                exception_type=type(exc).__name__,
+            )
         except Exception as exc:
             logger.error(
                 "Unexpected assistant failure: job=%s error_type=%s",
@@ -318,6 +337,10 @@ class AssistantService:
                 job_id,
                 "The calendar assistant failed safely. No calendar data changed.",
                 "assistant_internal_error",
+                details={
+                    "reason": "An unexpected application error interrupted the assistant job.",
+                },
+                exception_type=type(exc).__name__,
             )
 
     async def _fail_job(
@@ -325,18 +348,88 @@ class AssistantService:
         job_id: uuid.UUID,
         safe_error: str,
         safe_error_code: str,
+        *,
+        details: dict[str, Any] | None = None,
+        exception_type: str | None = None,
     ) -> AssistantTurn:
+        current_job = await self.assistant.get_job(job_id)
+        safe_details = redact(
+            {
+                "job_id": str(job_id),
+                "model": current_job.model,
+                "failure_stage": current_job.status.value,
+                "reason": safe_error,
+                **(details or {}),
+                "owner_actions": self._owner_failure_actions(safe_error_code),
+                "developer_actions": [
+                    "Use the job and diagnostic report IDs to trace this failure.",
+                    "Inspect the validation stage and field issues below. Raw model output "
+                    "is intentionally not logged or exposed.",
+                ],
+            }
+        )
+        diagnostic_error_id: uuid.UUID | None = None
+        try:
+            diagnostic = await DiagnosticService(self.session).record_error(
+                request_id=job_id,
+                code=safe_error_code,
+                message=safe_error,
+                operation="assistant_job",
+                details=safe_details,
+                exception_type=exception_type,
+            )
+            diagnostic_error_id = diagnostic.id
+        except Exception as exc:
+            logger.error(
+                "Assistant diagnostic record failed: job=%s error_type=%s",
+                job_id,
+                type(exc).__name__,
+            )
+            await self.session.rollback()
         job = await self.assistant.update_job(
             job_id,
             {
                 "status": AssistantJobStatus.FAILED,
                 "safe_error": safe_error[:500],
                 "safe_error_code": safe_error_code[:80],
+                "safe_error_details": safe_details,
+                "diagnostic_error_id": diagnostic_error_id,
             },
         )
         await self.session.commit()
         await self.session.refresh(job)
         return await self._turn_from_job(job)
+
+    @staticmethod
+    def _owner_failure_actions(safe_error_code: str) -> list[str]:
+        if safe_error_code == "invalid_assistant_response":
+            return [
+                "Retry once. The retry includes this validation feedback so the assistant can "
+                "correct its response format.",
+                "If it fails again, rephrase the request or choose another allowed model. "
+                "The Assistant can answer general questions and provide text or code snippets, "
+                "but it cannot open an editor, control the clipboard, browse, or run tools.",
+            ]
+        if safe_error_code == "assistant_not_configured":
+            return [
+                "Sign in with ChatGPT from this page, then retry the same message.",
+            ]
+        if safe_error_code == "assistant_auth_unavailable":
+            return [
+                "Sign in with ChatGPT again. If sign-in is already active, wait briefly and retry.",
+            ]
+        if safe_error_code == "assistant_proposal_limit":
+            return [
+                "Split the request into smaller groups of at most 10 affected events.",
+            ]
+        if safe_error_code == "calendar_read_only":
+            return [
+                "Choose a writable calendar or ask a read-only question about the protected one.",
+            ]
+        return [
+            "Review the reason below, correct any named input, and retry only when the action "
+            "is marked safe.",
+        ]
 
     async def _turn_from_job(self, job: AssistantJob) -> AssistantTurn:
         conversation = await self.assistant.get_conversation(job.conversation_id)
@@ -378,6 +471,8 @@ class AssistantService:
                 "status": AssistantJobStatus.COMPLETED,
                 "safe_error": None,
                 "safe_error_code": None,
+                "safe_error_details": {},
+                "diagnostic_error_id": None,
             },
         )
         conversation = await self.assistant.get_conversation(job.conversation_id)
@@ -471,6 +566,7 @@ class AssistantService:
             "error_code": job.safe_error_code or "assistant_job_failed",
             "safe_error": job.safe_error
             or "The assistant job failed safely without changing calendar data.",
+            "safe_error_details": job.safe_error_details,
         }
 
     @classmethod

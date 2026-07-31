@@ -11,6 +11,7 @@ import { Icon } from "../../components/Icon";
 import { AiModelSelector } from "../ai/AiModelSelector";
 import { useAiModelSelection } from "../ai/useAiModelSelection";
 import { assistantApi } from "./api";
+import { ErrorAssistantAction } from "./ErrorAssistantAction";
 import type {
   AssistantAuthStatus,
   AssistantConversation,
@@ -23,8 +24,8 @@ import type {
 
 const SUGGESTIONS = [
   "What do I have tomorrow?",
-  "Create a dentist appointment next Tuesday at 14:00.",
-  "Find a free hour after 16:00 this week.",
+  "Turn a topic into a study checklist.",
+  "Explain what you can do with my course notes.",
 ];
 
 function messageTime(value: string): string {
@@ -40,6 +41,147 @@ function friendlyJobError(message: string | null): string {
     return "The assistant was not connected. Sign in with ChatGPT, then retry safely.";
   }
   return message;
+}
+
+function AssistantJobErrorCard({
+  job,
+  isAuthenticated,
+  onRetry,
+}: {
+  job: AssistantJob;
+  isAuthenticated: boolean;
+  onRetry: () => void;
+}) {
+  const details = job.safe_error_details ?? {};
+  const reason = typeof details.reason === "string" ? details.reason : null;
+  const ownerActions = Array.isArray(details.owner_actions)
+    ? details.owner_actions.filter(
+        (item): item is string => typeof item === "string" && Boolean(item),
+      )
+    : [];
+  const developerActions = Array.isArray(details.developer_actions)
+    ? details.developer_actions.filter(
+        (item): item is string => typeof item === "string" && Boolean(item),
+      )
+    : [];
+  const validationErrors = Array.isArray(details.validation_errors)
+    ? details.validation_errors
+    : [];
+  const title =
+    job.safe_error_code === "invalid_assistant_response"
+      ? "The reply was blocked for safety"
+      : "The assistant could not finish";
+
+  return (
+    <section className="assistant-job-error" role="alert">
+      <header className="assistant-job-error-heading">
+        <Icon name="refresh" size={18} />
+        <div>
+          <strong>{title}</strong>
+          <p>{friendlyJobError(job.safe_error)}</p>
+        </div>
+      </header>
+
+      {reason && reason !== job.safe_error && (
+        <div className="assistant-job-error-section">
+          <strong>Why it failed</strong>
+          <p>{reason}</p>
+        </div>
+      )}
+      {!reason && (
+        <div className="assistant-job-error-section">
+          <strong>Why details are limited</strong>
+          <p>
+            This failure was stored before detailed Assistant diagnostics were
+            available. Retry once; if it fails again, the new attempt will show
+            the exact validation stage and field issue.
+          </p>
+        </div>
+      )}
+
+      <div className="assistant-job-error-section">
+        <strong>What you can do</strong>
+        {ownerActions.length ? (
+          <ul>
+            {ownerActions.map((action) => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        ) : (
+          <p>
+            Retry once. If it fails again, rephrase the request or choose
+            another model.
+          </p>
+        )}
+      </div>
+
+      <div className="assistant-job-error-actions">
+        <button
+          className="quiet-button"
+          disabled={!isAuthenticated}
+          onClick={onRetry}
+          type="button"
+        >
+          Retry safely
+        </button>
+      </div>
+
+      {job.diagnostic_error_id && (
+        <ErrorAssistantAction errorId={job.diagnostic_error_id} />
+      )}
+
+      <details className="assistant-job-developer-details">
+        <summary>Developer details</summary>
+        <dl>
+          <div>
+            <dt>Error code</dt>
+            <dd>{job.safe_error_code ?? "assistant_job_failed"}</dd>
+          </div>
+          {typeof details.failure_stage === "string" && (
+            <div>
+              <dt>Job stage</dt>
+              <dd>{details.failure_stage}</dd>
+            </div>
+          )}
+          {typeof details.validation_stage === "string" && (
+            <div>
+              <dt>Validation stage</dt>
+              <dd>{details.validation_stage}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Job reference</dt>
+            <dd>{job.id}</dd>
+          </div>
+          {job.diagnostic_error_id && (
+            <div>
+              <dt>Diagnostic report</dt>
+              <dd>{job.diagnostic_error_id}</dd>
+            </div>
+          )}
+        </dl>
+        {validationErrors.length > 0 && (
+          <div className="assistant-job-validation-errors">
+            <strong>Validation issues</strong>
+            <ul>
+              {validationErrors.map((item, index) => (
+                <li key={`${item.field}-${item.type}-${index}`}>
+                  <code>{item.field}</code>: {item.message} ({item.type})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {developerActions.length > 0 && (
+          <ul className="assistant-job-developer-actions">
+            {developerActions.map((action) => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        )}
+      </details>
+    </section>
+  );
 }
 
 const REVIEW_FIELD_LABELS: Record<string, string> = {
@@ -709,9 +851,11 @@ export function AssistantPage() {
     <main className="assistant-page" aria-labelledby="assistant-title">
       <header className="assistant-page-header">
         <div>
-          <p className="eyebrow">Calendar intelligence</p>
+          <p className="eyebrow">Private AI workspace</p>
           <h1 id="assistant-title">Assistant</h1>
-          <p>Ask about your schedule and availability in plain language.</p>
+          <p>
+            Ask general questions, or work with your calendar and course notes.
+          </p>
         </div>
         <div className="assistant-mode-badge">
           <Icon name="checklist" size={15} />
@@ -861,8 +1005,8 @@ export function AssistantPage() {
           <div className="assistant-context-note">
             <Icon name="calendar" size={16} />
             <span>
-              Answers and proposals use calendar context from this private
-              installation.
+              General help uses model knowledge. Calendar and relevant note
+              context stay private to this installation.
             </span>
           </div>
         </aside>
@@ -945,9 +1089,10 @@ export function AssistantPage() {
                 <p className="eyebrow">Ready when you are</p>
                 <h2>What would you like to know?</h2>
                 <p>
-                  I can explain your schedule, use relevant course notes with
-                  citations, identify protected calendars, and propose safe
-                  calendar changes. Every change waits for your confirmation.
+                  I can help with general questions, explanations, writing,
+                  planning, study aids, and code snippets. I can also use your
+                  calendar and relevant course notes; every calendar change
+                  still waits for your confirmation.
                 </p>
                 <div className="assistant-suggestions">
                   {SUGGESTIONS.map((suggestion) => (
@@ -1075,32 +1220,15 @@ export function AssistantPage() {
                     <span />
                     <span />
                     <span />
-                    <strong>Checking your calendar safely…</strong>
+                    <strong>Preparing a helpful answer…</strong>
                   </div>
                 )}
                 {failedJob && !isSending && (
-                  <div className="assistant-job-error" role="alert">
-                    <Icon name="refresh" size={18} />
-                    <div>
-                      <strong>The assistant could not finish</strong>
-                      <p>{friendlyJobError(failedJob.safe_error)}</p>
-                      <small>
-                        {failedJob.safe_error_code && (
-                          <>Error code: {failedJob.safe_error_code}. </>
-                        )}
-                        Retry sends this safe failure back to the assistant so
-                        it can correct the response.
-                      </small>
-                    </div>
-                    <button
-                      className="quiet-button"
-                      disabled={!isAuthenticated}
-                      onClick={() => void retry()}
-                      type="button"
-                    >
-                      Retry safely
-                    </button>
-                  </div>
+                  <AssistantJobErrorCard
+                    isAuthenticated={isAuthenticated}
+                    job={failedJob}
+                    onRetry={() => void retry()}
+                  />
                 )}
               </div>
             )}
@@ -1145,7 +1273,7 @@ export function AssistantPage() {
               value={selectedModel}
             />
             <label className="sr-only" htmlFor="assistant-message">
-              Message the calendar assistant
+              Message the Assistant
             </label>
             <textarea
               disabled={isSending || !isAuthenticated || !selectedModel}
@@ -1157,8 +1285,8 @@ export function AssistantPage() {
                 isAuthenticated
                   ? revisionProposal
                     ? "Describe what should change in the proposal…"
-                    : "Ask about your calendar…"
-                  : "Sign in with ChatGPT to ask about your calendar"
+                    : "Ask anything, or use your calendar and notes…"
+                  : "Sign in with ChatGPT to ask the Assistant"
               }
               ref={composer}
               rows={2}

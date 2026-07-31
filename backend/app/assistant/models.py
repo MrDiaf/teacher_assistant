@@ -133,6 +133,13 @@ class AssistantJob(TimestampMixin, Base):
     model: Mapped[str] = mapped_column(String(100), nullable=False)
     safe_error: Mapped[str | None] = mapped_column(Text)
     safe_error_code: Mapped[str | None] = mapped_column(String(80))
+    safe_error_details: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    diagnostic_error_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("diagnostic_errors.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     conversation: Mapped[AssistantConversation] = relationship(back_populates="jobs")
     proposals: Mapped[list["AssistantProposal"]] = relationship(

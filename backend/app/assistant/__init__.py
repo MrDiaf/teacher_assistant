@@ -1,1 +1,1 @@
-"""Read-only calendar assistant application module."""
+"""Private general and calendar-aware Assistant application module."""

@@ -71,8 +71,26 @@ export interface AssistantJob {
   model: string;
   safe_error: string | null;
   safe_error_code: string | null;
+  safe_error_details: AssistantJobFailureDetails;
+  diagnostic_error_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AssistantJobFailureDetails {
+  job_id?: string;
+  model?: string;
+  failure_stage?: string;
+  validation_stage?: string;
+  reason?: string;
+  validation_errors?: Array<{
+    field: string;
+    message: string;
+    type: string;
+  }>;
+  owner_actions?: string[];
+  developer_actions?: string[];
+  [key: string]: unknown;
 }
 
 export interface AssistantConversationDetail extends AssistantConversation {

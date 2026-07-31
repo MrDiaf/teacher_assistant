@@ -23,15 +23,18 @@ checklists.
 - Git `HEAD`: `0e1fa6f M13 is done`
 - M8 through M13 are committed and complete.
 - No M14 is currently defined or in progress.
+- Focused post-M13 Assistant error-diagnostics and general-helper refinements
+  are implemented and verified in the worktree but are not committed.
 - Docker development services are running:
   - Frontend: `http://localhost:5173`
   - Backend: `http://localhost:8000`
   - PostgreSQL: healthy
-- Alembic is at `20260730_0015 (head)`.
+- Alembic is at `20260731_0016 (head)`.
 - `.openai/hosting.json` is absent. This remains a self-hosted Docker
   application; do not deploy it through Sites.
-- At the time this handoff was recreated, `handoff.md` was the only worktree
-  change (it had been deleted and was restored by this document).
+- The current worktree changes belong to the post-M13 diagnostics usability
+  refinements described below. Preserve them unless the owner explicitly asks to
+  discard them.
 
 Recheck the state at the start of the next session:
 
@@ -208,22 +211,97 @@ README.md
 instrcutions_2.md
 ```
 
+## Post-M13 Assistant error usability fix
+
+The owner reported that the failed-job card only showed
+`invalid_assistant_response`, which did not explain the cause or recovery path.
+The current uncommitted worktree now:
+
+- preserves a redacted failure reason, failure/validation stage, and safe
+  field-level validation issues on failed Assistant jobs;
+- distinguishes malformed/missing output, response-schema failures, citation
+  failures, proposal-target failures, and recurrence-scope failures;
+- creates a sanitized diagnostic report for each failed Assistant job and
+  exposes its opaque report ID, without storing or logging raw model output;
+- shows **Why it failed**, **What you can do**, **Retry safely**, and **Ask
+  Assistant about this error** in the owner-facing card;
+- puts error code, job stage, validation stage, job ID, report ID, and field
+  issues under expandable **Developer details**;
+- explains that historical failures have limited details and that one retry
+  will generate the new structured diagnostics if the retry fails;
+- sends the structured safe failure details back on retry so the runtime can
+  correct its response;
+- adds migration
+  `backend/alembic/versions/20260731_0016_assistant_job_diagnostics.py`;
+- documents the behavior in `README.md` and adds backend, frontend, end-to-end,
+  privacy, and accessibility coverage.
+
+Important current-worktree files:
+
+```text
+backend/app/assistant/service.py
+backend/app/assistant/proposals.py
+backend/app/assistant/validation.py
+backend/app/assistant/course_context.py
+backend/app/assistant/models.py
+backend/app/core/errors.py
+backend/alembic/versions/20260731_0016_assistant_job_diagnostics.py
+backend/tests/test_assistant_api.py
+frontend/src/features/assistant/AssistantPage.tsx
+frontend/src/features/assistant/types.ts
+frontend/src/styles.css
+frontend/src/features/assistant/AssistantPage.test.tsx
+e2e/tests/calendar-assistant.spec.ts
+README.md
+```
+
+## Post-M13 general-helper refinement
+
+The owner reported that asking **What can you do with course notes?** was
+blocked because the turn was classified as course-note use and the response
+did not cite a note. That was a false positive: the question asks about
+capabilities and does not make a claim derived from private note content.
+
+The current uncommitted worktree now:
+
+- recognizes common capability questions before course/note selection, so
+  they do not load private note bodies or require a citation;
+- keeps note citations mandatory when an answer actually uses selected note or
+  slide content, including strict rejection of invented or mismatched sources;
+- defines the runtime Assistant as a private general-purpose helper that can
+  answer general questions, explain topics, brainstorm, plan, draft/revise
+  text, create study aids, and provide code snippets in chat;
+- permits built-in model knowledge for general help while keeping private
+  calendar and course context bounded to what is relevant for the turn;
+- clearly states that the Assistant cannot open an interactive code editor,
+  control the clipboard, execute code, browse the web, inspect the repository,
+  or verify current external information;
+- preserves confirmation for every calendar mutation, read-only calendar
+  enforcement, runtime workspace isolation, and all proposal validation;
+- updates the Assistant welcome text, suggestions, field label, placeholder,
+  runtime policy, README, and automated tests to match the broader role.
+
+The exact reported prompt is covered by a backend regression test. It receives
+a normal general-help response with empty citations and no course, note, slide,
+or course-file context supplied to Codex.
+
 ## Verified state for M13
 
-The committed M13 implementation was verified before handoff with:
+The committed M13 implementation plus the current post-M13 fix was verified
+with:
 
 ```text
 make test
-  Backend: 103 passed
+  Backend: 104 passed
   Frontend: 38 passed
 
 make e2e
-  Playwright/accessibility: 6 passed
+  Playwright/accessibility: 7 passed
 
 make lint: passed
 Frontend production build: passed
 git diff --check: passed
-Alembic current: 20260730_0015 (head)
+Alembic current: 20260731_0016 (head)
 Backend health: passed
 Frontend HTTP check: passed
 ```
@@ -235,6 +313,14 @@ configure the optional API-key fallback.
 ## Known limitations and cautions
 
 - No M14 has been defined.
+- Historical failed Assistant jobs cannot recover an exact validation reason
+  that was never stored. Their card says so explicitly; retrying once creates
+  full structured diagnostics if the new attempt also fails.
+- Existing failed turns are not rewritten automatically. The owner must use
+  **Retry safely** or send the question again to use the new capability routing.
+- General help uses the model's built-in knowledge and is not live web access;
+  the Assistant cannot verify current external information, run code, control
+  the clipboard, or open an interactive editor.
 - The diagnostic Assistant action is currently surfaced in the Materials error
   UI; it is not a universal action on every possible application error.
 - Diagnostic records have no owner-facing purge interface.
@@ -249,11 +335,13 @@ configure the optional API-key fallback.
 
 ## Next step
 
-Review the committed M13 implementation if desired, then wait for the owner to
-define the next milestone. Do not infer M14 from future-looking notes.
+Review the current post-M13 Assistant diagnostics and general-helper
+refinements. If accepted, the owner may explicitly request a commit. Then wait
+for the owner to define the next milestone; do not infer M14 from
+future-looking notes.
 
 Recommended next owner prompt:
 
 ```text
-Read AGENTS.md and handoff.md, then review the completed M13 work.
+Read AGENTS.md and handoff.md, then review the post-M13 Assistant diagnostics and general-helper refinements.
 ```

@@ -2,10 +2,11 @@
 
 Teacher Assistant is a single-owner, self-hosted workspace with a personal
 calendar, manual course organization, and a private Codex-powered assistant.
-Calendar and course features work without Codex. The Assistant can answer
-calendar questions, use relevant course notes with validated citations, explain
-sanitized application errors, and propose calendar changes. Every mutation is
-revalidated by the backend and waits for owner confirmation.
+Calendar and course features work without Codex. The Assistant is a general
+helper for explanations, writing, planning, study aids, and code snippets; it
+can also answer calendar questions, use relevant course notes with validated
+citations, explain sanitized application errors, and propose calendar changes.
+Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Requirements
 
@@ -104,18 +105,29 @@ placing calendar contents in application logs.
 
 ## Course-aware Assistant
 
-The main Assistant can answer note questions such as “Summarize my latest notes
-from Datasekretess” or “What did I write about normalization?” The backend
-selects a bounded set of matching notes before starting Codex. Only those notes,
-their explicitly linked slide ranges, and calendars linked to the selected
-course are supplied. Unrelated courses, literature, source files, and private
-calendar data are excluded. If matching notes belong to several courses, the
-Assistant asks which course you mean before any runtime job starts.
+The main Assistant can answer general questions from built-in model knowledge
+without requiring calendar or note citations. It can explain concepts,
+brainstorm, draft text, create study aids, and return text or code snippets in
+chat. It cannot open an interactive editor, control the clipboard, execute
+code, browse the web, or inspect the source repository.
 
-Course answers display validated note-title citations and, where used, the exact
-slide deck and slide number. An invented or out-of-scope ID or citation fails
-the Assistant job safely and does not save the answer or alter any data. Notes,
-sources, courses, and slide links remain read-only to the runtime Assistant.
+It can also answer private note questions such as “Summarize my latest notes
+from Datasekretess” or “What did I write about normalization?” The backend
+selects a bounded set of matching notes before starting Codex. Capability
+questions such as “What can you do with course notes?” do not load private note
+bodies and do not require a citation. Only notes selected for an actual
+content-grounded question, their explicitly linked slide ranges, and calendars
+linked to the selected course are supplied. Unrelated courses, literature,
+source files, and private calendar data are excluded. If matching notes belong
+to several courses, the Assistant asks which course you mean before any runtime
+job starts.
+
+Answers grounded in course notes display validated note-title citations and,
+where used, the exact slide deck and slide number. General-knowledge,
+capability, and calendar-only answers use an empty citation list. An invented
+or out-of-scope ID or citation fails the Assistant job safely and does not save
+the answer or alter any data. Notes, sources, courses, and slide links remain
+read-only to the runtime Assistant.
 
 ## Manual courses
 
@@ -252,8 +264,12 @@ safe constraints, and a sanitized exception type. Passwords, tokens, cookies,
 authorization headers, request bodies, credentials, environment variables,
 source paths, and unrelated files are redacted or never collected.
 
-When a Materials error shows **Ask Assistant about this error**, the backend
-starts an explanation-only Codex job from that stored report. The result clearly
+When a Materials error or failed Assistant job shows **Ask Assistant about this
+error**, the backend starts an explanation-only Codex job from that stored
+report. Failed Assistant jobs also show an owner-facing reason and recovery
+steps plus expandable developer details containing the failure stage, safe
+field-level validation issues, job ID, and diagnostic report ID. Raw model
+output is intentionally not logged or exposed. The explanation result clearly
 separates changes you can make to the input from possible future application
 improvements and states whether retrying is safe. The runtime can suggest an
 improvement, but it cannot inspect or edit application source code and never
@@ -273,6 +289,11 @@ UI. Temporary Codex workspaces are still deleted immediately after each job.
 - If **Ask Assistant about this error** cannot generate an explanation, sign in
   again on the Assistant page and retry. The original operation is not repeated
   by the explanation action.
+- If an Assistant reply is blocked as invalid, expand **Developer details** to
+  see whether parsing, schema, citation, proposal-target, or recurrence checks
+  rejected it. Retry once so the safe feedback can be supplied to the model. If
+  it repeats, use the job/report ID to trace it without sharing raw private
+  conversation data.
 - If an error report cannot be found, it may belong to another restored database
   or installation. Repeat the failing operation to create a new sanitized
   report; do not paste credentials, `.env`, logs, or private files into chat.

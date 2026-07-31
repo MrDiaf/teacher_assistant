@@ -2911,37 +2911,126 @@ textarea:focus-visible {
 
 .assistant-job-error {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 13px;
+  align-items: stretch;
+  gap: 12px;
+  padding: 16px;
+  flex-direction: column;
   color: #7d3e38;
   border: 1px solid #ead1cd;
   border-radius: 12px;
   background: #fff6f4;
 }
 
-.assistant-job-error > div {
+.assistant-job-error-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.assistant-job-error-heading > svg {
+  margin-top: 1px;
+  flex: 0 0 auto;
+}
+
+.assistant-job-error-heading > div {
   min-width: 0;
   flex: 1;
 }
 
-.assistant-job-error strong {
-  font-size: 10px;
+.assistant-job-error-heading strong {
+  font-size: 11px;
 }
 
 .assistant-job-error p {
   margin: 3px 0 0;
-  font-size: 9px;
-  line-height: 1.45;
+  font-size: 10px;
+  line-height: 1.55;
 }
 
-.assistant-job-error small {
-  display: block;
-  margin-top: 4px;
+.assistant-job-error-section {
+  padding: 10px 12px;
+  color: #5f413d;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.assistant-job-error-section > strong,
+.assistant-job-validation-errors > strong {
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.assistant-job-error-section ul,
+.assistant-job-validation-errors ul,
+.assistant-job-developer-actions {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+.assistant-job-error-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .assistant-job-error .quiet-button {
   flex: 0 0 auto;
+}
+
+.assistant-job-error .assistant-error-action {
+  margin-top: 0;
+}
+
+.assistant-job-developer-details {
+  padding-top: 10px;
+  color: #634b47;
+  border-top: 1px solid #ead1cd;
+  font-size: 9px;
+}
+
+.assistant-job-developer-details summary {
+  width: fit-content;
+  color: #684843;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.assistant-job-developer-details dl {
+  display: grid;
+  margin: 10px 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.assistant-job-developer-details dl > div {
+  min-width: 0;
+  padding: 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.assistant-job-developer-details dt {
+  color: #8b6964;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.assistant-job-developer-details dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.assistant-job-validation-errors {
+  margin-top: 10px;
+}
+
+.assistant-job-validation-errors code {
+  font-size: inherit;
 }
 
 .assistant-page-error {

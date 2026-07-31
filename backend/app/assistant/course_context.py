@@ -23,6 +23,20 @@ MAX_SLIDE_TEXT_CHARS = 2_000
 MAX_SLIDE_CONTEXT_CHARS = 20_000
 
 _TOKEN_PATTERN = re.compile(r"[\w-]+", re.UNICODE)
+_CAPABILITY_QUESTION_PHRASES = (
+    "what can you do",
+    "how can you help",
+    "what are you capable of",
+    "what are your capabilities",
+    "what is your capability",
+    "what features do you have",
+    "what do you support",
+    "what are your limitations",
+    "what can t you do",
+    "what cannot you do",
+    "do you have that capability",
+    "do you have the capability",
+)
 _NOTE_INTENT_WORDS = {
     "anteckning",
     "anteckningar",
@@ -102,6 +116,11 @@ def _tokens(value: str) -> list[str]:
     ][:12]
 
 
+def _is_capability_question(value: str) -> bool:
+    normalized = _normalized(value)
+    return any(phrase in normalized for phrase in _CAPABILITY_QUESTION_PHRASES)
+
+
 @dataclass(frozen=True)
 class CourseContextSelection:
     courses: list[dict[str, Any]]
@@ -135,7 +154,18 @@ class CourseContextSelection:
 
     def validate_citations(self, citations: list[Any]) -> None:
         if self.notes and not citations:
-            raise InvalidAssistantResponseError()
+            raise InvalidAssistantResponseError(
+                "The response was given course-note context but did not include a required "
+                "citation.",
+                validation_stage="citation_validation",
+                validation_errors=[
+                    {
+                        "field": "citations",
+                        "message": "At least one supplied course-note citation is required.",
+                        "type": "citation_missing",
+                    }
+                ],
+            )
         courses = {item["id"]: item for item in self.courses}
         notes = {item["id"]: item for item in self.notes}
         slides = {
@@ -148,7 +178,7 @@ class CourseContextSelection:
             for item in self.selected_slide_text
         }
         seen: set[tuple[str, str, str | None, int | None]] = set()
-        for citation in citations:
+        for index, citation in enumerate(citations):
             dumped = citation.model_dump(mode="json")
             course_id = dumped["course_id"]
             note_id = dumped["note_id"]
@@ -161,7 +191,17 @@ class CourseContextSelection:
                 or course["name"] != dumped["course_name"]
                 or note["title"] != dumped["note_title"]
             ):
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "A citation did not match the course and note context supplied to the model.",
+                    validation_stage="citation_validation",
+                    validation_errors=[
+                        {
+                            "field": f"citations.{index}",
+                            "message": "Course or note identity does not match supplied context.",
+                            "type": "citation_context_mismatch",
+                        }
+                    ],
+                )
             if (
                 dumped["source_id"] is not None
                 and (
@@ -172,7 +212,17 @@ class CourseContextSelection:
                 )
                 not in slides
             ):
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "A slide citation referenced slide context that was not supplied to the model.",
+                    validation_stage="citation_validation",
+                    validation_errors=[
+                        {
+                            "field": f"citations.{index}",
+                            "message": "Slide identity does not match supplied context.",
+                            "type": "citation_slide_mismatch",
+                        }
+                    ],
+                )
             key = (
                 course_id,
                 note_id,
@@ -180,7 +230,17 @@ class CourseContextSelection:
                 dumped["slide_number"],
             )
             if key in seen:
-                raise InvalidAssistantResponseError()
+                raise InvalidAssistantResponseError(
+                    "The answer returned the same citation more than once.",
+                    validation_stage="citation_validation",
+                    validation_errors=[
+                        {
+                            "field": f"citations.{index}",
+                            "message": "Duplicate citations are not allowed.",
+                            "type": "citation_duplicate",
+                        }
+                    ],
+                )
             seen.add(key)
 
 
@@ -189,6 +249,10 @@ class CourseContextService:
         self.session = session
 
     async def select(self, question: str) -> CourseContextSelection:
+        # Capability questions describe how note access works; they do not need any
+        # private note bodies and must not accidentally become citation-required turns.
+        if _is_capability_question(question):
+            return self._empty()
         courses = list(
             await self.session.scalars(
                 select(Course).order_by(Course.name, Course.id)

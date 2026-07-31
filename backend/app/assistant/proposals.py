@@ -342,13 +342,43 @@ def _strict_output_schema(schema: dict[str, Any]) -> dict[str, Any]:
 ASSISTANT_OUTPUT_SCHEMA = _strict_output_schema(AssistantAnswer.model_json_schema())
 
 
+def _safe_validation_errors(error: ValidationError) -> list[dict[str, str]]:
+    return [
+        {
+            "field": ".".join(str(item) for item in entry.get("loc", ())) or "response",
+            "message": str(entry.get("msg", "Invalid value."))[:500],
+            "type": str(entry.get("type", "validation_error"))[:120],
+        }
+        for entry in error.errors()
+    ][:20]
+
+
 def parse_assistant_answer(raw_response: str | None) -> AssistantAnswer:
     if raw_response is None:
-        raise InvalidAssistantResponseError()
+        raise InvalidAssistantResponseError(
+            "The model returned no final response.",
+            validation_stage="response_parsing",
+        )
     try:
         payload = json.loads(raw_response)
         if isinstance(payload, dict) and "citations" not in payload:
             payload["citations"] = []
         return AssistantAnswer.model_validate(payload)
-    except (json.JSONDecodeError, ValidationError) as exc:
-        raise InvalidAssistantResponseError() from exc
+    except json.JSONDecodeError as exc:
+        raise InvalidAssistantResponseError(
+            "The model returned malformed JSON instead of the required structured reply.",
+            validation_stage="response_parsing",
+            validation_errors=[
+                {
+                    "field": "response",
+                    "message": f"Invalid JSON at line {exc.lineno}, column {exc.colno}.",
+                    "type": "json_invalid",
+                }
+            ],
+        ) from exc
+    except ValidationError as exc:
+        raise InvalidAssistantResponseError(
+            "The response JSON did not match the required assistant answer schema.",
+            validation_stage="response_schema",
+            validation_errors=_safe_validation_errors(exc),
+        ) from exc

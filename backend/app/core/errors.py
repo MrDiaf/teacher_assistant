@@ -235,8 +235,9 @@ class AssistantRuntimeError(ApplicationError):
     def __init__(
         self,
         message: str = "The calendar assistant is temporarily unavailable. Try again safely.",
+        details: dict[str, Any] | None = None,
     ) -> None:
-        super().__init__(message)
+        super().__init__(message, details)
 
 
 class AssistantNotConfiguredError(AssistantRuntimeError):
@@ -266,8 +267,24 @@ class AssistantLoginAttemptNotFoundError(ResourceNotFoundError):
 class InvalidAssistantResponseError(AssistantRuntimeError):
     code = "invalid_assistant_response"
 
-    def __init__(self) -> None:
-        super().__init__("The assistant returned an invalid response. No calendar data changed.")
+    def __init__(
+        self,
+        reason: str = "The reply did not match the required safe response format.",
+        *,
+        validation_stage: str = "response_validation",
+        validation_errors: list[dict[str, str]] | None = None,
+    ) -> None:
+        details: dict[str, Any] = {
+            "reason": reason,
+            "validation_stage": validation_stage,
+        }
+        if validation_errors:
+            details["validation_errors"] = validation_errors
+        super().__init__(
+            "The assistant's reply did not match the required safe response format, "
+            "so the backend rejected it before saving an answer or changing calendar data.",
+            details,
+        )
 
 
 class InvalidNoteSummaryResponseError(AssistantRuntimeError):

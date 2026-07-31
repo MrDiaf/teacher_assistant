@@ -118,6 +118,7 @@ const awaitingProposal: AssistantProposal = {
 function job(
   status: AssistantJob["status"],
   safeError: string | null = null,
+  overrides: Partial<AssistantJob> = {},
 ): AssistantJob {
   return {
     id: "job-1",
@@ -127,8 +128,11 @@ function job(
     model: "gpt-5.6-sol",
     safe_error: safeError,
     safe_error_code: safeError ? "assistant_unavailable" : null,
+    safe_error_details: {},
+    diagnostic_error_id: null,
     created_at: now,
     updated_at: now,
+    ...overrides,
   };
 }
 
@@ -226,7 +230,7 @@ describe("AssistantPage", () => {
     expect(
       screen.getByText("What would you like to know?"),
     ).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Message the calendar assistant"), {
+    fireEvent.change(screen.getByLabelText("Message the Assistant"), {
       target: { value: "What do I have tomorrow?" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
@@ -254,7 +258,33 @@ describe("AssistantPage", () => {
   it("shows a safe failed-job state and retries the same stored message", async () => {
     let retryCompleted = false;
     let messageSent = false;
-    const failedJob = job("failed", "Codex is temporarily unavailable.");
+    const failedJob = job(
+      "failed",
+      "The assistant's reply did not match the required safe response format, so the backend rejected it before saving an answer or changing calendar data.",
+      {
+        safe_error_code: "invalid_assistant_response",
+        safe_error_details: {
+          failure_stage: "validating",
+          validation_stage: "response_schema",
+          reason:
+            "The response JSON did not match the required assistant answer schema.",
+          validation_errors: [
+            {
+              field: "proposal.actions.0.operation",
+              message: "Input tag 'delete_calendar' is not supported.",
+              type: "union_tag_invalid",
+            },
+          ],
+          owner_actions: [
+            "Retry once. The retry includes this validation feedback so the assistant can correct its response format.",
+          ],
+          developer_actions: [
+            "Inspect the validation stage and field issues below.",
+          ],
+        },
+        diagnostic_error_id: "diagnostic-error-1",
+      },
+    );
     const fetchMock = vi.fn(
       async (input: string | URL | Request, init?: RequestInit) => {
         const url = String(input);
@@ -318,20 +348,31 @@ describe("AssistantPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
     await screen.findByText("What would you like to know?");
-    fireEvent.change(screen.getByLabelText("Message the calendar assistant"), {
+    fireEvent.change(screen.getByLabelText("Message the Assistant"), {
       target: { value: ownerMessage.content },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(
-      await screen.findByText("Codex is temporarily unavailable."),
+      await screen.findByText("The reply was blocked for safety"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Error code: assistant_unavailable/),
+      screen.getByText(
+        "The response JSON did not match the required assistant answer schema.",
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Retry sends this safe failure/),
+      screen.getByText(
+        /Retry once. The retry includes this validation feedback/,
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Ask Assistant about this error" }),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Developer details"));
+    expect(screen.getByText("invalid_assistant_response")).toBeInTheDocument();
+    expect(screen.getByText("response_schema")).toBeInTheDocument();
+    expect(screen.getByText(/delete_calendar/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry safely" }));
     expect(
       await screen.findByText(
@@ -617,9 +658,7 @@ describe("AssistantPage", () => {
         name: "Use your ChatGPT subscription",
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Message the calendar assistant"),
-    ).toBeDisabled();
+    expect(screen.getByLabelText("Message the Assistant")).toBeDisabled();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Sign in with ChatGPT" }),

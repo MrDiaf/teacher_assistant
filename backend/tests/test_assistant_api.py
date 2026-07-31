@@ -431,8 +431,23 @@ async def test_proposal_output_is_rejected_and_failed_job_can_retry_safely(
     assert rejected_body["job"]["status"] == "failed"
     assert rejected_body["assistant_message"] is None
     assert rejected_body["job"]["safe_error"] == (
-        "The assistant returned an invalid response. No calendar data changed."
+        "The assistant's reply did not match the required safe response format, so the "
+        "backend rejected it before saving an answer or changing calendar data."
     )
+    assert rejected_body["job"]["safe_error_details"]["failure_stage"] == "validating"
+    assert rejected_body["job"]["safe_error_details"]["validation_stage"] == (
+        "response_schema"
+    )
+    assert rejected_body["job"]["safe_error_details"]["validation_errors"]
+    diagnostic_error_id = rejected_body["job"]["diagnostic_error_id"]
+    assert uuid.UUID(diagnostic_error_id)
+    diagnostic = await client.get(
+        f"/api/v1/diagnostics/errors/{diagnostic_error_id}"
+    )
+    assert diagnostic.status_code == 200, diagnostic.text
+    assert diagnostic.json()["operation"] == "assistant_job"
+    assert diagnostic.json()["details"]["job_id"] == rejected_body["job"]["id"]
+    assert diagnostic.json()["details"]["validation_errors"]
     assert len((await client.get("/api/v1/calendars")).json()) == 1
 
     fake_codex.response = json.dumps(
@@ -445,6 +460,8 @@ async def test_proposal_output_is_rejected_and_failed_job_can_retry_safely(
 
     assert retried.status_code == 200, retried.text
     assert retried.json()["job"]["status"] == "completed"
+    assert retried.json()["job"]["safe_error_details"] == {}
+    assert retried.json()["job"]["diagnostic_error_id"] is None
     detail = await client.get(f"/api/v1/assistant/conversations/{conversation['id']}")
     assert [message["role"] for message in detail.json()["messages"]] == [
         "owner",
@@ -1212,6 +1229,62 @@ async def test_invalid_model_content_is_not_written_to_application_logs(
     assert response.json()["job"]["status"] == "failed"
     assert private_marker not in caplog.text
     assert "invalid_assistant_response" in caplog.text
+    diagnostic_error_id = response.json()["job"]["diagnostic_error_id"]
+    diagnostic = await client.get(
+        f"/api/v1/diagnostics/errors/{diagnostic_error_id}"
+    )
+    assert private_marker not in diagnostic.text
+
+
+async def test_course_note_capability_question_is_general_help_without_private_context(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    await create_course_note_context(
+        client,
+        course_name="Datasekretess",
+        course_code="DATSEC",
+        note_title="Privacy principles",
+        note_body="Purpose limitation constrains later data use.",
+    )
+    await create_course_note_context(
+        client,
+        course_name="Operating Systems",
+        course_code="OS101",
+        note_title="Scheduling notes",
+        note_body="The scheduler allocates CPU time.",
+    )
+    fake_codex.response = json.dumps(
+        {
+            "message": (
+                "I can explain and compare relevant notes with citations, create study aids, "
+                "and provide general help or code snippets in chat."
+            ),
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [],
+        }
+    )
+    conversation = await create_conversation(client)
+
+    response = await ask(
+        client,
+        conversation["id"],
+        "What can you do with course notes?",
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "completed"
+    assert body["assistant_message"]["citations"] == []
+    call = fake_codex.calls[-1]
+    assert call["courses"] == []
+    assert call["notes"] == []
+    assert call["selected_slide_text"] == []
+    assert "COURSES.json" not in call["files"]
+    assert "NOTES.json" not in call["files"]
+    assert "private general-purpose assistant" in call["policy"]
+    assert "provide code snippets directly in the chat response" in call["policy"]
 
 
 async def test_course_question_uses_only_relevant_notes_slides_and_linked_calendar(
@@ -1478,6 +1551,17 @@ async def test_invented_course_citation_fails_without_saving_answer(
     body = response.json()
     assert body["job"]["status"] == "failed"
     assert body["job"]["safe_error_code"] == "invalid_assistant_response"
+    assert body["job"]["safe_error_details"]["reason"] == (
+        "A citation did not match the course and note context supplied to the model."
+    )
+    assert body["job"]["safe_error_details"]["validation_errors"] == [
+        {
+            "field": "citations.0",
+            "message": "Course or note identity does not match supplied context.",
+            "type": "citation_context_mismatch",
+        }
+    ]
+    assert uuid.UUID(body["job"]["diagnostic_error_id"])
     assert body["assistant_message"] is None
     assert body["proposals"] == []
 
@@ -1513,4 +1597,14 @@ async def test_course_note_answer_requires_at_least_one_valid_citation(
     body = response.json()
     assert body["job"]["status"] == "failed"
     assert body["job"]["safe_error_code"] == "invalid_assistant_response"
+    assert body["job"]["safe_error_details"]["validation_stage"] == (
+        "citation_validation"
+    )
+    assert body["job"]["safe_error_details"]["validation_errors"] == [
+        {
+            "field": "citations",
+            "message": "At least one supplied course-note citation is required.",
+            "type": "citation_missing",
+        }
+    ]
     assert body["assistant_message"] is None

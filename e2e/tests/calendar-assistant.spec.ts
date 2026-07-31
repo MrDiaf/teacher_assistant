@@ -397,6 +397,122 @@ test("explains a sanitized course-material error without exposing private input"
   expectNoAccessibilityViolations(accessibility.violations);
 });
 
+test("shows actionable Assistant failure details without exposing raw model output", async ({
+  page,
+}) => {
+  const timestamp = new Date().toISOString();
+  const conversation = {
+    id: "e2e-failed-conversation",
+    title: "Why was my reply blocked?",
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  const failedJob = {
+    id: "e2e-failed-job",
+    conversation_id: conversation.id,
+    owner_message_id: "e2e-owner-message",
+    status: "failed",
+    model: "gpt-5.6-sol",
+    safe_error:
+      "The assistant's reply did not match the required safe response format, so the backend rejected it before saving an answer or changing calendar data.",
+    safe_error_code: "invalid_assistant_response",
+    safe_error_details: {
+      failure_stage: "validating",
+      validation_stage: "response_schema",
+      reason:
+        "The response JSON did not match the required assistant answer schema.",
+      validation_errors: [
+        {
+          field: "proposal.actions.0.operation",
+          message: "The action is not supported.",
+          type: "union_tag_invalid",
+        },
+      ],
+      owner_actions: [
+        "Retry once. The retry includes this validation feedback so the assistant can correct its response format.",
+      ],
+      developer_actions: [
+        "Inspect the validation stage and field issues below. Raw model output is intentionally not logged or exposed.",
+      ],
+    },
+    diagnostic_error_id: "e2e-diagnostic-report",
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+
+  await page.route("**/api/v1/assistant/auth", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        authenticated: true,
+        auth_type: "chatgpt",
+        email: "owner@example.test",
+        plan_type: "plus",
+      }),
+    });
+  });
+  await page.route("**/api/v1/assistant/conversations", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([conversation]),
+    });
+  });
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversation.id}`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...conversation,
+          messages: [
+            {
+              id: "e2e-owner-message",
+              conversation_id: conversation.id,
+              role: "owner",
+              content: "Can you help with this?",
+              citations: [],
+              job_id: null,
+              created_at: timestamp,
+            },
+          ],
+          jobs: [failedJob],
+          proposals: [],
+        }),
+      });
+    },
+  );
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Assistant" }).click();
+  await page
+    .getByRole("button", { name: /Why was my reply blocked\?/ })
+    .click();
+
+  await expect(
+    page.getByText("The reply was blocked for safety"),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "The response JSON did not match the required assistant answer schema.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Ask Assistant about this error" }),
+  ).toBeVisible();
+  await page.getByText("Developer details").click();
+  await expect(page.getByText("response_schema")).toBeVisible();
+  await expect(page.getByText(/proposal\.actions\.0\.operation/)).toBeVisible();
+  await expect(page.getByText("raw private model response")).toHaveCount(0);
+
+  const accessibility = await new AxeBuilder({ page })
+    .include(".assistant-job-error")
+    .analyze();
+  expectNoAccessibilityViolations(accessibility.violations);
+});
+
 test("passes an automated accessibility scan and supports subscription sign-in", async ({
   page,
 }) => {

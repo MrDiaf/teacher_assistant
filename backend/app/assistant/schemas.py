@@ -52,6 +52,8 @@ class AssistantJobResponse(BaseModel):
     model: str
     safe_error: str | None
     safe_error_code: str | None
+    safe_error_details: dict[str, Any]
+    diagnostic_error_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
 
