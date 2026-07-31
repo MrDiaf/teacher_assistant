@@ -22,7 +22,7 @@ MAX_NOTE_CONTEXT_CHARS = 24_000
 MAX_SLIDE_TEXT_CHARS = 2_000
 MAX_SLIDE_CONTEXT_CHARS = 20_000
 
-_TOKEN_PATTERN = re.compile(r"[\w-]+", re.UNICODE)
+_TOKEN_PATTERN = re.compile(r"\w+", re.UNICODE)
 _CAPABILITY_QUESTION_PHRASES = (
     "what can you do",
     "how can you help",
@@ -37,22 +37,35 @@ _CAPABILITY_QUESTION_PHRASES = (
     "do you have that capability",
     "do you have the capability",
 )
-_NOTE_INTENT_WORDS = {
+_NOTE_CONTEXT_WORDS = {
     "anteckning",
     "anteckningar",
-    "compare",
-    "lecture",
-    "lectures",
     "note",
     "notes",
     "slide",
     "slides",
-    "summarize",
-    "summary",
-    "sammanfatta",
-    "wrote",
-    "write",
-    "written",
+}
+_NOTE_CONTEXT_PHRASES = (
+    "did i write",
+    "have i written",
+    "vad har jag skrivit",
+    "vad skrev jag",
+    "what did i write",
+    "what have i written",
+)
+_CALENDAR_CONTEXT_WORDS = {
+    "appointment",
+    "appointments",
+    "availability",
+    "calendar",
+    "calendars",
+    "event",
+    "events",
+    "kalender",
+    "kalendrar",
+    "schedule",
+    "scheduled",
+    "scheduling",
 }
 _STOP_WORDS = {
     "about",
@@ -72,6 +85,7 @@ _STOP_WORDS = {
     "how",
     "latest",
     "lecture",
+    "lectures",
     "me",
     "my",
     "note",
@@ -81,6 +95,7 @@ _STOP_WORDS = {
     "slide",
     "slides",
     "summarize",
+    "summary",
     "tell",
     "that",
     "the",
@@ -92,6 +107,7 @@ _STOP_WORDS = {
     "with",
     "wrote",
     "write",
+    "written",
     "and",
     "are",
     "you",
@@ -119,6 +135,19 @@ def _tokens(value: str) -> list[str]:
 def _is_capability_question(value: str) -> bool:
     normalized = _normalized(value)
     return any(phrase in normalized for phrase in _CAPABILITY_QUESTION_PHRASES)
+
+
+def _has_explicit_note_intent(value: str) -> bool:
+    words = set(_TOKEN_PATTERN.findall(value.casefold()))
+    if words.intersection(_NOTE_CONTEXT_WORDS):
+        return True
+    normalized = _normalized(value)
+    return any(phrase in normalized for phrase in _NOTE_CONTEXT_PHRASES)
+
+
+def _has_explicit_calendar_intent(value: str) -> bool:
+    words = set(_TOKEN_PATTERN.findall(value.casefold()))
+    return bool(words.intersection(_CALENDAR_CONTEXT_WORDS))
 
 
 @dataclass(frozen=True)
@@ -265,8 +294,21 @@ class CourseContextService:
         explicit_courses = [
             course for course in courses if self._course_is_named(course, normalized_question)
         ]
-        question_tokens = _tokens(question)
-        question_words = set(_TOKEN_PATTERN.findall(question.casefold()))
+        note_intent = _has_explicit_note_intent(question)
+        if not note_intent:
+            if explicit_courses and _has_explicit_calendar_intent(question):
+                return CourseContextSelection(
+                    courses=[
+                        self._serialize_course(item) for item in explicit_courses[:2]
+                    ],
+                    notes=[],
+                    slide_references=[],
+                    selected_slide_text=[],
+                    requires_clarification=False,
+                )
+            return self._empty()
+
+        question_tokens = set(_tokens(question))
         notes = list(
             await self.session.scalars(
                 select(Note)
@@ -279,12 +321,11 @@ class CourseContextService:
             note
             for note in notes
             if question_tokens
-            and any(token in f"{note.title} {note.body}".casefold() for token in question_tokens)
+            and question_tokens.intersection(
+                _TOKEN_PATTERN.findall(f"{note.title} {note.body}".casefold())
+            )
         ]
         course_by_id = {course.id: course for course in courses}
-        note_intent = bool(question_words.intersection(_NOTE_INTENT_WORDS)) or bool(
-            matched_notes
-        )
 
         requires_clarification = False
         if explicit_courses:

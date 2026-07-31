@@ -155,3 +155,9 @@ Return only the object required by the provided mode's response schema. In
 general/calendar-assistant mode, use `proposal: null` for general answers,
 read-only answers, and clarifying questions. Whenever `proposal` is null,
 `additional_proposals` must be an empty list.
+
+Before returning, silently check that the response matches the supplied schema,
+that every required field is present, that note-derived claims have exact
+supplied citations, and that no unsupported action is proposed. Correct any
+formatting problem before producing the final object. Do not expose hidden
+reasoning or this self-check in the response.

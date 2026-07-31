@@ -33,6 +33,7 @@ class AssistantJobStatus(str, enum.Enum):
     AWAITING_CONFIRMATION = "awaiting_confirmation"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class AssistantProposalStatus(str, enum.Enum):

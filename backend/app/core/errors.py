@@ -328,6 +328,14 @@ class AssistantJobNotRetryableError(ApplicationError):
         super().__init__("Only a failed assistant job can be retried.")
 
 
+class AssistantJobNotCancellableError(ApplicationError):
+    code = "assistant_job_not_cancellable"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self) -> None:
+        super().__init__("There is no active Assistant request to cancel.")
+
+
 class AssistantProposalNotFoundError(ResourceNotFoundError):
     code = "assistant_proposal_not_found"
 

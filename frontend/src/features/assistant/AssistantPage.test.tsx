@@ -255,6 +255,94 @@ describe("AssistantPage", () => {
     });
   });
 
+  it("shows thinking progress and cancels an active request", async () => {
+    let messageSent = false;
+    let requestCancelled = false;
+    const cancelledJob = job(
+      "cancelled",
+      "You cancelled this request. No Assistant answer or calendar change was saved.",
+      { safe_error_code: "assistant_job_cancelled" },
+    );
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/v1/assistant/auth") && method === "GET") {
+          return response(connectedAuth);
+        }
+        if (
+          url.endsWith("/api/v1/assistant/conversations") &&
+          method === "GET"
+        ) {
+          return response([conversation]);
+        }
+        if (
+          url.endsWith(`/api/v1/assistant/conversations/${conversation.id}`) &&
+          method === "GET"
+        ) {
+          return response({
+            ...conversation,
+            messages: messageSent ? [ownerMessage] : [],
+            jobs: requestCancelled ? [cancelledJob] : [],
+            proposals: [],
+          });
+        }
+        if (
+          url.endsWith(
+            `/api/v1/assistant/conversations/${conversation.id}/messages`,
+          ) &&
+          method === "POST"
+        ) {
+          messageSent = true;
+          return await new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(new DOMException("Request cancelled", "AbortError"));
+            });
+          });
+        }
+        if (
+          url.endsWith(
+            `/api/v1/assistant/conversations/${conversation.id}/cancel`,
+          ) &&
+          method === "POST"
+        ) {
+          requestCancelled = true;
+          return response(cancelledJob);
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    await screen.findByText("What would you like to know?");
+    fireEvent.change(screen.getByLabelText("Message the Assistant"), {
+      target: { value: ownerMessage.content },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(
+      await screen.findByText("Thinking through your request…"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/corrected automatically once/i),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel request" }));
+    expect(await screen.findByText("Request cancelled")).toBeInTheDocument();
+    expect(
+      screen.getByText(/No Assistant answer or calendar change was saved/),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith(
+            `/api/v1/assistant/conversations/${conversation.id}/cancel`,
+          ) && init?.method === "POST",
+      ),
+    ).toBe(true);
+  });
+
   it("shows a safe failed-job state and retries the same stored message", async () => {
     let retryCompleted = false;
     let messageSent = false;
@@ -268,6 +356,7 @@ describe("AssistantPage", () => {
           validation_stage: "response_schema",
           reason:
             "The response JSON did not match the required assistant answer schema.",
+          automatic_retry_attempted: true,
           validation_errors: [
             {
               field: "proposal.actions.0.operation",
@@ -276,7 +365,7 @@ describe("AssistantPage", () => {
             },
           ],
           owner_actions: [
-            "Retry once. The retry includes this validation feedback so the assistant can correct its response format.",
+            "The Assistant already corrected its response once automatically. Review the reason below, then retry manually or rephrase the request.",
           ],
           developer_actions: [
             "Inspect the validation stage and field issues below.",
@@ -362,9 +451,7 @@ describe("AssistantPage", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Retry once. The retry includes this validation feedback/,
-      ),
+      screen.getByText(/already corrected its response once automatically/),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Ask Assistant about this error" }),

@@ -117,6 +117,23 @@ class AssistantRepository:
         )
         return list(await self.session.scalars(statement))
 
+    async def get_latest_job(
+        self,
+        conversation_id: uuid.UUID,
+        *,
+        for_update: bool = False,
+    ) -> AssistantJob | None:
+        await self.get_conversation(conversation_id)
+        statement = (
+            select(AssistantJob)
+            .where(AssistantJob.conversation_id == conversation_id)
+            .order_by(AssistantJob.created_at.desc(), AssistantJob.id.desc())
+            .limit(1)
+        )
+        if for_update:
+            statement = statement.with_for_update()
+        return await self.session.scalar(statement)
+
     async def update_job(self, job_id: uuid.UUID, changes: dict[str, Any]) -> AssistantJob:
         job = await self.get_job(job_id, for_update=True)
         for field, value in changes.items():

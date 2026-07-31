@@ -20,21 +20,24 @@ checklists.
 
 ## Current state
 
-- Git `HEAD`: `0e1fa6f M13 is done`
+- Git `HEAD`: `d3fe0b0 a bit borken becuae it need to ask it twice for it to do it add thinking next time`
 - M8 through M13 are committed and complete.
 - No M14 is currently defined or in progress.
-- Focused post-M13 Assistant error-diagnostics and general-helper refinements
-  are implemented and verified in the worktree but are not committed.
+- The post-M13 Assistant error-diagnostics and general-helper refinements are
+  committed through `d3fe0b0`.
+- Focused post-M13 automatic-recovery, thinking-progress, request-cancel, and
+  false course-note matching refinements are implemented and verified in the
+  worktree but are not committed.
 - Docker development services are running:
   - Frontend: `http://localhost:5173`
   - Backend: `http://localhost:8000`
   - PostgreSQL: healthy
-- Alembic is at `20260731_0016 (head)`.
+- Alembic is at `20260731_0017 (head)`.
 - `.openai/hosting.json` is absent. This remains a self-hosted Docker
   application; do not deploy it through Sites.
-- The current worktree changes belong to the post-M13 diagnostics usability
-  refinements described below. Preserve them unless the owner explicitly asks to
-  discard them.
+- The current worktree changes belong to the post-M13 Assistant reliability
+  refinement described below. Preserve them unless the owner explicitly asks
+  to discard them.
 
 Recheck the state at the start of the next session:
 
@@ -215,7 +218,7 @@ instrcutions_2.md
 
 The owner reported that the failed-job card only showed
 `invalid_assistant_response`, which did not explain the cause or recovery path.
-The current uncommitted worktree now:
+The implementation committed through `d3fe0b0`:
 
 - preserves a redacted failure reason, failure/validation stage, and safe
   field-level validation issues on failed Assistant jobs;
@@ -236,7 +239,7 @@ The current uncommitted worktree now:
 - documents the behavior in `README.md` and adds backend, frontend, end-to-end,
   privacy, and accessibility coverage.
 
-Important current-worktree files:
+Important implementation files:
 
 ```text
 backend/app/assistant/service.py
@@ -262,7 +265,7 @@ blocked because the turn was classified as course-note use and the response
 did not cite a note. That was a false positive: the question asks about
 capabilities and does not make a claim derived from private note content.
 
-The current uncommitted worktree now:
+The implementation committed through `d3fe0b0`:
 
 - recognizes common capability questions before course/note selection, so
   they do not load private note bodies or require a citation;
@@ -285,23 +288,96 @@ The exact reported prompt is covered by a backend regression test. It receives
 a normal general-help response with empty citations and no course, note, slide,
 or course-file context supplied to Codex.
 
+## Post-M13 automatic recovery, thinking, and cancellation
+
+The owner reported that the first response could fail validation while a
+manual **Retry safely** immediately succeeded, making normal chat tedious. The
+current uncommitted worktree now:
+
+- automatically supplies safe validation feedback to Codex and makes exactly
+  one correction attempt when the first response is malformed or fails the
+  strict response/citation schema;
+- asks the runtime to silently self-check required fields, citations, and
+  supported actions before returning its first response, without exposing
+  hidden reasoning;
+- shows the detailed failure card only when both the original response and the
+  bounded automatic correction fail;
+- never automatically retries runtime/authentication failures or backend
+  business-rule failures, and never bypasses proposal validation, read-only
+  calendars, or owner confirmation;
+- shows elapsed, owner-facing working states without exposing hidden reasoning,
+  including a longer-than-usual message after 30 seconds;
+- exposes **Cancel request** while the Assistant is working;
+- records cancellation as the terminal `cancelled` job state, interrupts the
+  active in-process Codex task, removes its temporary workspace, and saves no
+  assistant answer or proposal;
+- keeps the cancelled owner prompt visible in history but excludes it from
+  later model context so a follow-up cannot accidentally complete stopped work;
+- keeps a request completed when it wins the race with cancellation instead of
+  rewriting a completed answer as cancelled;
+- adds migration
+  `backend/alembic/versions/20260731_0017_assistant_job_cancellation.py`;
+- adds backend concurrency coverage, frontend interaction coverage, and a real
+  browser end-to-end/accessibility cancellation scenario.
+
+The execution registry is in `backend/app/assistant/execution.py`. It matches
+the project's single-process Docker backend. If the backend is ever changed to
+multiple worker processes, cancellation coordination must move to a shared job
+queue or other cross-process mechanism.
+
+## Post-M13 false course-note matching fix
+
+The owner reported that a calendar-only Gym request received only one linked
+read-only course calendar and an unrelated note citation. The cause was
+deterministic backend selection before Codex: any single query token could
+substring-match any note body or title. For example, `not` matched `notes`, and
+generic words such as `but`, `get`, and `work` matched unrelated note text. The
+false note match selected its course and therefore scoped calendar context to
+that course's linked read-only calendar.
+
+The current worktree now:
+
+- activates private note selection only when the owner explicitly mentions
+  notes/slides or asks what they previously wrote;
+- returns empty course/note context immediately for ordinary calendar and
+  general-help requests, without querying or loading note bodies;
+- matches note topics by complete normalized words instead of substrings;
+- gives calendar-only requests every calendar, including hidden writable and
+  read-only calendars, while continuing to omit all course/note workspace
+  files;
+- preserves the existing behavior where an explicitly named course-calendar
+  question receives that course's linked calendars but no note bodies;
+- keeps explicit note questions, multi-course clarification, citations, and
+  linked-slide selection working;
+- adds regressions for the owner's Gym-style request, generic concept
+  explanations, general email drafting, private-context exclusion, and the
+  empty context audit.
+
+Important implementation files:
+
+```text
+backend/app/assistant/course_context.py
+backend/tests/test_assistant_api.py
+README.md
+```
+
 ## Verified state for M13
 
-The committed M13 implementation plus the current post-M13 fix was verified
-with:
+The committed M13 implementation plus the current post-M13 refinements was
+verified with:
 
 ```text
 make test
-  Backend: 104 passed
-  Frontend: 38 passed
+  Backend: 109 passed
+  Frontend: 39 passed
 
 make e2e
-  Playwright/accessibility: 7 passed
+  Playwright/accessibility: 8 passed
 
 make lint: passed
 Frontend production build: passed
 git diff --check: passed
-Alembic current: 20260731_0016 (head)
+Alembic current: 20260731_0017 (head)
 Backend health: passed
 Frontend HTTP check: passed
 ```
@@ -318,9 +394,18 @@ configure the optional API-key fallback.
   full structured diagnostics if the new attempt also fails.
 - Existing failed turns are not rewritten automatically. The owner must use
   **Retry safely** or send the question again to use the new capability routing.
+- Automatic recovery is deliberately limited to one response-format/citation
+  correction. Runtime, authentication, timeout, and backend business-rule
+  errors remain visible instead of being retried unexpectedly.
+- Cancellation interrupts active work in the default single-process Docker
+  backend. A future multi-worker deployment would require shared cross-process
+  cancellation coordination.
 - General help uses the model's built-in knowledge and is not live web access;
   the Assistant cannot verify current external information, run code, control
   the clipboard, or open an interactive editor.
+- A question that intends to use private course content must explicitly mention
+  notes/slides or ask what the owner wrote. Ambiguous topic-only questions use
+  general model knowledge so private notes cannot be attached accidentally.
 - The diagnostic Assistant action is currently surfaced in the Materials error
   UI; it is not a universal action on every possible application error.
 - Diagnostic records have no owner-facing purge interface.
@@ -335,13 +420,13 @@ configure the optional API-key fallback.
 
 ## Next step
 
-Review the current post-M13 Assistant diagnostics and general-helper
-refinements. If accepted, the owner may explicitly request a commit. Then wait
-for the owner to define the next milestone; do not infer M14 from
-future-looking notes.
+Review the current post-M13 Assistant automatic-recovery, thinking,
+cancellation, and false course-note matching refinements. If accepted, the
+owner may explicitly request a commit. Then wait for the owner to define the
+next milestone; do not infer M14 from future-looking notes.
 
 Recommended next owner prompt:
 
 ```text
-Read AGENTS.md and handoff.md, then review the post-M13 Assistant diagnostics and general-helper refinements.
+Read AGENTS.md and handoff.md, then review the post-M13 Assistant reliability and context-selection refinements.
 ```

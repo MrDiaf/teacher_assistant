@@ -421,6 +421,7 @@ test("shows actionable Assistant failure details without exposing raw model outp
       validation_stage: "response_schema",
       reason:
         "The response JSON did not match the required assistant answer schema.",
+      automatic_retry_attempted: true,
       validation_errors: [
         {
           field: "proposal.actions.0.operation",
@@ -429,7 +430,7 @@ test("shows actionable Assistant failure details without exposing raw model outp
         },
       ],
       owner_actions: [
-        "Retry once. The retry includes this validation feedback so the assistant can correct its response format.",
+        "The Assistant already corrected its response once automatically. Review the reason below, then retry manually or rephrase the request.",
       ],
       developer_actions: [
         "Inspect the validation stage and field issues below. Raw model output is intentionally not logged or exposed.",
@@ -511,6 +512,133 @@ test("shows actionable Assistant failure details without exposing raw model outp
     .include(".assistant-job-error")
     .analyze();
   expectNoAccessibilityViolations(accessibility.violations);
+});
+
+test("shows thinking progress and cancels a long Assistant request", async ({
+  page,
+}) => {
+  const timestamp = new Date().toISOString();
+  const conversation = {
+    id: "e2e-cancel-conversation",
+    title: "Long Assistant request",
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  const ownerMessage = {
+    id: "e2e-cancel-owner-message",
+    conversation_id: conversation.id,
+    role: "owner",
+    content: "Explain tomorrow in detail.",
+    citations: [],
+    job_id: null,
+    created_at: timestamp,
+  };
+  const cancelledJob = {
+    id: "e2e-cancel-job",
+    conversation_id: conversation.id,
+    owner_message_id: ownerMessage.id,
+    status: "cancelled",
+    model: "gpt-5.6-sol",
+    safe_error:
+      "You cancelled this request. No Assistant answer or calendar change was saved.",
+    safe_error_code: "assistant_job_cancelled",
+    safe_error_details: {},
+    diagnostic_error_id: null,
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+  let messageStarted = false;
+  let cancelled = false;
+  let releaseMessage: (() => void) | undefined;
+
+  await page.route("**/api/v1/assistant/auth", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        authenticated: true,
+        auth_type: "chatgpt",
+        email: "owner@example.test",
+        plan_type: "plus",
+      }),
+    });
+  });
+  await page.route("**/api/v1/assistant/conversations", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([conversation]),
+    });
+  });
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversation.id}`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...conversation,
+          messages: cancelled ? [ownerMessage] : [],
+          jobs: cancelled ? [cancelledJob] : [],
+          proposals: [],
+        }),
+      });
+    },
+  );
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversation.id}/messages`,
+    async (route) => {
+      messageStarted = true;
+      await new Promise<void>((resolve) => {
+        releaseMessage = resolve;
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          conversation,
+          owner_message: ownerMessage,
+          assistant_message: null,
+          job: cancelledJob,
+          proposal: null,
+          proposals: [],
+        }),
+      });
+    },
+  );
+  await page.route(
+    `**/api/v1/assistant/conversations/${conversation.id}/cancel`,
+    async (route) => {
+      cancelled = true;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(cancelledJob),
+      });
+      setTimeout(() => releaseMessage?.(), 100);
+    },
+  );
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Assistant" }).click();
+  await page.getByLabel("Message the Assistant").fill(ownerMessage.content);
+  await page.getByRole("button", { name: "Send message" }).click();
+  await expect.poll(() => messageStarted).toBe(true);
+  await expect(page.getByText("Thinking through your request…")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Cancel request" }),
+  ).toBeVisible();
+
+  const thinkingAccessibility = await new AxeBuilder({ page })
+    .include(".assistant-thinking")
+    .analyze();
+  expectNoAccessibilityViolations(thinkingAccessibility.violations);
+
+  await page.getByRole("button", { name: "Cancel request" }).click();
+  await expect(page.getByText("Request cancelled")).toBeVisible();
+  await expect(
+    page.getByText(/No Assistant answer or calendar change was saved/),
+  ).toBeVisible();
 });
 
 test("passes an automated accessibility scan and supports subscription sign-in", async ({

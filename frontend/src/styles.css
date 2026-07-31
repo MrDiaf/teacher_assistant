@@ -2874,26 +2874,58 @@ textarea:focus-visible {
 .assistant-thinking {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 10px;
+  padding: 11px 12px;
   color: var(--secondary-text);
+  border: 1px solid #d9e1dd;
+  border-radius: 11px;
+  background: rgba(247, 249, 245, 0.88);
   font-size: 9px;
 }
 
-.assistant-thinking span {
+.assistant-thinking-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.assistant-thinking-dots span {
   width: 5px;
   height: 5px;
+  flex: 0 0 auto;
   border-radius: 50%;
   background: var(--accent-dark);
   animation: assistant-pulse 1.2s infinite ease-in-out;
 }
 
-.assistant-thinking span:nth-child(2) {
+.assistant-thinking-dots span:nth-child(2) {
   animation-delay: 0.15s;
 }
 
-.assistant-thinking span:nth-child(3) {
-  margin-right: 4px;
+.assistant-thinking-dots span:nth-child(3) {
   animation-delay: 0.3s;
+}
+
+.assistant-thinking-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assistant-thinking-copy strong {
+  color: var(--primary-text);
+  font-size: 10px;
+}
+
+.assistant-thinking-copy small {
+  line-height: 1.4;
+}
+
+.assistant-thinking .quiet-button {
+  min-height: 31px;
+  flex: 0 0 auto;
 }
 
 @keyframes assistant-pulse {
@@ -2919,6 +2951,42 @@ textarea:focus-visible {
   border: 1px solid #ead1cd;
   border-radius: 12px;
   background: #fff6f4;
+}
+
+.assistant-job-cancelled {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  color: #50645f;
+  border: 1px solid #d8e0dc;
+  border-radius: 11px;
+  background: #f6f8f5;
+}
+
+.assistant-job-cancelled > svg {
+  flex: 0 0 auto;
+}
+
+.assistant-job-cancelled > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.assistant-job-cancelled strong {
+  color: var(--primary-text);
+  font-size: 10px;
+}
+
+.assistant-job-cancelled p {
+  margin: 2px 0 0;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.assistant-job-cancelled .quiet-button {
+  min-height: 31px;
+  flex: 0 0 auto;
 }
 
 .assistant-job-error-heading {
@@ -5163,6 +5231,17 @@ textarea:focus-visible {
 
   .assistant-proposal-actions button:first-child {
     grid-column: 1 / -1;
+  }
+
+  .assistant-thinking,
+  .assistant-job-cancelled {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .assistant-thinking .quiet-button,
+  .assistant-job-cancelled .quiet-button {
+    width: 100%;
   }
 
   .assistant-composer {

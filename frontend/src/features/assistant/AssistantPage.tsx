@@ -43,6 +43,19 @@ function friendlyJobError(message: string | null): string {
   return message;
 }
 
+function latestJob(jobs: AssistantJob[]): AssistantJob | null {
+  return jobs.length ? jobs[jobs.length - 1] : null;
+}
+
+function thinkingMessage(elapsedSeconds: number): string {
+  if (elapsedSeconds < 8) return "Thinking through your request…";
+  if (elapsedSeconds < 18) return "Working with the relevant context…";
+  if (elapsedSeconds < 30) {
+    return "Validating the response before showing it…";
+  }
+  return `Still working (${elapsedSeconds}s). You can cancel at any time.`;
+}
+
 function AssistantJobErrorCard({
   job,
   isAuthenticated,
@@ -429,6 +442,7 @@ export function AssistantPage() {
   const [isAuditLoading, setIsAuditLoading] = useState(false);
   const [draft, setDraft] = useState("");
   const [failedJob, setFailedJob] = useState<AssistantJob | null>(null);
+  const [cancelledJob, setCancelledJob] = useState<AssistantJob | null>(null);
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
   const [revisionProposal, setRevisionProposal] =
     useState<AssistantProposal | null>(null);
@@ -442,10 +456,15 @@ export function AssistantPage() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isAuthBusy, setIsAuthBusy] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [thinkingSeconds, setThinkingSeconds] = useState(0);
+  const [activeRequestConversationId, setActiveRequestConversationId] =
+    useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const scrollAnchor = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
+  const activeRequestController = useRef<AbortController | null>(null);
   const isAuthenticated = authStatus?.authenticated === true;
 
   useEffect(() => {
@@ -462,10 +481,9 @@ export function AssistantPage() {
           setActiveConversation(detail);
           setMessages(detail.messages);
           setProposals(detail.proposals ?? []);
-          setFailedJob(
-            [...detail.jobs].reverse().find((job) => job.status === "failed") ??
-              null,
-          );
+          const newestJob = latestJob(detail.jobs);
+          setFailedJob(newestJob?.status === "failed" ? newestJob : null);
+          setCancelledJob(newestJob?.status === "cancelled" ? newestJob : null);
         }
       } catch (loadError) {
         if ((loadError as Error).name !== "AbortError") {
@@ -553,12 +571,26 @@ export function AssistantPage() {
   }, [loginAttempt?.login_id, loginAttempt?.status]);
 
   useEffect(() => {
+    if (!isSending) {
+      setThinkingSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    setThinkingSeconds(0);
+    const timer = window.setInterval(() => {
+      setThinkingSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [isSending]);
+
+  useEffect(() => {
     scrollAnchor.current?.scrollIntoView?.({ behavior: "smooth" });
-  }, [messages, proposals, isSending, failedJob]);
+  }, [messages, proposals, isSending, failedJob, cancelledJob]);
 
   async function loadConversation(conversation: AssistantConversation) {
     setError(null);
     setFailedJob(null);
+    setCancelledJob(null);
     setRevisionProposal(null);
     setActiveConversation(conversation);
     try {
@@ -566,10 +598,9 @@ export function AssistantPage() {
       setActiveConversation(detail);
       setMessages(detail.messages);
       setProposals(detail.proposals ?? []);
-      setFailedJob(
-        [...detail.jobs].reverse().find((job) => job.status === "failed") ??
-          null,
-      );
+      const newestJob = latestJob(detail.jobs);
+      setFailedJob(newestJob?.status === "failed" ? newestJob : null);
+      setCancelledJob(newestJob?.status === "cancelled" ? newestJob : null);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -606,10 +637,9 @@ export function AssistantPage() {
       setActiveConversation(detail);
       setMessages(detail.messages);
       setProposals(detail.proposals ?? []);
-      setFailedJob(
-        [...detail.jobs].reverse().find((job) => job.status === "failed") ??
-          null,
-      );
+      const newestJob = latestJob(detail.jobs);
+      setFailedJob(newestJob?.status === "failed" ? newestJob : null);
+      setCancelledJob(newestJob?.status === "cancelled" ? newestJob : null);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -623,6 +653,7 @@ export function AssistantPage() {
     if (isSending) return;
     setError(null);
     setFailedJob(null);
+    setCancelledJob(null);
     setRevisionProposal(null);
     try {
       const created = await assistantApi.createConversation();
@@ -662,9 +693,14 @@ export function AssistantPage() {
     setIsSending(true);
     setError(null);
     setFailedJob(null);
+    setCancelledJob(null);
     setDraft("");
+    let controller: AbortController | null = null;
     try {
       const conversation = await ensureConversation();
+      controller = new AbortController();
+      activeRequestController.current = controller;
+      setActiveRequestConversationId(conversation.id);
       const optimisticMessage: AssistantMessage = {
         id: `pending-${Date.now()}`,
         conversation_id: conversation.id,
@@ -680,11 +716,13 @@ export function AssistantPage() {
             revisionProposal.id,
             normalized,
             selectedModel,
+            controller.signal,
           )
         : await assistantApi.sendMessage(
             conversation.id,
             normalized,
             selectedModel,
+            controller.signal,
           );
       const detail = await assistantApi.getConversation(conversation.id);
       setMessages(detail.messages);
@@ -696,12 +734,10 @@ export function AssistantPage() {
         turn.conversation,
         ...current.filter((item) => item.id !== turn.conversation.id),
       ]);
-      if (turn.job.status === "failed") {
-        setFailedJob(turn.job);
-      } else {
-        setFailedJob(null);
-      }
+      setFailedJob(turn.job.status === "failed" ? turn.job : null);
+      setCancelledJob(turn.job.status === "cancelled" ? turn.job : null);
     } catch (sendError) {
+      if ((sendError as Error).name === "AbortError") return;
       setMessages((current) =>
         current.filter((message) => !message.id.startsWith("pending-")),
       );
@@ -711,7 +747,11 @@ export function AssistantPage() {
           : "The assistant could not answer safely.",
       );
     } finally {
-      setIsSending(false);
+      if (!controller || activeRequestController.current === controller) {
+        if (controller) activeRequestController.current = null;
+        setActiveRequestConversationId(null);
+        setIsSending(false);
+      }
     }
   }
 
@@ -719,21 +759,65 @@ export function AssistantPage() {
     if (!failedJob || isSending || !isAuthenticated) return;
     setIsSending(true);
     setError(null);
+    setCancelledJob(null);
+    const controller = new AbortController();
+    activeRequestController.current = controller;
+    setActiveRequestConversationId(failedJob.conversation_id);
     try {
-      const turn = await assistantApi.retryJob(failedJob.id);
+      const turn = await assistantApi.retryJob(failedJob.id, controller.signal);
       const detail = await assistantApi.getConversation(turn.conversation.id);
       setMessages(detail.messages);
       setProposals(detail.proposals ?? []);
       mergeAudit(detail.proposals ?? []);
       setFailedJob(turn.job.status === "failed" ? turn.job : null);
+      setCancelledJob(turn.job.status === "cancelled" ? turn.job : null);
     } catch (retryError) {
+      if ((retryError as Error).name === "AbortError") return;
       setError(
         retryError instanceof Error
           ? retryError.message
           : "The assistant retry failed safely.",
       );
     } finally {
+      if (activeRequestController.current === controller) {
+        activeRequestController.current = null;
+        setActiveRequestConversationId(null);
+        setIsSending(false);
+      }
+    }
+  }
+
+  async function cancelRequest() {
+    const conversationId = activeRequestConversationId;
+    const controller = activeRequestController.current;
+    if (!conversationId || !controller || isCancelling) return;
+    setIsCancelling(true);
+    setError(null);
+    try {
+      const job = await assistantApi.cancelConversation(conversationId);
+      if (job.status === "cancelled") {
+        controller.abort();
+      }
+      const detail = await assistantApi.getConversation(conversationId);
+      setMessages(detail.messages);
+      setProposals(detail.proposals ?? []);
+      mergeAudit(detail.proposals ?? []);
+      const newestJob = latestJob(detail.jobs);
+      setFailedJob(newestJob?.status === "failed" ? newestJob : null);
+      setCancelledJob(newestJob?.status === "cancelled" ? newestJob : null);
+    } catch (cancelError) {
+      setError(
+        cancelError instanceof Error
+          ? cancelError.message
+          : "The Assistant request could not be cancelled.",
+      );
+    } finally {
+      if (activeRequestController.current === controller) {
+        activeRequestController.current = null;
+      }
+      setActiveRequestConversationId(null);
       setIsSending(false);
+      setIsCancelling(false);
     }
   }
 
@@ -1108,7 +1192,10 @@ export function AssistantPage() {
               </div>
             )}
 
-            {(messages.length > 0 || isSending || failedJob) && (
+            {(messages.length > 0 ||
+              isSending ||
+              failedJob ||
+              cancelledJob) && (
               <div className="assistant-message-list">
                 {messages.map((message) => {
                   const messageProposals = proposals
@@ -1217,11 +1304,46 @@ export function AssistantPage() {
                 })}
                 {isSending && (
                   <div className="assistant-thinking" role="status">
-                    <span />
-                    <span />
-                    <span />
-                    <strong>Preparing a helpful answer…</strong>
+                    <div className="assistant-thinking-dots" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                    <div className="assistant-thinking-copy">
+                      <strong>{thinkingMessage(thinkingSeconds)}</strong>
+                      <small>
+                        Invalid response formatting is corrected automatically
+                        once before an error is shown.
+                      </small>
+                    </div>
+                    <button
+                      className="quiet-button"
+                      disabled={!activeRequestConversationId || isCancelling}
+                      onClick={() => void cancelRequest()}
+                      type="button"
+                    >
+                      {isCancelling ? "Cancelling…" : "Cancel request"}
+                    </button>
                   </div>
+                )}
+                {cancelledJob && !isSending && (
+                  <section className="assistant-job-cancelled" role="status">
+                    <Icon name="x" size={17} />
+                    <div>
+                      <strong>Request cancelled</strong>
+                      <p>
+                        No Assistant answer or calendar change was saved. You
+                        can send the request again whenever you are ready.
+                      </p>
+                    </div>
+                    <button
+                      className="quiet-button"
+                      onClick={() => setCancelledJob(null)}
+                      type="button"
+                    >
+                      Dismiss
+                    </button>
+                  </section>
                 )}
                 {failedJob && !isSending && (
                   <AssistantJobErrorCard

@@ -113,14 +113,19 @@ code, browse the web, or inspect the source repository.
 
 It can also answer private note questions such as “Summarize my latest notes
 from Datasekretess” or “What did I write about normalization?” The backend
-selects a bounded set of matching notes before starting Codex. Capability
-questions such as “What can you do with course notes?” do not load private note
-bodies and do not require a citation. Only notes selected for an actual
-content-grounded question, their explicitly linked slide ranges, and calendars
-linked to the selected course are supplied. Unrelated courses, literature,
-source files, and private calendar data are excluded. If matching notes belong
-to several courses, the Assistant asks which course you mean before any runtime
-job starts.
+selects a bounded set of matching notes before starting Codex. Private note
+matching runs only when the owner explicitly mentions notes or slides, or asks
+what they previously wrote. Generic topic overlap, general writing requests,
+and capability questions such as “What can you do with course notes?” do not
+load private note bodies and do not require a citation. Calendar-only requests
+receive every calendar, including hidden and read-only calendars, without note
+context; an explicitly named course-calendar question remains limited to that
+course's linked calendars. Only notes selected for an actual content-grounded
+question, their explicitly linked slide ranges, and calendars linked to the
+selected course are supplied. Unrelated courses, literature, source files, and
+private calendar data are excluded. If matching notes belong to several
+courses, the Assistant asks which course you mean before any runtime job
+starts.
 
 Answers grounded in course notes display validated note-title citations and,
 where used, the exact slide deck and slide number. General-knowledge,
@@ -128,6 +133,21 @@ capability, and calendar-only answers use an empty citation list. An invented
 or out-of-scope ID or citation fails the Assistant job safely and does not save
 the answer or alter any data. Notes, sources, courses, and slide links remain
 read-only to the runtime Assistant.
+
+While a request is running, the chat shows elapsed thinking states and a
+**Cancel request** control. Cancellation is handled by the backend: the active
+Codex task is interrupted, its temporary workspace is removed, the job is
+stored as cancelled, and no answer or calendar proposal is saved. A request
+that finishes just before cancellation remains completed rather than being
+rewritten as cancelled. Cancelled prompts remain visible in owner history but
+are excluded from later model conversation context, so a follow-up does not
+accidentally answer work the owner stopped.
+
+If the first model response is malformed or fails the strict response/citation
+schema, the backend supplies the safe validation feedback to Codex and makes
+one automatic correction attempt. Only when that second response also fails is
+the error card shown. Automatic correction never bypasses proposal validation,
+read-only calendars, or owner confirmation.
 
 ## Manual courses
 
@@ -291,9 +311,9 @@ UI. Temporary Codex workspaces are still deleted immediately after each job.
   by the explanation action.
 - If an Assistant reply is blocked as invalid, expand **Developer details** to
   see whether parsing, schema, citation, proposal-target, or recurrence checks
-  rejected it. Retry once so the safe feedback can be supplied to the model. If
-  it repeats, use the job/report ID to trace it without sharing raw private
-  conversation data.
+  rejected it. The Assistant has already made one automatic format-correction
+  attempt; retry manually or rephrase the request. If it repeats, use the
+  job/report ID to trace it without sharing raw private conversation data.
 - If an error report cannot be found, it may belong to another restored database
   or installation. Repeat the failing operation to create a new sanitized
   report; do not paste credentials, `.env`, logs, or private files into chat.

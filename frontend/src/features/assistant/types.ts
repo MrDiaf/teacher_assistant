@@ -6,7 +6,8 @@ export type AssistantJobStatus =
   | "validating"
   | "awaiting_confirmation"
   | "completed"
-  | "failed";
+  | "failed"
+  | "cancelled";
 
 export type AssistantProposalStatus =
   | "awaiting_confirmation"

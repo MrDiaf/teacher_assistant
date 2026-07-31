@@ -1,3 +1,4 @@
+import asyncio
 import json
 import uuid
 from collections.abc import Iterator
@@ -35,6 +36,9 @@ class FakeCodexAdapter:
         )
         self.calls: list[dict[str, Any]] = []
         self.fail_with: AssistantRuntimeError | None = None
+        self.responses: list[str | None] = []
+        self.started_event: asyncio.Event | None = None
+        self.release_event: asyncio.Event | None = None
 
     async def answer(self, workspace, model=None) -> CodexRuntimeResult:
         def read_text(name: str) -> str | None:
@@ -65,9 +69,14 @@ class FakeCodexAdapter:
             ),
         }
         self.calls.append(snapshot)
+        if self.started_event is not None:
+            self.started_event.set()
+        if self.release_event is not None:
+            await self.release_event.wait()
         if self.fail_with is not None:
             raise self.fail_with
-        return CodexRuntimeResult(final_response=self.response)
+        response = self.responses.pop(0) if self.responses else self.response
+        return CodexRuntimeResult(final_response=response)
 
 
 class FakeCodexAuth:
@@ -322,6 +331,37 @@ async def test_conversation_history_is_stored_and_supplied_without_hidden_reason
     assert "hidden reasoning" not in detail.text.lower()
 
 
+async def test_invalid_response_is_corrected_automatically_once(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    conversation = await create_conversation(client)
+    fake_codex.responses = [
+        '{"message":"I can help","proposal":null,"unexpected":true}',
+        json.dumps(
+            {
+                "message": "I can help with general questions and your calendar.",
+                "proposal": None,
+                "additional_proposals": [],
+                "citations": [],
+            }
+        ),
+    ]
+
+    response = await ask(client, conversation["id"], "What can you help me with?")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "completed"
+    assert body["assistant_message"]["content"] == (
+        "I can help with general questions and your calendar."
+    )
+    assert len(fake_codex.calls) == 2
+    correction_request = fake_codex.calls[1]["request"]
+    assert '"error_code": "invalid_assistant_response"' in correction_request
+    assert '"validation_stage": "response_schema"' in correction_request
+
+
 async def test_retry_receives_safe_validation_feedback_and_corrects_weekly_byday(
     client: AsyncClient,
     fake_codex: FakeCodexAdapter,
@@ -489,6 +529,42 @@ async def test_runtime_failure_preserves_owner_message_and_workspace_is_deleted(
         ("owner", "What is next?")
     ]
     assert not Path(fake_codex.calls[0]["root"]).exists()
+
+
+async def test_owner_can_cancel_an_active_assistant_request(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    conversation = await create_conversation(client)
+    fake_codex.started_event = asyncio.Event()
+    fake_codex.release_event = asyncio.Event()
+    request_task = asyncio.create_task(
+        ask(client, conversation["id"], "Take your time explaining tomorrow.")
+    )
+    await asyncio.wait_for(fake_codex.started_event.wait(), timeout=2)
+
+    cancelled = await client.post(
+        f"/api/v1/assistant/conversations/{conversation['id']}/cancel"
+    )
+
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelled"
+    assert cancelled.json()["safe_error_code"] == "assistant_job_cancelled"
+    turn = await asyncio.wait_for(request_task, timeout=2)
+    assert turn.status_code == 200, turn.text
+    assert turn.json()["job"]["status"] == "cancelled"
+    assert turn.json()["assistant_message"] is None
+    detail = await client.get(f"/api/v1/assistant/conversations/{conversation['id']}")
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["jobs"][-1]["status"] == "cancelled"
+    assert [item["role"] for item in detail.json()["messages"]] == ["owner"]
+
+    fake_codex.started_event = None
+    fake_codex.release_event = None
+    follow_up = await ask(client, conversation["id"], "What is two plus two?")
+    assert follow_up.status_code == 200, follow_up.text
+    assert follow_up.json()["job"]["status"] == "completed"
+    assert "Take your time explaining tomorrow." not in fake_codex.calls[-1]["request"]
 
 
 async def test_unknown_assistant_resources_return_clear_errors(
@@ -1285,6 +1361,156 @@ async def test_course_note_capability_question_is_general_help_without_private_c
     assert "NOTES.json" not in call["files"]
     assert "private general-purpose assistant" in call["policy"]
     assert "provide code snippets directly in the chat response" in call["policy"]
+
+
+async def test_calendar_only_request_ignores_false_note_matches_and_receives_all_calendars(
+    client: AsyncClient,
+    session: AsyncSession,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    course, note, _ = await create_course_note_context(
+        client,
+        course_name="test",
+        course_code="TEST",
+        note_title="Testing notes written",
+        note_body=(
+            "I was not sure, but I can get something ready for a work out. "
+            "PRIVATE-UNRELATED-NOTE"
+        ),
+    )
+    linked_read_only = await create_calendar(
+        client,
+        name="Imported course timetable",
+        is_read_only=True,
+    )
+    gym = await create_calendar(
+        client,
+        name="Gym",
+        description="Push-Pull-Legs workout schedule",
+        is_visible=False,
+    )
+    personal = await create_calendar(client, name="My Calendar")
+    linked = await client.post(
+        f"/api/v1/courses/{course['id']}/calendars",
+        json={"calendar_id": linked_read_only["id"]},
+    )
+    assert linked.status_code == 201, linked.text
+
+    fake_codex.response = json.dumps(
+        {
+            "message": "I can add the workout to Gym after confirmation.",
+            "proposal": {
+                "type": "calendar_change",
+                "summary": "Add a one-hour workout to Gym",
+                "actions": [
+                    {
+                        "operation": "create_event",
+                        "calendar_id": gym["id"],
+                        "event": {
+                            "title": "Workout",
+                            "description": None,
+                            "location": None,
+                            "start_at": "2026-08-01T10:00:00+02:00",
+                            "end_at": "2026-08-01T11:00:00+02:00",
+                            "all_day": False,
+                            "timezone": "Europe/Oslo",
+                            "recurrence_rule": None,
+                            "status": "confirmed",
+                        },
+                    }
+                ],
+            },
+            "additional_proposals": [],
+            "citations": [],
+        }
+    )
+    conversation = await create_conversation(client)
+
+    response = await ask(
+        client,
+        conversation["id"],
+        (
+            "it is not but okey you get the benefit of the doubt add something to the "
+            "Gym calender a work out that last 1hr that start at 10 am tomorrow"
+        ),
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["job"]["status"] == "awaiting_confirmation"
+    assert body["proposal"]["actions"][0]["calendar_id"] == gym["id"]
+    call = fake_codex.calls[-1]
+    assert call["courses"] == []
+    assert call["notes"] == []
+    assert call["selected_slide_text"] == []
+    assert {item["id"] for item in call["calendars"]} == {
+        linked_read_only["id"],
+        gym["id"],
+        personal["id"],
+    }
+    gym_context = next(item for item in call["calendars"] if item["id"] == gym["id"])
+    assert gym_context["is_visible"] is False
+    assert gym_context["is_read_only"] is False
+    assert "COURSES.json" not in call["files"]
+    assert "NOTES.json" not in call["files"]
+    serialized_call = json.dumps(call, default=str)
+    assert note["id"] not in serialized_call
+    assert "PRIVATE-UNRELATED-NOTE" not in serialized_call
+
+    audit = await session.scalar(
+        select(AssistantContextAudit).where(
+            AssistantContextAudit.job_id == uuid.UUID(body["job"]["id"])
+        )
+    )
+    assert audit is not None
+    assert audit.course_ids == []
+    assert audit.note_ids == []
+    assert audit.requires_clarification is False
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Explain normalization in Datasekretess in plain language.",
+        "Write me an email about normalization.",
+    ],
+)
+async def test_general_questions_do_not_activate_matching_private_notes(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+    question: str,
+) -> None:
+    course, note, _ = await create_course_note_context(
+        client,
+        course_name="Datasekretess",
+        course_code="DATSEC",
+        note_title="Normalization",
+        note_body="PRIVATE-NORMALIZATION-NOTE explains third normal form.",
+    )
+    fake_codex.response = json.dumps(
+        {
+            "message": "Here is a general-knowledge answer.",
+            "proposal": None,
+            "additional_proposals": [],
+            "citations": [],
+        }
+    )
+    conversation = await create_conversation(client)
+
+    response = await ask(client, conversation["id"], question)
+
+    assert response.status_code == 200, response.text
+    assert response.json()["job"]["status"] == "completed"
+    call = fake_codex.calls[-1]
+    assert call["courses"] == []
+    assert call["notes"] == []
+    assert call["selected_slide_text"] == []
+    assert "COURSES.json" not in call["files"]
+    assert "NOTES.json" not in call["files"]
+    serialized_call = json.dumps(call, default=str)
+    assert course["id"] not in serialized_call
+    assert note["id"] not in serialized_call
+    assert "PRIVATE-NORMALIZATION-NOTE" not in serialized_call
 
 
 async def test_course_question_uses_only_relevant_notes_slides_and_linked_calendar(

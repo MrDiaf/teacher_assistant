@@ -172,6 +172,19 @@ async def get_job(
     return AssistantJobResponse.model_validate(job)
 
 
+@router.post(
+    "/assistant/conversations/{conversation_id}/cancel",
+    response_model=AssistantJobResponse,
+)
+async def cancel_active_job(
+    conversation_id: uuid.UUID,
+    session: SessionDependency,
+    adapter: AdapterDependency,
+) -> AssistantJobResponse:
+    job = await AssistantService(session, adapter).cancel_active_job(conversation_id)
+    return AssistantJobResponse.model_validate(job)
+
+
 @router.post("/assistant/jobs/{job_id}/retry", response_model=AssistantTurnResponse)
 async def retry_job(
     job_id: uuid.UUID,

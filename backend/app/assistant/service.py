@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.service import AiModelRegistry
 from app.assistant.course_context import CourseContextSelection, CourseContextService
+from app.assistant.execution import assistant_execution_registry
 from app.assistant.models import (
     AssistantContextAudit,
     AssistantConversation,
@@ -31,8 +33,10 @@ from app.codex_runtime.workspace import create_runtime_workspace
 from app.core.config import get_settings
 from app.core.errors import (
     ApplicationError,
+    AssistantJobNotCancellableError,
     AssistantJobNotRetryableError,
     AssistantRuntimeError,
+    InvalidAssistantResponseError,
 )
 from app.course_calendars.repository import CourseCalendarRepository
 from app.diagnostics.redaction import redact, redact_text
@@ -43,6 +47,14 @@ CONTEXT_PAST_DAYS = 30
 CONTEXT_FUTURE_DAYS = 365
 MAX_HISTORY_MESSAGES = 20
 MAX_BACKEND_FEEDBACK_ITEMS = 5
+ACTIVE_JOB_STATUSES = frozenset(
+    {
+        AssistantJobStatus.QUEUED,
+        AssistantJobStatus.PREPARING_CONTEXT,
+        AssistantJobStatus.RUNNING,
+        AssistantJobStatus.VALIDATING,
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -144,7 +156,85 @@ class AssistantService:
         await self.session.commit()
         return await self._execute_job(job.id, retry_feedback=retry_feedback)
 
+    async def cancel_active_job(self, conversation_id: uuid.UUID) -> AssistantJob:
+        job = await self.assistant.get_latest_job(conversation_id, for_update=True)
+        if job is None:
+            raise AssistantJobNotCancellableError()
+        if job.status not in ACTIVE_JOB_STATUSES:
+            return job
+        job.status = AssistantJobStatus.CANCELLED
+        job.safe_error = (
+            "You cancelled this request. No Assistant answer or calendar change was saved."
+        )
+        job.safe_error_code = "assistant_job_cancelled"
+        job.safe_error_details = {
+            "reason": "The owner cancelled the request while the Assistant was working.",
+            "owner_actions": ["Send the request again whenever you are ready."],
+        }
+        job.diagnostic_error_id = None
+        await self.session.commit()
+        assistant_execution_registry.cancel(job.id)
+        await self.session.refresh(job)
+        return job
+
     async def _execute_job(
+        self,
+        job_id: uuid.UUID,
+        *,
+        retry_feedback: dict[str, Any] | None = None,
+    ) -> AssistantTurn:
+        task = asyncio.current_task()
+        if task is None:
+            raise RuntimeError("Assistant execution requires an asyncio task.")
+        assistant_execution_registry.register(job_id, task)
+        automatic_retry_attempted = False
+        current_feedback = retry_feedback
+        try:
+            while True:
+                try:
+                    return await self._execute_job_attempt(
+                        job_id,
+                        retry_feedback=current_feedback,
+                    )
+                except InvalidAssistantResponseError as exc:
+                    await self.session.rollback()
+                    if retry_feedback is None and not automatic_retry_attempted:
+                        automatic_retry_attempted = True
+                        current_feedback = {
+                            "error_code": exc.code,
+                            "safe_error": exc.message,
+                            "safe_error_details": exc.details,
+                        }
+                        logger.info(
+                            "Assistant response failed validation; correcting once: "
+                            "job=%s stage=%s",
+                            job_id,
+                            exc.details.get("validation_stage", "response_validation"),
+                        )
+                        continue
+                    logger.warning(
+                        "Assistant runtime failed safely after response correction: "
+                        "job=%s code=%s",
+                        job_id,
+                        exc.code,
+                    )
+                    return await self._fail_job(
+                        job_id,
+                        exc.message,
+                        exc.code,
+                        details={
+                            **exc.details,
+                            "automatic_retry_attempted": automatic_retry_attempted,
+                        },
+                        exception_type=type(exc).__name__,
+                    )
+        except asyncio.CancelledError:
+            await self.session.rollback()
+            return await self._cancelled_turn(job_id)
+        finally:
+            assistant_execution_registry.unregister(job_id, task)
+
+    async def _execute_job_attempt(
         self,
         job_id: uuid.UUID,
         *,
@@ -300,6 +390,8 @@ class AssistantService:
             )
         except AssistantRuntimeError as exc:
             await self.session.rollback()
+            if isinstance(exc, InvalidAssistantResponseError):
+                raise
             logger.warning(
                 "Assistant runtime failed safely: job=%s code=%s",
                 job_id,
@@ -343,6 +435,23 @@ class AssistantService:
                 exception_type=type(exc).__name__,
             )
 
+    async def _cancelled_turn(self, job_id: uuid.UUID) -> AssistantTurn:
+        job = await self.assistant.get_job(job_id, for_update=True)
+        if job.status in ACTIVE_JOB_STATUSES:
+            job.status = AssistantJobStatus.CANCELLED
+            job.safe_error = (
+                "You cancelled this request. No Assistant answer or calendar change was saved."
+            )
+            job.safe_error_code = "assistant_job_cancelled"
+            job.safe_error_details = {
+                "reason": "The owner cancelled the request while the Assistant was working.",
+                "owner_actions": ["Send the request again whenever you are ready."],
+            }
+            job.diagnostic_error_id = None
+            await self.session.commit()
+            await self.session.refresh(job)
+        return await self._turn_from_job(job)
+
     async def _fail_job(
         self,
         job_id: uuid.UUID,
@@ -360,7 +469,10 @@ class AssistantService:
                 "failure_stage": current_job.status.value,
                 "reason": safe_error,
                 **(details or {}),
-                "owner_actions": self._owner_failure_actions(safe_error_code),
+                "owner_actions": self._owner_failure_actions(
+                    safe_error_code,
+                    details or {},
+                ),
                 "developer_actions": [
                     "Use the job and diagnostic report IDs to trace this failure.",
                     "Inspect the validation stage and field issues below. Raw model output "
@@ -401,8 +513,16 @@ class AssistantService:
         return await self._turn_from_job(job)
 
     @staticmethod
-    def _owner_failure_actions(safe_error_code: str) -> list[str]:
+    def _owner_failure_actions(
+        safe_error_code: str,
+        details: dict[str, Any],
+    ) -> list[str]:
         if safe_error_code == "invalid_assistant_response":
+            if details.get("automatic_retry_attempted") is True:
+                return [
+                    "The Assistant already corrected its response once automatically. "
+                    "Review the reason below, then retry manually or rephrase the request.",
+                ]
             return [
                 "Retry once. The retry includes this validation feedback so the assistant can "
                 "correct its response format.",
@@ -627,7 +747,8 @@ class AssistantService:
         audits: list[AssistantContextAudit],
         current_context: CourseContextSelection,
     ) -> list[AssistantMessage]:
-        job_by_owner_message = {job.owner_message_id: job.id for job in jobs}
+        job_by_owner_message = {job.owner_message_id: job for job in jobs}
+        job_by_id = {job.id: job for job in jobs}
         audit_by_job = {audit.job_id: audit for audit in audits}
         current_course_ids = {
             str(course_id) for course_id in current_context.course_ids
@@ -635,7 +756,14 @@ class AssistantService:
         current_note_ids = {item["id"] for item in current_context.notes}
         scoped: list[AssistantMessage] = []
         for message in history:
-            related_job_id = message.job_id or job_by_owner_message.get(message.id)
+            related_job = (
+                job_by_id.get(message.job_id)
+                if message.job_id is not None
+                else job_by_owner_message.get(message.id)
+            )
+            if related_job is not None and related_job.status == AssistantJobStatus.CANCELLED:
+                continue
+            related_job_id = related_job.id if related_job is not None else None
             audit = audit_by_job.get(related_job_id)
             if audit is not None and audit.course_ids:
                 if not current_course_ids or current_course_ids.isdisjoint(

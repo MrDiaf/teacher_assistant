@@ -11,6 +11,7 @@ from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.ai.routes import router as ai_router
+from app.assistant.execution import assistant_execution_registry
 from app.assistant.routes import router as assistant_router
 from app.calendar.import_routes import router as calendar_import_router
 from app.calendar.routes import router as calendar_router
@@ -42,6 +43,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+        await assistant_execution_registry.shutdown()
         await get_codex_auth_manager().shutdown()
 
 
