@@ -1,6 +1,6 @@
 # M16 — Lightweight Markdown note editor
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -50,17 +50,17 @@ ownership rules must continue to operate on the original Markdown string.
 
 ## Completed checklist
 
-- [ ] Select and document the minimal Markdown editor/rendering approach.
-- [ ] Add the Markdown-aware note-body editor with visible syntax characters.
-- [ ] Add the lightweight formatting toolbar and keyboard shortcuts.
-- [ ] Render supported Markdown safely on note cards.
-- [ ] Preserve raw Markdown exactly through create/edit/save/reopen.
-- [ ] Preserve slide-reference editing and validation.
-- [ ] Add plain-text fallback and readable loading/error behavior.
-- [ ] Add accessibility labels, focus behavior, and keyboard tests.
-- [ ] Add XSS, unsafe-link, malformed-Markdown, and round-trip tests.
-- [ ] Add responsive styling without redesigning the Course module.
-- [ ] Update note-format help text and documentation.
+- [x] Select and document the minimal Markdown editor/rendering approach.
+- [x] Add the Markdown-aware note-body editor with visible syntax characters.
+- [x] Add the lightweight formatting toolbar and keyboard shortcuts.
+- [x] Render supported Markdown safely on note cards.
+- [x] Preserve raw Markdown exactly through create/edit/save/reopen.
+- [x] Preserve slide-reference editing and validation.
+- [x] Add plain-text fallback and readable loading/error behavior.
+- [x] Add accessibility labels, focus behavior, and keyboard tests.
+- [x] Add XSS, unsafe-link, malformed-Markdown, and round-trip tests.
+- [x] Add responsive styling without redesigning the Course module.
+- [x] Update note-format help text and documentation.
 
 ## Acceptance criteria
 

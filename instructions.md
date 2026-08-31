@@ -231,26 +231,26 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M13 — Course-aware Assistant and diagnostics](milestones/m13-course-aware-assistant-and-diagnostics.md)
 - [x] [M14 — Data durability, relocation, and update safety](milestones/m14-data-durability-and-relocation-safety.md)
 - [x] [M15 — Open uploaded PDFs in Teacher Assistant and a new window](milestones/m15-pdf-viewing.md)
-- [ ] [M16 — Lightweight Markdown note editor](milestones/m16-lightweight-markdown-note-editor.md)
+- [x] [M16 — Lightweight Markdown note editor](milestones/m16-lightweight-markdown-note-editor.md)
 - [ ] [M17 — Summary decluttering and removable summary bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
 - [ ] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
 - [ ] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
 
 Current active milestone: **none**.
 
-Next planned milestone: **M16 — Lightweight Markdown note editor**. It must be
-explicitly selected before implementation begins.
+Next planned milestone: **M17 — Summary decluttering and removable summary
+bullets**. It must be explicitly selected before implementation begins.
 
-M1 through M15 and the post-M7 linked-batch milestone are complete. The
+M1 through M16 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
 response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M16 through M19 are planned and intentionally unchecked. Their required order
-is M16 Markdown editing, M17 summary organization, M18 Codex prettifying, and
-M19 frontend state persistence. Planning does not authorize implementation;
-the owner must select one milestone explicitly.
+M17 through M19 are planned and intentionally unchecked. Their required order
+is M17 summary organization, M18 Codex prettifying, and M19 frontend state
+persistence. Planning does not authorize implementation; the owner must select
+one milestone explicitly.
 
 ## Definition of done
 

@@ -234,9 +234,37 @@ test("creates and manages a manual course through the UI", async ({
   await page.getByRole("button", { name: "Create note" }).first().click();
   const noteDialog = page.getByRole("dialog");
   await noteDialog.getByLabel("Note title").fill("Transaction isolation");
+  const noteBody = noteDialog.getByLabel("Note body");
+  const plainNote = "# Serializable\nAvoid write skew and dirty reads.";
+  await noteBody.fill(plainNote);
+  await noteBody.evaluate((element: HTMLTextAreaElement) => {
+    const start = element.value.indexOf("write skew");
+    element.focus();
+    element.setSelectionRange(start, start + "write skew".length);
+  });
   await noteDialog
-    .getByLabel("Note body")
-    .fill("# Serializable\nAvoid write skew and dirty reads.");
+    .getByRole("button", { name: "Bold (Ctrl or Command+B)" })
+    .click();
+  await expect(noteBody).toHaveValue(
+    "# Serializable\nAvoid **write skew** and dirty reads.",
+  );
+  await noteBody.press("Control+z");
+  await expect(noteBody).toHaveValue(plainNote);
+  await noteBody.evaluate((element: HTMLTextAreaElement) => {
+    const start = element.value.indexOf("write skew");
+    element.focus();
+    element.setSelectionRange(start, start + "write skew".length);
+  });
+  await noteBody.press("Control+b");
+  await noteBody.evaluate((element: HTMLTextAreaElement) => {
+    const start = element.value.indexOf("dirty reads");
+    element.focus();
+    element.setSelectionRange(start, start + "dirty reads".length);
+  });
+  await noteBody.press("Control+i");
+  const markdownNote =
+    "# Serializable\nAvoid **write skew** and _dirty reads_.";
+  await expect(noteBody).toHaveValue(markdownNote);
   await noteDialog.getByRole("button", { name: "Add reference" }).click();
   await noteDialog
     .getByLabel("Slide deck 1")
@@ -249,6 +277,11 @@ test("creates and manages a manual course through the UI", async ({
   const note = page
     .getByRole("article")
     .filter({ hasText: "Transaction isolation" });
+  await expect(
+    note.getByRole("heading", { level: 4, name: "Serializable" }),
+  ).toBeVisible();
+  await expect(note.getByText("write skew")).toHaveCSS("font-weight", "700");
+  await expect(note.getByText("dirty reads")).toHaveCSS("font-style", "italic");
   await expect(note.getByText("lecture-assets")).toBeVisible();
   await expect(note.getByText("Slides 3–5")).toBeVisible();
   await expect(note.getByText(/Isolation overview/)).toBeVisible();
@@ -264,6 +297,7 @@ test("creates and manages a manual course through the UI", async ({
   ).toBeVisible();
 
   await note.getByRole("button", { name: "Edit" }).click();
+  await expect(noteDialog.getByLabel("Note body")).toHaveValue(markdownNote);
   await noteDialog.getByLabel("Note title").fill("Serializable isolation");
   await noteDialog.getByRole("button", { name: "Save changes" }).click();
   await expect(

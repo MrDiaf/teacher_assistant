@@ -4,6 +4,7 @@ import { Icon } from "../../components/Icon";
 import { AiModelSelector } from "../ai/AiModelSelector";
 import { useAiModelSelection } from "../ai/useAiModelSelection";
 import { NoteDialog } from "./NoteDialog";
+import { SafeMarkdown } from "./SafeMarkdown";
 import { courseApi } from "./api";
 import type {
   CourseModel,
@@ -121,7 +122,7 @@ function NoteCard({
       </header>
 
       {note.body ? (
-        <p className="course-note-body">{note.body}</p>
+        <SafeMarkdown className="course-note-body" source={note.body} />
       ) : (
         <p className="course-note-body empty">This note has no body yet.</p>
       )}

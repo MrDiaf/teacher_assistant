@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 
 import { Icon } from "../../components/Icon";
 import { useModalDialog } from "../../hooks/useModalDialog";
+import { MarkdownNoteEditor } from "./MarkdownNoteEditor";
 import type {
   CourseNote,
   CourseSource,
@@ -171,19 +172,14 @@ export function NoteDialog({
             />
           </label>
 
-          <label className="field">
-            <span>Note body</span>
-            <textarea
-              maxLength={100000}
-              onChange={(event) => setBody(event.target.value)}
-              placeholder="Write in plain text or Markdown…"
-              rows={10}
-              value={body}
-            />
-          </label>
+          <div className="field">
+            <label htmlFor="note-body">Note body</label>
+            <MarkdownNoteEditor onChange={setBody} value={body} />
+          </div>
           <p className="note-format-hint">
-            Plain text and Markdown are stored safely. HTML is never rendered
-            from this editor.
+            Use the toolbar or type Markdown directly. Syntax characters remain
+            visible and are stored exactly as written. Raw HTML is displayed as
+            text, never executed.
           </p>
 
           <section

@@ -43,6 +43,53 @@ async def test_note_crud_works_without_slide_references(
     assert (await client.get(f"/api/v1/notes/{note['id']}")).status_code == 404
 
 
+async def test_note_markdown_round_trips_exactly_and_enforces_body_limit(
+    client: AsyncClient,
+) -> None:
+    course = await create_course(client)
+    markdown = (
+        "# Serializable transactions\n\n"
+        "Keep **write skew**, _dirty reads_, and `locks` visible.  \n"
+        "- first item\n2. second item\n\n"
+        "> Preserve spacing and punctuation.\n\n"
+        "[Reference](https://example.test/path?q=one)\n\n"
+        "```sql\nSELECT * FROM notes;\n```\n"
+        "<script>alert('stored, not rendered')</script>\n"
+    )
+
+    created = await client.post(
+        f"/api/v1/courses/{course['id']}/notes",
+        json={"title": "Markdown source", "body": markdown, "slide_references": []},
+    )
+    assert created.status_code == 201
+    assert created.json()["body"] == markdown
+
+    fetched = await client.get(f"/api/v1/notes/{created.json()['id']}")
+    assert fetched.status_code == 200
+    assert fetched.json()["body"] == markdown
+
+    updated_markdown = markdown.replace("**write skew**", "__write skew__")
+    updated = await client.patch(
+        f"/api/v1/notes/{created.json()['id']}",
+        json={"body": updated_markdown},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["body"] == updated_markdown
+
+    at_limit = await client.post(
+        f"/api/v1/courses/{course['id']}/notes",
+        json={"title": "At the limit", "body": "x" * 100_000},
+    )
+    assert at_limit.status_code == 201
+    assert len(at_limit.json()["body"]) == 100_000
+
+    over_limit = await client.post(
+        f"/api/v1/courses/{course['id']}/notes",
+        json={"title": "Over the limit", "body": "x" * 100_001},
+    )
+    assert over_limit.status_code == 422
+
+
 async def test_note_preserves_multiple_named_slide_ranges(
     client: AsyncClient,
     session: AsyncSession,

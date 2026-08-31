@@ -876,6 +876,15 @@ describe("CoursesPage", () => {
   });
 
   it("creates, edits, links, and explicitly deletes a course note", async () => {
+    const markdown = [
+      "# Serializable",
+      "",
+      "Avoid **write skew**, _dirty reads_, and `unsafe defaults`.",
+      "",
+      "> Confirm the isolation level.",
+      "",
+      "<script>window.noteXss = true</script>",
+    ].join("\n");
     const fetchMock = installCourseApi([activeCourse], [slideSource]);
     vi.stubGlobal("fetch", fetchMock);
     render(<CoursesPage />);
@@ -893,7 +902,7 @@ describe("CoursesPage", () => {
       target: { value: "Isolation levels" },
     });
     fireEvent.change(within(dialog).getByLabelText("Note body"), {
-      target: { value: "# Serializable\nAvoid write skew." },
+      target: { value: markdown },
     });
     fireEvent.click(
       within(dialog).getByRole("button", { name: "Add reference" }),
@@ -918,12 +927,25 @@ describe("CoursesPage", () => {
       name: "Isolation levels",
     });
     let noteCard = title.closest("article")!;
+    expect(
+      within(noteCard).getByRole("heading", {
+        level: 4,
+        name: "Serializable",
+      }),
+    ).toBeInTheDocument();
+    expect(within(noteCard).getByText("write skew").tagName).toBe("STRONG");
+    expect(within(noteCard).getByText("dirty reads").tagName).toBe("EM");
+    expect(noteCard.querySelector("script")).toBeNull();
+    expect(noteCard).toHaveTextContent(
+      "<script>window.noteXss = true</script>",
+    );
     expect(within(noteCard).getByText(/Transactions deck/)).toBeInTheDocument();
     expect(within(noteCard).getByText("Slides 2–4")).toBeInTheDocument();
     expect(within(noteCard).getByText(/Key concepts/)).toBeInTheDocument();
 
     fireEvent.click(within(noteCard).getByRole("button", { name: "Edit" }));
     dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByLabelText("Note body")).toHaveValue(markdown);
     fireEvent.change(within(dialog).getByLabelText("Note title"), {
       target: { value: "Serializable isolation" },
     });

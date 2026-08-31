@@ -180,14 +180,25 @@ return, and offers the new-window fallback when embedding is unavailable. Both
 Literature and Slides PDFs use the same private source-ID endpoint; other file
 types do not expose a PDF action.
 
-The **Notes** tab stores private plain text or Markdown notes. A note works
-without slides, or it can link to one or more whole slide decks or numbered
-slide ranges. Note text is displayed as text and user-entered HTML is never
-rendered. AI summaries use only the note body and explicitly linked extracted
-slide text. Every stored bullet is labeled **From note**, **From slides**, or
-**From note + slides** with its exact source references. Summaries retain the
-selected model and source hashes, and are marked stale after their note or
-linked slide text changes.
+The **Notes** tab stores private plain text or Markdown notes, up to 100,000
+characters each. Its lightweight editor keeps Markdown markers visible while
+highlighting headings, bold, italic, lists, blockquotes, links, inline code,
+and fenced code blocks. The toolbar provides the common formatting operations,
+Ctrl/Cmd+B and Ctrl/Cmd+I work on the current selection, and **Plain text**
+turns highlighting off without changing the stored source.
+
+Note cards safely render that same supported Markdown subset. Raw HTML remains
+readable text, embedded content is never created, and unsafe link schemes such
+as `javascript:` and `data:` are not clickable. The original Markdown string
+is preserved exactly through save and reopen; no rich-text document format is
+introduced.
+
+A note works without slides, or it can link to one or more whole slide decks or
+numbered slide ranges. AI summaries use only the original note body and
+explicitly linked extracted slide text. Every stored bullet is labeled **From
+note**, **From slides**, or **From note + slides** with its exact source
+references. Summaries retain the selected model and source hashes, and are
+marked stale after their note or linked slide text changes.
 
 The **Calendar** tab links a course to existing calendars without copying
 events. Unlinking or deleting a course does not delete a calendar or its events,

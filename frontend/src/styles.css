@@ -4598,23 +4598,111 @@ textarea:focus-visible {
 }
 
 .course-note-body {
-  display: -webkit-box;
   min-height: 62px;
   margin: 16px 0;
-  overflow: hidden;
   color: #40524e;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 9px;
   line-height: 1.65;
-  white-space: pre-wrap;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 4;
+  overflow-wrap: anywhere;
 }
 
 .course-note-body.empty {
   color: #8b9793;
   font-family: inherit;
   font-style: italic;
+}
+
+.safe-markdown > :first-child {
+  margin-top: 0;
+}
+
+.safe-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.safe-markdown p,
+.safe-markdown ul,
+.safe-markdown ol,
+.safe-markdown blockquote,
+.safe-markdown pre,
+.safe-markdown h4,
+.safe-markdown h5,
+.safe-markdown h6 {
+  margin: 0 0 9px;
+}
+
+.safe-markdown h4,
+.safe-markdown h5,
+.safe-markdown h6 {
+  color: #294f46;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.safe-markdown h4 {
+  font-size: 15px;
+}
+
+.safe-markdown h5 {
+  font-size: 13px;
+}
+
+.safe-markdown h6 {
+  font-size: 11px;
+}
+
+.safe-markdown ul,
+.safe-markdown ol {
+  padding-left: 21px;
+}
+
+.safe-markdown li + li {
+  margin-top: 3px;
+}
+
+.safe-markdown blockquote {
+  padding: 7px 10px;
+  color: #526b64;
+  border-left: 3px solid #d5b24e;
+  background: #fff9e8;
+}
+
+.safe-markdown code {
+  padding: 1px 4px;
+  color: #294f46;
+  border-radius: 4px;
+  background: #e5ece8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95em;
+}
+
+.safe-markdown-code-block {
+  max-width: 100%;
+  padding: 10px;
+  overflow-x: auto;
+  border: 1px solid #d5ddd8;
+  border-radius: 8px;
+  background: #edf1ee;
+  white-space: pre;
+}
+
+.safe-markdown-code-block code {
+  padding: 0;
+  background: transparent;
+}
+
+.safe-markdown a {
+  color: #236a58;
+  font-weight: 700;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.safe-markdown-unsafe-link {
+  color: #70423c;
+  text-decoration: line-through;
+  text-decoration-style: dotted;
 }
 
 .course-note-references {
@@ -4842,9 +4930,192 @@ textarea:focus-visible {
   gap: 16px;
 }
 
-.note-editor-form textarea {
-  min-height: 190px;
+.note-editor-form > .field > label {
+  color: #45645e;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.markdown-editor {
+  overflow: hidden;
+  border: 1px solid #cfd8d4;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.markdown-editor:focus-within {
+  border-color: #6f9489;
+  box-shadow: 0 0 0 3px rgba(53, 105, 93, 0.12);
+}
+
+.markdown-editor-toolbar {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  padding: 5px;
+  flex-wrap: wrap;
+  gap: 3px;
+  border-bottom: 1px solid #dce2de;
+  background: #f1f4ef;
+}
+
+.markdown-editor-toolbar button {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  color: #36584f;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.markdown-editor-toolbar button:hover,
+.markdown-editor-toolbar button:focus-visible,
+.markdown-editor-toolbar button[aria-pressed="true"] {
+  border-color: #c2d0ca;
+  background: #fff;
+}
+
+.markdown-editor-toolbar-spacer {
+  min-width: 6px;
+  flex: 1;
+}
+
+.markdown-editor-toolbar .markdown-editor-fallback {
+  color: #5c716b;
+  border-color: #d5deda;
+  white-space: nowrap;
+}
+
+.markdown-editor-surface {
+  position: relative;
+  min-height: 220px;
+  background: #fff;
+}
+
+.markdown-editor-highlight,
+.note-editor-form .markdown-editor-input {
+  width: 100%;
+  min-height: 220px;
+  margin: 0;
+  padding: 13px 14px;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-variant-ligatures: none;
+  letter-spacing: normal;
+  line-height: 1.62;
+  overflow-wrap: break-word;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-break: normal;
+}
+
+.markdown-editor-highlight {
+  position: absolute;
+  inset: 0;
+  color: #415650;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+
+.note-editor-form .markdown-editor-input {
+  position: relative;
+  z-index: 1;
+  display: block;
   resize: vertical;
+  color: transparent;
+  background: transparent;
+  caret-color: #173d34;
+  -webkit-text-fill-color: transparent;
+}
+
+.note-editor-form .markdown-editor-input::placeholder {
+  color: #879791;
+  -webkit-text-fill-color: #879791;
+}
+
+.markdown-editor.plain-text .markdown-editor-input {
+  color: #243f38;
+  -webkit-text-fill-color: #243f38;
+}
+
+.markdown-source-marker {
+  color: #a06f1d;
+  font-weight: 800;
+}
+
+.markdown-source-heading,
+.markdown-source-heading-text {
+  color: #285d50;
+  font-weight: 800;
+}
+
+.markdown-source-quote {
+  color: #6d684f;
+  font-style: italic;
+}
+
+.markdown-source-unordered-list,
+.markdown-source-ordered-list {
+  color: #345f54;
+}
+
+.markdown-source-link-text {
+  color: #236a58;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.markdown-source-url {
+  color: #647a74;
+}
+
+.markdown-source-inline-code,
+.markdown-source-code-block,
+.markdown-source-fence {
+  color: #4d4c66;
+  background: #eff0f5;
+}
+
+.markdown-editor-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  color: #687c76;
+  border-top: 1px solid #e2e7e4;
+  background: #fafbf8;
+  font-size: 8px;
+  line-height: 1.4;
+}
+
+.markdown-editor-status > span:last-child {
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+
+.markdown-editor-status.near-limit > span:last-child {
+  color: #8a5c11;
+}
+
+.markdown-editor-limit-error {
+  margin: 0;
+  padding: 8px 10px;
+  color: #783c34;
+  border-top: 1px solid #e4b7af;
+  background: #fff0ed;
+  font-size: 9px;
 }
 
 .note-format-hint {
@@ -5602,6 +5873,16 @@ textarea:focus-visible {
 
   .note-editor-form {
     padding: 18px 16px 21px;
+  }
+
+  .markdown-editor-status {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .markdown-editor-toolbar-spacer {
+    display: none;
   }
 
   .note-reference-editor > header {
