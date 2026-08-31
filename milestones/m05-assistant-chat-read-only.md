@@ -1,6 +1,6 @@
 # M5 — Assistant chat, read-only first
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

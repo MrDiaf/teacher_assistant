@@ -14,8 +14,9 @@ Read these files completely before planning or changing code:
 
 The milestone status index in `instructions.md` is authoritative. The selected
 milestone file is the implementation boundary for a development session.
-`instructions_1_comleted.md` and `instrcutions_2.md` are retained only as legacy
-source specifications; do not follow their stale starting commands.
+The active documentation set is self-contained and does not require any
+retired specification file. Historical instruction files may be removed later
+without affecting the reading order or milestone handoffs.
 
 Run `git status --short` before editing and preserve all owner work. Do not
 commit, push, merge, rebase, delete branches, or discard changes unless the
@@ -23,15 +24,15 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `a14781d seems like it is fixed now`
+- Git `HEAD`: `5cb4a4f good frist draft of refacting`
 - M1 through M13 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
 - No M14 is defined or active. Known limitations are not an implied milestone.
-- The current uncommitted changes are documentation-only: the new general
-  instructions, individual milestone files, and updated reading/handoff rules.
+- The current uncommitted changes are documentation-only: milestone status is
+  now represented by Markdown task checkboxes in every milestone file.
 - Docker development services are running:
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`

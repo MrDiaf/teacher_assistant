@@ -1,6 +1,6 @@
 # M8 — Course foundation and manual course creation
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

@@ -1,6 +1,6 @@
 # Post-M7 — Linked Assistant proposal batches
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

@@ -1,6 +1,6 @@
 # M2 — Calendar interface
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

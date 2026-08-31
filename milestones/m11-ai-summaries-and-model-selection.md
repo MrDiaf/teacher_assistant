@@ -1,6 +1,6 @@
 # M11 — AI summaries and model selection
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

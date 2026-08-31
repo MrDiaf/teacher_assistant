@@ -1,6 +1,6 @@
 # M10 — Notes and slide references
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

@@ -17,9 +17,9 @@ this order:
 5. Inspect the relevant implementation and tests before deciding what is
    missing.
 
-`instructions_1_comleted.md` and `instrcutions_2.md` are legacy source
-specifications. They are retained for history, but they are not the current
-implementation instructions.
+The active documentation set is self-contained. It does not depend on retired
+or historical specification files, and those files may be removed without
+changing this reading order or losing current implementation instructions.
 
 ## Document responsibilities
 
@@ -32,6 +32,10 @@ implementation instructions.
 
 Do not place a transient worktree snapshot in this file. Do not place global
 product policy only in a milestone file.
+
+Together, `AGENTS.md`, `instructions.md`, `handoff.md`, and the milestone files
+contain the complete current development guidance. Future handoffs and
+milestones must not require a retired specification file.
 
 ## Product and scope
 

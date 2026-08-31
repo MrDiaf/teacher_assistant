@@ -1,6 +1,6 @@
 # M13 — Course-aware Assistant and diagnostics
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

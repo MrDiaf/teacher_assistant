@@ -1,6 +1,6 @@
 # M12 — Course-linked calendars
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

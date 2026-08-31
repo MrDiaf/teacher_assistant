@@ -1,6 +1,6 @@
 # M7 — Final calendar hardening
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

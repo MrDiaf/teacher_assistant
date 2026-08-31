@@ -1,6 +1,6 @@
 # M4 — ICS import and subscriptions
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

@@ -1,6 +1,6 @@
 # M6 — Codex calendar proposals
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

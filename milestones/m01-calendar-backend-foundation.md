@@ -1,6 +1,6 @@
 # M1 — Calendar backend foundation
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

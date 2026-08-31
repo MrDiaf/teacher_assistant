@@ -1,6 +1,6 @@
 # M3 — Complete calendar interactions
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 

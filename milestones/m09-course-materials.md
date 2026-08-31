@@ -1,6 +1,6 @@
 # M9 — Course materials and separated storage
 
-- [x] Milestone completed
+- [x] This milestone
 
 ## Outcome
 
