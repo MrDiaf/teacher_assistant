@@ -1,4 +1,4 @@
-# AGENT.md
+# AGENTS.md
 
 ## Session Canary
 
@@ -16,10 +16,12 @@ This repository contains a single-owner, self-hosted web application called:
 
 `Teacher Assistant`
 
-The complete future product may contain several modules, but the current development scope is limited to:
+The complete future product may contain several modules. The implemented
+product scope currently includes:
 
 1. Calendar
 2. Calendar Assistant powered by Codex
+3. Courses, course materials, notes, summaries, and course-linked calendars
 
 The visible application navigation should contain:
 
@@ -30,11 +32,12 @@ The visible application navigation should contain:
 - Assistant
 - Settings
 
-Only Calendar and Assistant need real functionality during the current development phase.
+Calendar, Courses, and Assistant have real functionality. Dashboard, Study
+Plan, and Settings may display a polished placeholder page.
 
-The other modules may display a polished placeholder page.
-
-Do not implement course management, study planning, document processing, or other future systems unless the owner explicitly starts a new phase.
+Do not add a new module or product phase unless the owner explicitly defines
+or selects a milestone for it. Preserve the completed Course functionality;
+future automatic LMS import and assignments remain out of scope.
 
 ---
 
@@ -73,10 +76,16 @@ Before making changes:
 
 1. Read this file.
 2. Read `instructions.md`.
-3. Find the current milestone in `instructions.md`.
-4. Inspect the existing implementation.
-5. Preserve completed functionality.
-6. State which milestone or subtask you will implement.
+3. Read `handoff.md`.
+4. Find the selected milestone in the status index in `instructions.md`.
+5. Read that milestone file under `milestones/` completely.
+6. Inspect the existing implementation and tests.
+7. Preserve completed functionality.
+8. State which milestone or subtask you will implement.
+
+If no milestone is active, do not infer one from old specifications, known
+limitations, or future-looking notes. Wait for the owner to define or select
+the next milestone.
 
 Do not assume something is missing without inspecting the repository.
 
@@ -97,7 +106,9 @@ When the owner asks for a milestone:
 - Do not mark work complete unless it was tested.
 - Stop after the requested milestone and report the result.
 
-When the owner says only `continue`, implement the first incomplete subtask in the active milestone.
+When the owner says only `continue`, implement the first incomplete subtask in
+the active milestone. If there is no active milestone, ask the owner to define
+or select one rather than inventing new scope.
 
 At the end of every development session, report:
 
@@ -110,7 +121,10 @@ Current milestone status:
 Recommended next prompt:
 ```
 
-Update the milestone checkboxes in `instructions.md` only after verifying that the acceptance criteria are satisfied.
+Update the checklist in the selected milestone file and the status index in
+`instructions.md` only after verifying that the acceptance criteria are
+satisfied. Update `handoff.md` with the resulting current state and exact next
+step.
 
 ---
 

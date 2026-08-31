@@ -1,5 +1,10 @@
 # Teacher Assistant
 
+> **Legacy specification:** This file is retained as the historical source for
+> M8–M13. Current agents must use `instructions.md`, `handoff.md`, and the
+> selected file under `milestones/`. Do not follow the stale “Implement M8
+> only” command in this file.
+
 ## Next Product Phase — Courses, Notes, Study Sources, and Course-Aware Assistant
 
 ---

@@ -1,45 +1,46 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-07-31
-Repository: `/home/ronny/Public/projects/teacher_assitant`
+Updated: 2026-08-31
 
 ## Start here
 
-1. Read `AGENTS.md` completely and follow its session-canary instruction.
-2. Read `instrcutions_2.md` (the filename is intentionally misspelled).
-3. Run `git status --short` before changing anything and preserve owner work.
-4. Inspect the implementation before deciding that functionality is missing.
-5. M8 through M13 are complete. Do not begin a new milestone or future product
-   phase without an explicit owner request.
-6. Do not commit, push, merge, rebase, delete branches, or discard work unless
-   the owner explicitly asks.
+Read these files completely before planning or changing code:
 
-The old “Implement M8 only” text near the bottom of `instrcutions_2.md` was
-superseded by the owner's later milestone requests and the completed M8–M13
-checklists.
+1. `AGENTS.md`
+2. `instructions.md`
+3. `handoff.md`
+4. The owner-selected file under `milestones/`
+5. The relevant implementation and tests
+
+The milestone status index in `instructions.md` is authoritative. The selected
+milestone file is the implementation boundary for a development session.
+`instructions_1_comleted.md` and `instrcutions_2.md` are retained only as legacy
+source specifications; do not follow their stale starting commands.
+
+Run `git status --short` before editing and preserve all owner work. Do not
+commit, push, merge, rebase, delete branches, or discard changes unless the
+owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `d3fe0b0 a bit borken becuae it need to ask it twice for it to do it add thinking next time`
-- M8 through M13 are committed and complete.
-- No M14 is currently defined or in progress.
-- The post-M13 Assistant error-diagnostics and general-helper refinements are
-  committed through `d3fe0b0`.
-- Focused post-M13 automatic-recovery, thinking-progress, request-cancel, and
-  false course-note matching refinements are implemented and verified in the
-  worktree but are not committed.
+- Git `HEAD`: `a14781d seems like it is fixed now`
+- M1 through M13 are complete.
+- The post-M7 linked Assistant proposal-batch milestone is complete.
+- The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
+  correction, working-state display, cancellation, and false course-note
+  matching refinements are complete and committed in `a14781d`.
+- No M14 is defined or active. Known limitations are not an implied milestone.
+- The current uncommitted changes are documentation-only: the new general
+  instructions, individual milestone files, and updated reading/handoff rules.
 - Docker development services are running:
-  - Frontend: `http://localhost:5173`
-  - Backend: `http://localhost:8000`
+  - frontend: `http://localhost:5173`
+  - backend: `http://localhost:8000`
   - PostgreSQL: healthy
 - Alembic is at `20260731_0017 (head)`.
-- `.openai/hosting.json` is absent. This remains a self-hosted Docker
-  application; do not deploy it through Sites.
-- The current worktree changes belong to the post-M13 Assistant reliability
-  refinement described below. Preserve them unless the owner explicitly asks
-  to discard them.
+- `.openai/hosting.json` is absent. This is a self-hosted Docker application,
+  not a Sites deployment.
 
-Recheck the state at the start of the next session:
+Recheck instead of trusting this snapshot at the start of the next session:
 
 ```bash
 git status --short
@@ -47,324 +48,60 @@ docker compose -f compose.yml -f compose.dev.yml ps
 docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
 ```
 
-## Non-negotiable product and safety constraints
+## Implemented product surface
 
-- This is a single-owner application. Do not add registration, accounts,
-  organizations, teams, roles, tenants, or shared profiles.
-- Preserve the fixed dark-green sidebar, warm off-white background, gold
-  accent, module-based shell, and existing Calendar/Assistant behavior.
-- Keep development Docker-first and preserve the root Makefile commands.
-- The browser must never communicate with Codex directly.
-- Runtime Codex must never receive the repository, Docker socket, shell,
-  environment files, database credentials, OAuth credentials, or unrelated
-  private data.
-- Codex output is untrusted. Codex must never update the database directly;
-  backend services parse, validate, confirm, and execute allowed actions.
-- Every Codex-generated calendar mutation requires owner confirmation.
-- Read-only calendar protection must remain enforced in the UI, backend
-  service, and database-changing operations. The backend is authoritative.
-- Do not add a Codex delete-calendar action, bulk deletion, or any workaround
-  for read-only calendars.
-- Do not implement course import, study-plan functionality, document systems,
-  or other future modules unless the owner explicitly starts that phase.
+- Calendar: local/imported/subscribed calendars; day, week, and month views;
+  recurrence; drag/move/resize; search/filter; read-only protection; ICS import
+  and subscriptions.
+- Assistant: private conversations, bounded calendar/course context, model
+  selection, validated calendar proposals, separate confirmations, linked
+  creation batches, retries, diagnostics, progress, and cancellation.
+- Courses: manual CRUD/archive/restore, private Literature and Slides storage,
+  extraction, notes and slide references, AI summaries with provenance,
+  course-linked calendars, and course-aware Assistant answers.
+- Dashboard, Study Plan, and Settings remain placeholder modules unless the
+  owner defines a new milestone.
 
-## Completed milestones
+The permanent safety and architecture rules are in `AGENTS.md` and
+`instructions.md`. Do not duplicate or weaken them in a new milestone.
 
-### M8 — Course foundation
+## Most recent completed work
 
-- Manual course CRUD, archive/restore, deletion, course cards, and course
-  detail shell.
-- Backend: `backend/app/courses/`
-- Frontend: `frontend/src/features/courses/`
+The reliability work committed in `a14781d`:
 
-### M9 — Course materials
+- performs exactly one bounded automatic correction when the first Codex
+  response is malformed or fails response/citation validation;
+- never automatically retries authentication, runtime, timeout, or backend
+  business-rule failures;
+- displays elapsed working states without exposing hidden reasoning;
+- lets the owner cancel active work and records a terminal `cancelled` job;
+- removes cancelled workspaces, saves no cancelled answer/proposal, and excludes
+  cancelled prompts from later model context;
+- prevents generic word/substring matches from attaching unrelated private
+  course notes to calendar or general-help turns;
+- gives ordinary calendar turns all relevant calendars while omitting course
+  note/slide files;
+- preserves confirmation, idempotency, read-only enforcement, citation
+  validation, redaction, and runtime isolation.
 
-- Separate Literature and Slides libraries.
-- Private storage under `data/course_content`.
-- PDF, PPTX, UTF-8 text, and Markdown extraction.
-- Extraction states, retry behavior, and safe source deletion.
-- Migration: `backend/alembic/versions/20260730_0011_course_sources.py`
-
-### M10 — Notes and slide references
-
-- Note CRUD with safe plain-text/Markdown display.
-- Notes can link zero or several explicit slide ranges.
-- Same-course and Slides-library validation is server-side.
-- Backend: `backend/app/notes/`
-- Frontend: `frontend/src/features/courses/CourseNotes.tsx`
-- Migration: `backend/alembic/versions/20260730_0012_course_notes.py`
-
-### M11 — AI summaries and model selection
-
-- Server-authoritative model registry at `GET /api/v1/ai/models`.
-- Shared Assistant/summary model selector with backend allowlist validation.
-- Default model is `gpt-5.6-sol`; configured model IDs come from
-  `AI_ALLOWED_MODELS`.
-- Assistant jobs persist the selected model, and retries revalidate it.
-- Note summaries persist model, status, strict structured output, content
-  hashes, safe errors, and timestamps.
-- Summary workspaces contain only the requested note, explicitly linked slide
-  text, runtime policy, and output schema.
-- Provenance is validated as `note`, `slide`, or `mixed`; invented or
-  mismatched references fail safely.
-- Summaries become stale when note text, linked ranges, or linked extracted
-  slide text changes.
-- Migration: `backend/alembic/versions/20260730_0013_ai_summaries.py`
-
-### M12 — Course-linked calendars
-
-- Courses link to existing calendars through a many-to-many association.
-- Linking or unlinking never deletes calendars or events.
-- Routes:
-  - `GET /api/v1/courses/{course_id}/calendars`
-  - `POST /api/v1/courses/{course_id}/calendars`
-  - `DELETE /api/v1/courses/{course_id}/calendars/{calendar_id}`
-  - `GET /api/v1/courses/{course_id}/events`
-- The Course Calendar tab reuses the main calendar's views, toolbar, event
-  dialog, recurrence handling, drag/move/resize behavior, and visibility state.
-- Linked read-only calendars remain visible while all mutation controls and
-  server-side operations remain protected.
-- Migration: `backend/alembic/versions/20260730_0014_course_calendars.py`
-
-### M13 — Course-aware Assistant and diagnostics
-
-M13 is complete and committed in `0e1fa6f`.
-
-Course-aware Assistant behavior:
-
-- Ordinary backend database logic selects a bounded context before Codex:
-  - at most 8 relevant/latest notes
-  - at most 40 explicitly linked extracted slides
-  - at most 24,000 note characters
-  - at most 20,000 slide characters
-  - only calendars linked to the selected course
-- Generic calendar turns do not receive course files. Course-calendar turns can
-  receive course metadata and linked calendars without loading note bodies.
-- Active and archived courses can be selected.
-- Multiple course matches produce deterministic clarification before Codex.
-- Exact course names/codes use word-boundary matching.
-- Conversation history is scoped using context audits, preventing unrelated
-  course/note context from leaking into later turns.
-- Secret redaction covers selected note and slide content, owner questions,
-  calendar fields, feedback, and diagnostic context.
-- Only selected notes reload slide references/text; the initial search does not
-  load all slide contents.
-
-Citation behavior:
-
-- Assistant messages can persist structured citations containing course, note,
-  source, and slide identity.
-- Citation IDs and labels must match the supplied context.
-- Course-note answers require at least one valid citation.
-- Invented, duplicate, mismatched, or missing citations fail safely without
-  saving an assistant answer or proposal.
-- The frontend renders citations as readable chips.
-
-Runtime isolation:
-
-- Calendar/course workspaces contain only the context required for the turn,
-  such as `COURSES.json`, `NOTES.json`, `SLIDE_REFERENCES.json`, and
-  `SELECTED_SLIDE_TEXT.json` when relevant.
-- Course documents are treated as read-only, untrusted context.
-- The runtime policy prohibits course mutations, source editing, source-tree
-  access, and claims that application improvements were implemented.
-- Temporary runtime workspaces are deleted immediately after a job.
-
-Diagnostics:
-
-- Handled API failures use a consistent safe response shape:
-  - `error_id`
-  - `code`
-  - `message`
-  - redacted `details`
-  - `request_id`
-- Diagnostic records and lifecycle audits are stored in the owner database.
-- Routes:
-  - `GET /api/v1/diagnostics/errors/{error_id}`
-  - `POST /api/v1/assistant/errors/{error_id}/explain`
-- Diagnostic Codex workspaces contain only `ERROR_CONTEXT.json`, the strict
-  output schema, and runtime policy—never calendars, courses, uploaded files,
-  request bodies, credentials, or repository files.
-- Structured explanations separate owner-controlled `input_fixes` from
-  possible `application_improvements` and include `retry_is_safe`.
-- The Materials UI exposes **Ask Assistant about this error** and renders the
-  explanation inline.
-- Diagnostic records are retained with the owner database and backups. There
-  is currently no purge UI.
-- Migration:
-  `backend/alembic/versions/20260730_0015_assistant_context_diagnostics.py`
-
-Key M13 files:
+Important implementation areas:
 
 ```text
 backend/app/assistant/course_context.py
+backend/app/assistant/execution.py
 backend/app/assistant/service.py
-backend/app/diagnostics/
 backend/app/codex_runtime/workspace.py
 backend/app/codex_runtime/workspace_template/AGENT.md
 backend/app/core/errors.py
-backend/app/main.py
-backend/tests/test_assistant_api.py
-backend/tests/test_diagnostics.py
-frontend/src/features/assistant/ErrorAssistantAction.tsx
-frontend/src/features/assistant/AssistantPage.tsx
-frontend/src/features/courses/CourseMaterials.tsx
-e2e/tests/calendar-assistant.spec.ts
-README.md
-instrcutions_2.md
-```
-
-## Post-M13 Assistant error usability fix
-
-The owner reported that the failed-job card only showed
-`invalid_assistant_response`, which did not explain the cause or recovery path.
-The implementation committed through `d3fe0b0`:
-
-- preserves a redacted failure reason, failure/validation stage, and safe
-  field-level validation issues on failed Assistant jobs;
-- distinguishes malformed/missing output, response-schema failures, citation
-  failures, proposal-target failures, and recurrence-scope failures;
-- creates a sanitized diagnostic report for each failed Assistant job and
-  exposes its opaque report ID, without storing or logging raw model output;
-- shows **Why it failed**, **What you can do**, **Retry safely**, and **Ask
-  Assistant about this error** in the owner-facing card;
-- puts error code, job stage, validation stage, job ID, report ID, and field
-  issues under expandable **Developer details**;
-- explains that historical failures have limited details and that one retry
-  will generate the new structured diagnostics if the retry fails;
-- sends the structured safe failure details back on retry so the runtime can
-  correct its response;
-- adds migration
-  `backend/alembic/versions/20260731_0016_assistant_job_diagnostics.py`;
-- documents the behavior in `README.md` and adds backend, frontend, end-to-end,
-  privacy, and accessibility coverage.
-
-Important implementation files:
-
-```text
-backend/app/assistant/service.py
-backend/app/assistant/proposals.py
-backend/app/assistant/validation.py
-backend/app/assistant/course_context.py
-backend/app/assistant/models.py
-backend/app/core/errors.py
-backend/alembic/versions/20260731_0016_assistant_job_diagnostics.py
 backend/tests/test_assistant_api.py
 frontend/src/features/assistant/AssistantPage.tsx
-frontend/src/features/assistant/types.ts
-frontend/src/styles.css
 frontend/src/features/assistant/AssistantPage.test.tsx
 e2e/tests/calendar-assistant.spec.ts
-README.md
 ```
 
-## Post-M13 general-helper refinement
+## Last full verification recorded
 
-The owner reported that asking **What can you do with course notes?** was
-blocked because the turn was classified as course-note use and the response
-did not cite a note. That was a false positive: the question asks about
-capabilities and does not make a claim derived from private note content.
-
-The implementation committed through `d3fe0b0`:
-
-- recognizes common capability questions before course/note selection, so
-  they do not load private note bodies or require a citation;
-- keeps note citations mandatory when an answer actually uses selected note or
-  slide content, including strict rejection of invented or mismatched sources;
-- defines the runtime Assistant as a private general-purpose helper that can
-  answer general questions, explain topics, brainstorm, plan, draft/revise
-  text, create study aids, and provide code snippets in chat;
-- permits built-in model knowledge for general help while keeping private
-  calendar and course context bounded to what is relevant for the turn;
-- clearly states that the Assistant cannot open an interactive code editor,
-  control the clipboard, execute code, browse the web, inspect the repository,
-  or verify current external information;
-- preserves confirmation for every calendar mutation, read-only calendar
-  enforcement, runtime workspace isolation, and all proposal validation;
-- updates the Assistant welcome text, suggestions, field label, placeholder,
-  runtime policy, README, and automated tests to match the broader role.
-
-The exact reported prompt is covered by a backend regression test. It receives
-a normal general-help response with empty citations and no course, note, slide,
-or course-file context supplied to Codex.
-
-## Post-M13 automatic recovery, thinking, and cancellation
-
-The owner reported that the first response could fail validation while a
-manual **Retry safely** immediately succeeded, making normal chat tedious. The
-current uncommitted worktree now:
-
-- automatically supplies safe validation feedback to Codex and makes exactly
-  one correction attempt when the first response is malformed or fails the
-  strict response/citation schema;
-- asks the runtime to silently self-check required fields, citations, and
-  supported actions before returning its first response, without exposing
-  hidden reasoning;
-- shows the detailed failure card only when both the original response and the
-  bounded automatic correction fail;
-- never automatically retries runtime/authentication failures or backend
-  business-rule failures, and never bypasses proposal validation, read-only
-  calendars, or owner confirmation;
-- shows elapsed, owner-facing working states without exposing hidden reasoning,
-  including a longer-than-usual message after 30 seconds;
-- exposes **Cancel request** while the Assistant is working;
-- records cancellation as the terminal `cancelled` job state, interrupts the
-  active in-process Codex task, removes its temporary workspace, and saves no
-  assistant answer or proposal;
-- keeps the cancelled owner prompt visible in history but excludes it from
-  later model context so a follow-up cannot accidentally complete stopped work;
-- keeps a request completed when it wins the race with cancellation instead of
-  rewriting a completed answer as cancelled;
-- adds migration
-  `backend/alembic/versions/20260731_0017_assistant_job_cancellation.py`;
-- adds backend concurrency coverage, frontend interaction coverage, and a real
-  browser end-to-end/accessibility cancellation scenario.
-
-The execution registry is in `backend/app/assistant/execution.py`. It matches
-the project's single-process Docker backend. If the backend is ever changed to
-multiple worker processes, cancellation coordination must move to a shared job
-queue or other cross-process mechanism.
-
-## Post-M13 false course-note matching fix
-
-The owner reported that a calendar-only Gym request received only one linked
-read-only course calendar and an unrelated note citation. The cause was
-deterministic backend selection before Codex: any single query token could
-substring-match any note body or title. For example, `not` matched `notes`, and
-generic words such as `but`, `get`, and `work` matched unrelated note text. The
-false note match selected its course and therefore scoped calendar context to
-that course's linked read-only calendar.
-
-The current worktree now:
-
-- activates private note selection only when the owner explicitly mentions
-  notes/slides or asks what they previously wrote;
-- returns empty course/note context immediately for ordinary calendar and
-  general-help requests, without querying or loading note bodies;
-- matches note topics by complete normalized words instead of substrings;
-- gives calendar-only requests every calendar, including hidden writable and
-  read-only calendars, while continuing to omit all course/note workspace
-  files;
-- preserves the existing behavior where an explicitly named course-calendar
-  question receives that course's linked calendars but no note bodies;
-- keeps explicit note questions, multi-course clarification, citations, and
-  linked-slide selection working;
-- adds regressions for the owner's Gym-style request, generic concept
-  explanations, general email drafting, private-context exclusion, and the
-  empty context audit.
-
-Important implementation files:
-
-```text
-backend/app/assistant/course_context.py
-backend/tests/test_assistant_api.py
-README.md
-```
-
-## Verified state for M13
-
-The committed M13 implementation plus the current post-M13 refinements was
-verified with:
+The latest implementation handoff recorded:
 
 ```text
 make test
@@ -382,51 +119,37 @@ Backend health: passed
 Frontend HTTP check: passed
 ```
 
-Ordinary tests mock Codex and do not require real credentials. Real Codex
-features require the owner to sign in with ChatGPT from the Assistant page or
-configure the optional API-key fallback.
+Ordinary tests mock Codex. Real Codex features require private ChatGPT sign-in
+from Assistant or the optional configured API-key fallback.
 
 ## Known limitations and cautions
 
 - No M14 has been defined.
-- Historical failed Assistant jobs cannot recover an exact validation reason
-  that was never stored. Their card says so explicitly; retrying once creates
-  full structured diagnostics if the new attempt also fails.
-- Existing failed turns are not rewritten automatically. The owner must use
-  **Retry safely** or send the question again to use the new capability routing.
-- Automatic recovery is deliberately limited to one response-format/citation
-  correction. Runtime, authentication, timeout, and backend business-rule
-  errors remain visible instead of being retried unexpectedly.
-- Cancellation interrupts active work in the default single-process Docker
-  backend. A future multi-worker deployment would require shared cross-process
-  cancellation coordination.
-- General help uses the model's built-in knowledge and is not live web access;
-  the Assistant cannot verify current external information, run code, control
-  the clipboard, or open an interactive editor.
-- A question that intends to use private course content must explicitly mention
-  notes/slides or ask what the owner wrote. Ambiguous topic-only questions use
-  general model knowledge so private notes cannot be attached accidentally.
-- The diagnostic Assistant action is currently surfaced in the Materials error
-  UI; it is not a universal action on every possible application error.
-- Diagnostic records have no owner-facing purge interface.
-- `alembic check` can report four pre-existing enum/VARCHAR length differences
-  unrelated to M13:
-  - `assistant_messages.role`
-  - `assistant_proposals.status`
-  - `calendars.source_type`
-  - `events.status`
-- Do not start the future automatic course-import section without an explicit
-  owner request.
+- Historical Assistant failures cannot recover validation detail that was never
+  stored; retrying creates current structured diagnostics if failure repeats.
+- Automatic correction is limited to one response-schema/citation retry.
+- Cancellation coordination is in-process and assumes the current
+  single-process backend; multiple workers would need shared coordination.
+- General help has no live web access, code execution, clipboard control, or
+  interactive editor.
+- Private course content is attached only for explicit note/slide intent; an
+  ambiguous topic-only question uses general model knowledge.
+- `Ask Assistant about this error` is not exposed for every application error.
+- Diagnostic records have no owner-facing purge UI.
+- `alembic check` may report four pre-existing enum/VARCHAR length differences:
+  `assistant_messages.role`, `assistant_proposals.status`,
+  `calendars.source_type`, and `events.status`.
+- Automatic LMS/course import, assignments, Study Plan, and new modules require
+  an owner-defined milestone.
 
 ## Next step
 
-Review the current post-M13 Assistant automatic-recovery, thinking,
-cancellation, and false course-note matching refinements. If accepted, the
-owner may explicitly request a commit. Then wait for the owner to define the
-next milestone; do not infer M14 from future-looking notes.
+The documentation is now organized for milestone-based handoffs. After review,
+wait for the owner to define or select the next milestone; do not infer M14.
 
-Recommended next owner prompt:
+Recommended next prompt:
 
 ```text
-Read AGENTS.md and handoff.md, then review the post-M13 Assistant reliability and context-selection refinements.
+Read AGENTS.md, instructions.md, handoff.md, and the selected milestone file.
+Implement only that milestone and stop after its acceptance criteria are verified.
 ```

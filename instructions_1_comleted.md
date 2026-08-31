@@ -1,5 +1,10 @@
 # Teacher Assistant
 
+> **Legacy specification:** This file is retained as the historical source for
+> M1–M7 and the post-M7 linked-batch work. Current agents must use
+> `instructions.md`, `handoff.md`, and the selected file under `milestones/`.
+> Do not follow the stale starting-point command in this file.
+
 ## Current Product Specification
 
 ---
