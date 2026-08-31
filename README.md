@@ -24,6 +24,18 @@ cp .env.example .env
 make dev
 ```
 
+On the first `make dev`, the `teacher-assistant-change-me` placeholder is
+replaced in the private `.env` with a unique installation identity. That
+identity is also recorded in the ignored `.teacher-assistant-installation`
+marker. Keep both hidden files when moving the installation: the stable
+identity reconnects PostgreSQL and Codex authentication after a rename.
+
+Do not copy `.env.example` over an existing `.env`. An installation created
+before the stable identity was added must run `make data-preflight`, stop with
+`make down`, and use the explicit `make data-adopt` procedure in
+[Data durability and recovery](docs/data-durability.md). Normal Make targets
+refuse to create a replacement database when recorded data appears missing.
+
 Before keeping private data in the application, edit `.env` and replace the
 development database password. `.env` is ignored by Git.
 
@@ -50,7 +62,8 @@ make migrate   # apply database migrations
 make test      # isolated backend and frontend tests
 make e2e       # isolated Playwright browser tests
 make lint      # Python, TypeScript, and formatting checks
-make backup    # private PostgreSQL backup
+make data-preflight # read-only data-resolution report
+make backup    # coordinated PostgreSQL + course-file backup
 ```
 
 Both test commands use separate temporary databases and remove their Docker
@@ -189,9 +202,10 @@ The Compose setup stores private course files on the host at:
 ```
 
 That directory is bind-mounted into the backend at the path configured by
-`COURSE_STORAGE_ROOT` (`/data/course_content` by default). `COURSE_MAX_UPLOAD_MB`
-sets the per-file upload limit and defaults to `25`. Both values can be changed
-in `.env`; Compose mounts the host directory at the configured container path.
+`COURSE_STORAGE_ROOT` (`/data/course_content` by default). The host path can be
+changed independently with `COURSE_DATA_DIR`; a relative value moves with the
+complete project directory. `COURSE_MAX_UPLOAD_MB` sets the per-file upload
+limit and defaults to `25`.
 
 Files use immutable database IDs instead of user-supplied paths:
 
@@ -220,60 +234,64 @@ manual cleanup is necessary, stop the application, make both backups described
 below, and remove only the exact course or source ID directory. The stale source
 record can then be removed through the Materials tab.
 
-## Backup
+## Data durability, relocation, backup, and restore
 
-Run:
+The stable installation identity, persistent/disposable data inventory,
+legacy adoption procedure, supported `mv` workflows, rollback steps, and clean
+restore instructions are documented in
+[Data durability and recovery](docs/data-durability.md). Run the read-only
+check at any time:
+
+```bash
+make data-preflight
+```
+
+It reports the resolved identity, PostgreSQL and Codex-auth volume names,
+course storage, backup root, reachability, and other Compose database-volume
+candidates without creating, copying, or deleting a missing volume.
+
+### Coordinated backup
 
 ```bash
 make backup
 ```
 
-This writes `backups/teacher-assistant.dump` with permissions restricted to the
-current host user. The backup contains private courses, calendars, events,
-assistant conversations, citations, context-audit IDs, sanitized diagnostic
-reports, proposal history, and subscription URLs. `backups/` is ignored by Git.
-Copy the dump only to encrypted, access-controlled storage.
+The command briefly stops frontend/backend write paths, keeps PostgreSQL
+available for `pg_dump`, and restores only services that were previously
+running. It writes a unique directory under `BACKUP_ROOT` (default
+`./backups`) containing `database.dump`, `course-content.tar.gz`, and
+`manifest.json`. The manifest records the installation ID, UTC timestamp, byte
+counts, and SHA-256 checksums. The command lists the PostgreSQL custom dump,
+fully validates the safe course archive, verifies checksums, applies private
+permissions, and only then reports success. No prior backup is overwritten.
 
-Course source files are stored outside PostgreSQL and require a separate backup.
-For a consistent pair of backups, briefly stop writes, create both archives,
-and restart:
+The bundle contains private calendars/subscriptions, courses and original
+uploads, notes/summaries, Assistant history/proposals/citations, and diagnostics
+and audits. `backups/` is ignored by Git. Copy complete bundle directories only
+to encrypted, access-controlled storage.
 
-```bash
-docker compose -f compose.yml -f compose.dev.yml stop backend frontend
-make backup
-tar -C data -czf backups/teacher-assistant-course-content.tar.gz course_content
-chmod 600 backups/teacher-assistant-course-content.tar.gz
-make dev
-```
-
-Keep the database dump and course-content archive together. The archive contains
-private course literature and slides. To restore course files, stop the
-application and extract the archive under `data/` before running `make dev`.
-
-The ChatGPT credential volume is intentionally not included. Reauthenticate
-after restoring to another installation instead of copying renewable access
-tokens.
+ChatGPT credentials are intentionally excluded. Reauthenticate after a clean
+restore instead of copying renewable tokens.
 
 ### Restore
 
-Restoring replaces the current database. Make a fresh backup first, then run:
+Restore only a complete directory produced by `make backup`. The command first
+validates its manifest, sizes, checksums, archive paths, and PostgreSQL dump. It
+then creates a new coordinated safety backup of the target. Confirmation must
+exactly match the target identity shown by `make data-preflight`:
 
 ```bash
-docker compose -f compose.yml -f compose.dev.yml stop backend frontend
-docker compose -f compose.yml -f compose.dev.yml exec -T database \
-  sh -c 'dropdb -U "$POSTGRES_USER" --if-exists "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
-docker compose -f compose.yml -f compose.dev.yml exec -T database \
-  sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner' \
-  < backups/teacher-assistant.dump
-make dev
+make restore \
+  BACKUP=backups/20260831T120000Z-source-installation \
+  CONFIRM_RESTORE=target-installation
 ```
 
-Run `make migrate`, then verify Courses, linked course calendars, Calendar,
-Assistant history and citations, and diagnostic history after restore. Sign in
-to ChatGPT again if the restored installation does not already have its own
-private auth volume. If the database contains course sources, also restore the
-matching `teacher-assistant-course-content.tar.gz`; otherwise those source
-records will report missing raw files and extraction retries will fail safely.
+The previous course directory is retained as
+`course_content.before-restore-<timestamp>`; the pre-restore bundle is the
+database rollback. Migrations run before services resume. Verify Courses,
+Calendar/subscriptions, Assistant history/citations, diagnostics, and upload
+hashes. Sign in to ChatGPT again if needed. A corrupt, mismatched, or unsafe
+bundle fails before the active database or course tree is changed.
 
 ## Safe error explanations
 

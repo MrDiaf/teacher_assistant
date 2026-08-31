@@ -36,8 +36,8 @@ services:
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
-      - codex-auth-data:/var/lib/teacher-assistant/codex
-      - ./data/course_content:${COURSE_STORAGE_ROOT:-/data/course_content}
+      - codex-auth-data:${CODEX_AUTH_HOME:-/var/lib/teacher-assistant/codex}
+      - ${COURSE_DATA_DIR:-./data/course_content}:${COURSE_STORAGE_ROOT:-/data/course_content}
     restart: unless-stopped
 
   frontend:

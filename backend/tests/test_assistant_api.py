@@ -156,6 +156,19 @@ async def ask(
     )
 
 
+def upcoming_event_times() -> dict[str, str]:
+    start = (datetime.now(UTC) + timedelta(days=1)).replace(
+        hour=10,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    return {
+        "start_at": start.isoformat(),
+        "end_at": (start + timedelta(hours=1)).isoformat(),
+    }
+
+
 async def create_course_note_context(
     client: AsyncClient,
     *,
@@ -265,7 +278,7 @@ async def test_read_only_question_reaches_mocked_codex_with_private_calendar_con
     fake_codex: FakeCodexAdapter,
 ) -> None:
     writable = await create_calendar(client, name="Personal")
-    await create_event(client, writable["id"])
+    await create_event(client, writable["id"], **upcoming_event_times())
     protected = await create_calendar(client, name="Imported", is_read_only=True)
     conversation = await create_conversation(client)
 
@@ -1552,8 +1565,14 @@ async def test_course_question_uses_only_relevant_notes_slides_and_linked_calend
         relevant_calendar["id"],
         title="Privacy lecture",
         description="TOKEN=sk-relevant-calendar-secret",
+        **upcoming_event_times(),
     )
-    await create_event(client, unrelated_calendar["id"], title="Private appointment")
+    await create_event(
+        client,
+        unrelated_calendar["id"],
+        title="Private appointment",
+        **upcoming_event_times(),
+    )
 
     conversation = await create_conversation(client)
     fake_codex.response = json.dumps(

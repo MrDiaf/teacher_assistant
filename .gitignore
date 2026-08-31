@@ -1,4 +1,5 @@
 .env
+.teacher-assistant-installation
 .venv/
 __pycache__/
 *.py[cod]

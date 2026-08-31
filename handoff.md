@@ -24,16 +24,20 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `a1858c3 now it seems to be self contained`
-- M1 through M13 are complete.
+- Git `HEAD`: `8f0eb0e milestones done`
+- M1 through M14 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M14 through M19 are planned, but no implementation milestone is active.
-- The current worktree contains owner-approved documentation work: the M14–M19
-  future roadmap and removal of the retired instruction files. Preserve these
-  changes.
+- M15 through M19 are planned, but no implementation milestone is active.
+- The current uncommitted worktree is the completed M14 implementation and its
+  documentation. Preserve it; no commit was requested.
+- The installation now has stable identity `teacher_assistant`, resolving to
+  `teacher_assistant_database-data` and
+  `teacher_assistant_codex-auth-data`. The private `.env` and ignored
+  `.teacher-assistant-installation` marker were created during non-destructive
+  same-namespace adoption.
 - Docker development services are running:
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`
@@ -69,36 +73,41 @@ The permanent safety and architecture rules are in `AGENTS.md` and
 
 ## Most recent completed work
 
-The reliability work committed in `a14781d`:
+M14 data durability, relocation, and update safety:
 
-- performs exactly one bounded automatic correction when the first Codex
-  response is malformed or fails response/citation validation;
-- never automatically retries authentication, runtime, timeout, or backend
-  business-rule failures;
-- displays elapsed working states without exposing hidden reasoning;
-- lets the owner cancel active work and records a terminal `cancelled` job;
-- removes cancelled workspaces, saves no cancelled answer/proposal, and excludes
-  cancelled prompts from later model context;
-- prevents generic word/substring matches from attaching unrelated private
-  course notes to calendar or general-help turns;
-- gives ordinary calendar turns all relevant calendars while omitting course
-  note/slide files;
-- preserves confirmation, idempotency, read-only enforcement, citation
-  validation, redaction, and runtime isolation.
+- pins a stable, configurable per-installation Compose identity and records an
+  ignored initialization marker so a missing initialized database fails closed;
+- provides read-only `make data-preflight`, explicit new-clone initialization,
+  and preflighted `make data-adopt` with stopped-source checks, copy digests,
+  populated-target refusal, rollback records, and no automatic old-volume
+  deletion;
+- keeps host course storage configurable through `COURSE_DATA_DIR` and mounts
+  Codex auth at the configured persistent path;
+- creates unique coordinated PostgreSQL/course-file backup bundles with private
+  permissions, JSON manifests, byte counts, SHA-256 checksums, dump listing,
+  and safe archive validation;
+- restores only after validation and exact identity confirmation, takes a fresh
+  safety backup first, retains the prior course directory, runs migrations, and
+  excludes renewable Codex credentials;
+- documents persistent/disposable data, two-clone isolation, supported stopped
+  moves/renames, updates, rollback, backup, and clean restore;
+- adds a non-private end-to-end fixture drill for legacy adoption, migration,
+  rebuild, same-name move, rename, multi-clone isolation, backup/restore, and
+  corrupt/mismatched-data refusal.
 
 Important implementation areas:
 
 ```text
-backend/app/assistant/course_context.py
-backend/app/assistant/execution.py
-backend/app/assistant/service.py
-backend/app/codex_runtime/workspace.py
-backend/app/codex_runtime/workspace_template/AGENT.md
-backend/app/core/errors.py
-backend/tests/test_assistant_api.py
-frontend/src/features/assistant/AssistantPage.tsx
-frontend/src/features/assistant/AssistantPage.test.tsx
-e2e/tests/calendar-assistant.spec.ts
+compose.yml
+.env.example
+Makefile
+scripts/data-safety.sh
+scripts/data-backup.sh
+scripts/data-restore.sh
+scripts/m14-relocation-drill.sh
+backend/app/maintenance/data_archive.py
+backend/tests/test_data_archive.py
+docs/data-durability.md
 ```
 
 ## Last full verification recorded
@@ -107,18 +116,22 @@ The latest implementation handoff recorded:
 
 ```text
 make test
-  Backend: 109 passed
+  Backend: 114 passed
   Frontend: 39 passed
 
 make e2e
   Playwright/accessibility: 8 passed
 
 make lint: passed
+make data-relocation-test: passed
+make data-preflight: passed
+make backup: passed (dump listing, archive read, manifest/checksums)
 Frontend production build: passed
 git diff --check: passed
 Alembic current: 20260731_0017 (head)
 Backend health: passed
 Frontend HTTP check: passed
+Existing ChatGPT auth after adoption/rebuild: connected
 ```
 
 Ordinary tests mock Codex. Real Codex features require private ChatGPT sign-in
@@ -126,9 +139,8 @@ from Assistant or the optional configured API-key fallback.
 
 ## Planned milestone sequence
 
-- [ ] M14 — Audit and make PostgreSQL, uploads, configuration, and Docker
-  volumes safe across supported `mv`, rebuild, migration, backup, and restore
-  workflows. This is the required first milestone.
+- [x] M14 — PostgreSQL, uploads, configuration, and Docker volumes are safe
+  across supported `mv`, rebuild, migration, backup, and restore workflows.
 - [ ] M15 — Stream uploaded PDFs safely by source ID, show them inside Teacher
   Assistant, and allow a separate browser window/tab.
 - [ ] M16 — Add a lightweight Markdown-aware note editor where syntax markers
@@ -142,16 +154,17 @@ from Assistant or the optional configured API-key fallback.
   in validated browser storage without caching authoritative backend data.
 
 The full scope, boundaries, checklist, acceptance criteria, and expected files
-are in the corresponding `milestones/m14-...md` through
-`milestones/m19-...md` files. Do not combine or automatically advance these
-milestones.
+are in the corresponding milestone files. Do not combine or automatically
+advance them.
 
 ## Known limitations and cautions
 
-- M14–M19 are plans only and none of their application behavior exists yet.
-- The current Compose-managed database and Codex-auth volume identity can
-  depend on the project name. M14 must audit and remediate repository
-  move/rename safety before later milestones add more owner data.
+- M15–M19 are plans only and none of their application behavior exists yet.
+- Read-only preflight found another populated legacy database-volume candidate
+  on this Docker host. It was intentionally left untouched. Never merge or
+  delete it implicitly; any later cleanup requires explicit owner verification.
+- Clean restore does not copy Codex credentials. Authentication is renewable;
+  sign in again when the target installation has no session.
 - Historical Assistant failures cannot recover validation detail that was never
   stored; retrying creates current structured diagnostics if failure repeats.
 - Automatic correction is limited to one response-schema/citation retry.
@@ -171,14 +184,13 @@ milestones.
 
 ## Next step
 
-Review the planned M14 data-durability specification. When the owner is ready,
-implement M14 only, verify its relocation/update acceptance criteria, update
-its checkboxes, and stop before M15.
+M14 is complete. Stop before M15. The owner must explicitly select M15 before
+PDF-viewing implementation begins.
 
 Recommended next prompt:
 
 ```text
 Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m14-data-durability-and-relocation-safety.md. Implement M14 only and
-stop after its acceptance criteria are verified.
+milestones/m15-pdf-viewing.md. Implement M15 only and stop after its acceptance
+criteria are verified.
 ```

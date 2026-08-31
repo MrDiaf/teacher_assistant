@@ -1,6 +1,6 @@
 # M14 — Data durability, relocation, and update safety
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -13,20 +13,20 @@ the installation's data when the documented procedure is followed.
 This milestone is first because all later features create or depend on private
 owner data.
 
-## Current risk found during planning
+## Planning risk (remediated by this milestone)
 
-The current Compose file stores PostgreSQL and Codex authentication in named
+At planning time, Compose stored PostgreSQL and Codex authentication in named
 volumes. Unless a stable Compose project name is explicitly preserved, Docker
 Compose derives their names from the project directory or invocation context.
 A move or rename that changes that identity can attach new empty volumes. The
 old volumes may still exist, but the application can look as though its data was
 deleted.
 
-Course uploads currently use the repository-relative bind mount
+Course uploads used the repository-relative bind mount
 `./data/course_content`. Moving the entire directory preserves those files, but
 copying only tracked Git files does not because `data/` is intentionally
-ignored. Database and course-file backups are currently separate, and the
-default database backup filename is overwritten by the next backup.
+ignored. Database and course-file backups were separate, and the default
+database backup filename was overwritten by the next backup.
 
 These observations are not permission for an ad-hoc volume rename or copy. The
 implementation must begin with a read-only inventory and a recoverable migration
@@ -108,22 +108,47 @@ satisfy relocation, existing-installation migration, and multi-clone tests.
 
 ## Completed checklist
 
-- [ ] Inventory every persistent and disposable data location.
-- [ ] Record the current resolved Compose project and volume names.
-- [ ] Reproduce same-name moves, directory renames, rebuilds, and migrations
+- [x] Inventory every persistent and disposable data location.
+- [x] Record the current resolved Compose project and volume names.
+- [x] Reproduce same-name moves, directory renames, rebuilds, and migrations
   using non-private fixture data.
-- [ ] Implement a stable per-installation data identity.
-- [ ] Add a non-destructive migration/preflight path for existing volumes.
-- [ ] Add coordinated, versioned database-and-course-file backups with a
+- [x] Implement a stable per-installation data identity.
+- [x] Add a non-destructive migration/preflight path for existing volumes.
+- [x] Add coordinated, versioned database-and-course-file backups with a
   manifest and checksums.
-- [ ] Add a read-only data-safety/preflight Make target.
-- [ ] Verify normal Make targets never delete owner volumes.
-- [ ] Add automated Compose/config checks and integration coverage where
+- [x] Add a read-only data-safety/preflight Make target.
+- [x] Verify normal Make targets never delete owner volumes.
+- [x] Add automated Compose/config checks and integration coverage where
   practical.
-- [ ] Perform a documented end-to-end relocation and restore drill.
-- [ ] Update `.env.example`, `Makefile`, `README.md`, and `handoff.md`.
-- [ ] Verify Calendar, Courses, Assistant history, uploads, and Codex sign-in
+- [x] Perform a documented end-to-end relocation and restore drill.
+- [x] Update `.env.example`, `Makefile`, `README.md`, and `handoff.md`.
+- [x] Verify Calendar, Courses, Assistant history, uploads, and Codex sign-in
   behavior after relocation/update.
+
+## Verification record — 2026-08-31
+
+- The current installation explicitly resolves to Compose project
+  `teacher_assistant`, database volume `teacher_assistant_database-data`, and
+  Codex-auth volume `teacher_assistant_codex-auth-data`. Its host course root is
+  the configured project-relative `data/course_content` directory.
+- `make data-preflight` found both the selected installation and another
+  populated legacy candidate. Adoption explicitly selected the active source;
+  the other candidate was not mounted, copied, merged, or deleted.
+- `make data-relocation-test` passed with non-private fixtures. It verifies a
+  stopped same-final-name parent move, a stopped directory rename, rebuild,
+  migration, stable database IDs/counts, uploaded-file hash, auth-volume marker,
+  different-clone isolation, coordinated backup/clean restore, corrupt bundle
+  rejection before mutation, legacy volume copy/digest verification, retained
+  source volumes, and populated-target ambiguity refusal.
+- `make backup` produced a unique permission-restricted bundle, and both
+  `pg_restore -l` and full manifest/archive validation passed before success.
+- The adopted live installation retained its uploaded-file aggregate hash,
+  reached Alembic `20260731_0017 (head)`, returned healthy backend/frontend
+  responses, and reported its existing ChatGPT authentication as connected
+  after adoption, migration, rebuild, and restart.
+- `make test` passed with 114 backend and 39 frontend tests; `make e2e` passed
+  all 8 Playwright/accessibility tests; `make lint`, the frontend production
+  build, Docker startup, and `git diff --check` passed.
 
 ## Acceptance criteria
 
