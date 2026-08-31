@@ -7,7 +7,8 @@
 Extend the Assistant with bounded course-note context and validated citations,
 and add structured, sanitized error explanations. Later reliability refinements
 to validation recovery, progress, cancellation, and context selection are
-recorded here because no M14 was defined.
+recorded here because they were completed before the next milestone series was
+defined.
 
 ## Course-context selection
 
@@ -118,5 +119,5 @@ error UI; it is not a universal action on every application failure.
 - Diagnostic explanations are not yet surfaced for every application error.
 - Diagnostic records have no owner-facing purge UI.
 
-No M14 exists. Do not treat these limitations as permission to implement a new
-milestone without an explicit owner request.
+M14 through M19 are now planned in separate files. Do not treat M13 limitations
+as permission to implement any of them without an explicit owner request.

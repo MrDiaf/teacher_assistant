@@ -207,7 +207,8 @@ During implementation:
 
 When the owner says only `continue`, perform the first incomplete subtask in
 the already active milestone. If there is no active milestone or incomplete
-subtask, do not invent M14; ask the owner to define the next milestone.
+subtask, do not automatically start the next planned milestone; ask the owner
+to select it for implementation.
 
 At completion, update both the selected milestone file and the status checklist
 below. Update `handoff.md` with the new current state and exact next step.
@@ -228,14 +229,29 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M11 — AI summaries and model selection](milestones/m11-ai-summaries-and-model-selection.md)
 - [x] [M12 — Course-linked calendars](milestones/m12-course-linked-calendars.md)
 - [x] [M13 — Course-aware Assistant and diagnostics](milestones/m13-course-aware-assistant-and-diagnostics.md)
+- [ ] [M14 — Data durability, relocation, and update safety](milestones/m14-data-durability-and-relocation-safety.md)
+- [ ] [M15 — Open uploaded PDFs in Teacher Assistant and a new window](milestones/m15-pdf-viewing.md)
+- [ ] [M16 — Lightweight Markdown note editor](milestones/m16-lightweight-markdown-note-editor.md)
+- [ ] [M17 — Summary decluttering and removable summary bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
+- [ ] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
+- [ ] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
 
 Current active milestone: **none**.
+
+Next planned milestone: **M14 — Data durability, relocation, and update
+safety**. It must be explicitly selected before implementation begins.
 
 M1 through M13 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
 response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
+
+M14 through M19 are planned and intentionally unchecked. Their required order
+is M14 data safety first, followed by M15 PDF viewing, M16 Markdown editing,
+M17 summary organization, M18 Codex prettifying, and M19 frontend state
+persistence. Planning does not authorize implementation; the owner must select
+one milestone explicitly.
 
 ## Definition of done
 

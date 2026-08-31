@@ -24,15 +24,16 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `5cb4a4f good frist draft of refacting`
+- Git `HEAD`: `a1858c3 now it seems to be self contained`
 - M1 through M13 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- No M14 is defined or active. Known limitations are not an implied milestone.
-- The current uncommitted changes are documentation-only: milestone status is
-  now represented by Markdown task checkboxes in every milestone file.
+- M14 through M19 are planned, but no implementation milestone is active.
+- The current worktree contains owner-approved documentation work: the M14–M19
+  future roadmap and removal of the retired instruction files. Preserve these
+  changes.
 - Docker development services are running:
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`
@@ -123,9 +124,34 @@ Frontend HTTP check: passed
 Ordinary tests mock Codex. Real Codex features require private ChatGPT sign-in
 from Assistant or the optional configured API-key fallback.
 
+## Planned milestone sequence
+
+- [ ] M14 — Audit and make PostgreSQL, uploads, configuration, and Docker
+  volumes safe across supported `mv`, rebuild, migration, backup, and restore
+  workflows. This is the required first milestone.
+- [ ] M15 — Stream uploaded PDFs safely by source ID, show them inside Teacher
+  Assistant, and allow a separate browser window/tab.
+- [ ] M16 — Add a lightweight Markdown-aware note editor where syntax markers
+  remain visible while their content is styled, plus safe Markdown rendering.
+- [ ] M17 — Minimize/expand summaries and persistently remove individual
+  generated bullets without touching source notes or slides.
+- [ ] M18 — Add a Codex Prettify suggestion workflow with isolated context,
+  strict validation, before/after preview, explicit acceptance, and no automatic
+  note save.
+- [ ] M19 — Persist selected pages/views and per-conversation Assistant drafts
+  in validated browser storage without caching authoritative backend data.
+
+The full scope, boundaries, checklist, acceptance criteria, and expected files
+are in the corresponding `milestones/m14-...md` through
+`milestones/m19-...md` files. Do not combine or automatically advance these
+milestones.
+
 ## Known limitations and cautions
 
-- No M14 has been defined.
+- M14–M19 are plans only and none of their application behavior exists yet.
+- The current Compose-managed database and Codex-auth volume identity can
+  depend on the project name. M14 must audit and remediate repository
+  move/rename safety before later milestones add more owner data.
 - Historical Assistant failures cannot recover validation detail that was never
   stored; retrying creates current structured diagnostics if failure repeats.
 - Automatic correction is limited to one response-schema/citation retry.
@@ -145,12 +171,14 @@ from Assistant or the optional configured API-key fallback.
 
 ## Next step
 
-The documentation is now organized for milestone-based handoffs. After review,
-wait for the owner to define or select the next milestone; do not infer M14.
+Review the planned M14 data-durability specification. When the owner is ready,
+implement M14 only, verify its relocation/update acceptance criteria, update
+its checkboxes, and stop before M15.
 
 Recommended next prompt:
 
 ```text
-Read AGENTS.md, instructions.md, handoff.md, and the selected milestone file.
-Implement only that milestone and stop after its acceptance criteria are verified.
+Read AGENTS.md, instructions.md, handoff.md, and
+milestones/m14-data-durability-and-relocation-safety.md. Implement M14 only and
+stop after its acceptance criteria are verified.
 ```
