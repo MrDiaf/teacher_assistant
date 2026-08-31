@@ -68,6 +68,25 @@ const slideSource: CourseSource = {
   created_at: now,
   updated_at: now,
 };
+const literaturePdfSource: CourseSource = {
+  ...slideSource,
+  id: "literature-pdf-source",
+  source_type: "literature",
+  display_name: "Week one reading",
+  original_filename: "week-one-reading.pdf",
+  stored_filename: "original.pdf",
+  mime_type: "application/pdf",
+  file_size: 81920,
+  extracted_text_count: 3,
+};
+const slidesPdfSource: CourseSource = {
+  ...literaturePdfSource,
+  id: "slides-pdf-source",
+  source_type: "slides",
+  display_name: "Lecture two handout",
+  original_filename: "lecture-two-handout.pdf",
+  extracted_text_count: 5,
+};
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(status === 204 ? null : JSON.stringify(body), {
@@ -187,6 +206,19 @@ function installCourseApi(
         source.id === sourceId ? updated : source,
       );
       return jsonResponse(updated);
+    }
+    if (
+      parsedUrl.pathname.includes("/api/v1/course-sources/") &&
+      parsedUrl.pathname.endsWith("/content") &&
+      method === "GET"
+    ) {
+      return new Response(new Uint8Array([0x25]), {
+        status: 206,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Range": "bytes 0-0/81920",
+        },
+      });
     }
     if (
       parsedUrl.pathname.includes("/api/v1/course-sources/") &&
@@ -591,6 +623,161 @@ describe("CoursesPage", () => {
       expect(screen.queryByText("database-notes")).not.toBeInTheDocument(),
     );
     expect(screen.getByText("lecture-assets")).toBeInTheDocument();
+  });
+
+  it("opens Literature and Slides PDFs accessibly and restores focus", async () => {
+    const successfulFetch = installCourseApi(
+      [activeCourse],
+      [literaturePdfSource, slidesPdfSource, slideSource],
+    );
+    let completeFirstProbe: ((response: Response) => void) | undefined;
+    let firstProbe = true;
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        if (
+          String(input).endsWith(
+            `/api/v1/course-sources/${literaturePdfSource.id}/content`,
+          ) &&
+          firstProbe
+        ) {
+          firstProbe = false;
+          return await new Promise<Response>((resolve) => {
+            completeFirstProbe = resolve;
+          });
+        }
+        return successfulFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CoursesPage />);
+
+    await screen.findByText("Database Systems");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Database Systems" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Materials" }));
+
+    const literatureCard = (
+      await screen.findByText("Week one reading")
+    ).closest("article")!;
+    const openLiterature = within(literatureCard).getByRole("button", {
+      name: "Open Week one reading PDF",
+    });
+    const directWindowLink = within(literatureCard).getByRole("link", {
+      name: "Open Week one reading PDF in new window",
+    });
+    expect(directWindowLink).toHaveAttribute(
+      "href",
+      `/api/v1/course-sources/${literaturePdfSource.id}/content`,
+    );
+    expect(directWindowLink).toHaveAttribute("target", "_blank");
+    expect(directWindowLink).toHaveAttribute(
+      "rel",
+      expect.stringContaining("noopener"),
+    );
+    expect(directWindowLink).toHaveAttribute(
+      "rel",
+      expect.stringContaining("noreferrer"),
+    );
+
+    openLiterature.focus();
+    fireEvent.click(openLiterature);
+    let dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("status")).toHaveTextContent("Opening PDF");
+    completeFirstProbe?.(
+      new Response(new Uint8Array([0x25]), {
+        status: 206,
+        headers: { "Content-Type": "application/pdf" },
+      }),
+    );
+    expect(
+      await within(dialog).findByTitle("PDF viewer for Week one reading"),
+    ).toHaveAttribute(
+      "data",
+      `/api/v1/course-sources/${literaturePdfSource.id}/content`,
+    );
+    expect(
+      within(dialog).getByText("This browser cannot embed PDFs."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Close PDF viewer" }),
+    );
+    await waitFor(() => expect(openLiterature).toHaveFocus());
+
+    const slidesCard = screen
+      .getByText("Lecture two handout")
+      .closest("article")!;
+    fireEvent.click(
+      within(slidesCard).getByRole("button", {
+        name: "Open Lecture two handout PDF",
+      }),
+    );
+    dialog = screen.getByRole("dialog");
+    expect(
+      await within(dialog).findByTitle("PDF viewer for Lecture two handout"),
+    ).toBeInTheDocument();
+
+    const nonPdfCard = screen
+      .getByText("Transactions deck")
+      .closest("article")!;
+    expect(
+      within(nonPdfCard).queryByRole("button", { name: /Open .* PDF/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(nonPdfCard).queryByRole("link", { name: /new window/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a safe PDF API error and can retry the viewer", async () => {
+    const successfulFetch = installCourseApi(
+      [activeCourse],
+      [literaturePdfSource],
+    );
+    let probeAttempts = 0;
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        if (
+          String(input).endsWith(
+            `/api/v1/course-sources/${literaturePdfSource.id}/content`,
+          ) &&
+          probeAttempts++ === 0
+        ) {
+          return jsonResponse(
+            {
+              code: "course_source_content_unavailable",
+              message:
+                "The stored PDF is missing, unreadable, or no longer matches its source record.",
+            },
+            409,
+          );
+        }
+        return successfulFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CoursesPage />);
+
+    await screen.findByText("Database Systems");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Database Systems" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Materials" }));
+    const card = (await screen.findByText("Week one reading")).closest(
+      "article",
+    )!;
+    fireEvent.click(
+      within(card).getByRole("button", { name: "Open Week one reading PDF" }),
+    );
+
+    const dialog = screen.getByRole("dialog");
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "The stored PDF is missing, unreadable, or no longer matches its source record.",
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Try again" }));
+    expect(
+      await within(dialog).findByTitle("PDF viewer for Week one reading"),
+    ).toBeInTheDocument();
   });
 
   it("asks the Assistant to explain a sanitized material error", async () => {

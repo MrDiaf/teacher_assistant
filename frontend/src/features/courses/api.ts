@@ -71,6 +71,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+function sourceContentUrl(sourceId: string) {
+  return `/api/v1/course-sources/${encodeURIComponent(sourceId)}/content`;
+}
+
 export const courseApi = {
   list(signal?: AbortSignal) {
     return request<CourseModel[]>("/courses", { signal });
@@ -194,6 +198,25 @@ export const courseApi = {
       `/course-sources/${sourceId}/retry-extraction`,
       { method: "POST" },
     );
+  },
+
+  sourceContentUrl,
+
+  async probeSourceContent(sourceId: string, signal?: AbortSignal) {
+    const response = await fetch(sourceContentUrl(sourceId), {
+      headers: {
+        Accept: "application/pdf",
+        Range: "bytes=0-0",
+      },
+      signal,
+    });
+    if (!response.ok) throw await readApiError(response);
+    if (!response.headers.get("Content-Type")?.startsWith("application/pdf")) {
+      throw new CourseApiError(
+        "The course material did not return a supported PDF.",
+        response,
+      );
+    }
   },
 
   listNotes(courseId: string, signal?: AbortSignal) {

@@ -4,22 +4,30 @@ import asyncio
 import logging
 import uuid
 from collections.abc import AsyncIterable
+from dataclasses import dataclass
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import CourseSourceExtractionStateError
-from app.course_sources.extraction import ExtractionFailure, TextExtractionAdapter
+from app.core.errors import CourseSourceExtractionStateError, CourseSourceNotPdfError
+from app.course_sources.extraction import PDF_MIME_TYPE, ExtractionFailure, TextExtractionAdapter
 from app.course_sources.models import CourseSource, CourseSourceType, ExtractionStatus
 from app.course_sources.repository import CourseSourceRepository
 from app.course_sources.storage import (
     CourseStorage,
+    ResolvedCourseFile,
     StoredCourseFileMissingError,
 )
 from app.courses.repository import CourseRepository
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class PdfCourseSourceContent:
+    original_filename: str
+    resolved_file: ResolvedCourseFile
 
 
 class CourseSourceService:
@@ -51,6 +59,16 @@ class CourseSourceService:
 
     async def get_source(self, source_id: uuid.UUID) -> CourseSource:
         return await self.sources.get(source_id)
+
+    async def get_pdf_content(self, source_id: uuid.UUID) -> PdfCourseSourceContent:
+        source = await self.sources.get(source_id)
+        if source.mime_type != PDF_MIME_TYPE:
+            raise CourseSourceNotPdfError()
+        resolved_file = await self.storage.resolve_pdf_file(source)
+        return PdfCourseSourceContent(
+            original_filename=source.original_filename,
+            resolved_file=resolved_file,
+        )
 
     async def upload_source(
         self,

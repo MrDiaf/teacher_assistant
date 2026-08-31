@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "../../components/Icon";
+import { useModalDialog } from "../../hooks/useModalDialog";
 import { ErrorAssistantAction } from "../assistant/ErrorAssistantAction";
 import { CourseApiError, courseApi } from "./api";
 import type {
@@ -65,12 +66,151 @@ function extractedUnit(source: CourseSource) {
   return "text section";
 }
 
+function PdfViewerDialog({
+  source,
+  onClose,
+}: {
+  source: CourseSource;
+  onClose: () => void;
+}) {
+  const dialogRef = useModalDialog(onClose);
+  const [loadVersion, setLoadVersion] = useState(0);
+  const [loadState, setLoadState] = useState<
+    | { status: "loading" }
+    | { status: "ready" }
+    | { status: "failed"; message: string }
+  >({ status: "loading" });
+  const contentUrl = courseApi.sourceContentUrl(source.id);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoadState({ status: "loading" });
+    courseApi
+      .probeSourceContent(source.id, controller.signal)
+      .then(() => {
+        if (!controller.signal.aborted) setLoadState({ status: "ready" });
+      })
+      .catch((loadError: unknown) => {
+        if (!controller.signal.aborted) {
+          setLoadState({
+            status: "failed",
+            message:
+              loadError instanceof Error
+                ? loadError.message
+                : "The PDF could not be opened.",
+          });
+        }
+      });
+    return () => controller.abort();
+  }, [loadVersion, source.id]);
+
+  return (
+    <div className="dialog-backdrop pdf-viewer-backdrop">
+      <section
+        aria-labelledby="pdf-viewer-title"
+        aria-modal="true"
+        className="pdf-viewer-dialog"
+        ref={dialogRef}
+        role="dialog"
+      >
+        <header className="pdf-viewer-header">
+          <div>
+            <p className="eyebrow">Private course PDF</p>
+            <h2 id="pdf-viewer-title">{source.display_name}</h2>
+            <p title={source.original_filename}>{source.original_filename}</p>
+          </div>
+          <div className="pdf-viewer-header-actions">
+            <a
+              className="quiet-button pdf-window-link"
+              href={contentUrl}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Open in new window
+            </a>
+            <button
+              aria-label="Close PDF viewer"
+              className="icon-button"
+              data-dialog-autofocus
+              onClick={onClose}
+              type="button"
+            >
+              <Icon name="x" size={18} />
+            </button>
+          </div>
+        </header>
+
+        <div className="pdf-viewer-content">
+          {loadState.status === "loading" && (
+            <div className="pdf-viewer-state" role="status">
+              <span className="pdf-viewer-spinner" aria-hidden="true" />
+              <strong>Opening PDF…</strong>
+              <p>Checking the private file before loading the viewer.</p>
+            </div>
+          )}
+
+          {loadState.status === "failed" && (
+            <div className="pdf-viewer-state error" role="alert">
+              <strong>The PDF could not be opened</strong>
+              <p>{loadState.message}</p>
+              <div>
+                <button
+                  className="quiet-button"
+                  onClick={() => setLoadVersion((current) => current + 1)}
+                  type="button"
+                >
+                  Try again
+                </button>
+                <a
+                  className="quiet-button pdf-window-link"
+                  href={contentUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Open in new window
+                </a>
+              </div>
+            </div>
+          )}
+
+          {loadState.status === "ready" && (
+            <object
+              aria-label={`PDF viewer for ${source.display_name}`}
+              className="pdf-viewer-object"
+              data={contentUrl}
+              title={`PDF viewer for ${source.display_name}`}
+              type="application/pdf"
+            >
+              <div className="pdf-viewer-state unsupported">
+                <strong>This browser cannot embed PDFs.</strong>
+                <p>
+                  Open the private file in a new browser window to use the
+                  browser&apos;s PDF controls.
+                </p>
+                <a
+                  className="quiet-button pdf-window-link"
+                  href={contentUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Open in new window
+                </a>
+              </div>
+            </object>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function SourceCard({
   busy,
   confirmingDelete,
   source,
   onCancelDelete,
   onConfirmDelete,
+  onOpenPdf,
   onRequestDelete,
   onRetry,
 }: {
@@ -79,11 +219,14 @@ function SourceCard({
   source: CourseSource;
   onCancelDelete: () => void;
   onConfirmDelete: () => void;
+  onOpenPdf: () => void;
   onRequestDelete: () => void;
   onRetry: () => void;
 }) {
   const unit = extractedUnit(source);
   const count = source.extracted_text_count;
+  const isPdf = source.mime_type === "application/pdf";
+  const contentUrl = courseApi.sourceContentUrl(source.id);
 
   return (
     <article className="course-source-card">
@@ -156,6 +299,29 @@ function SourceCard({
           </div>
         ) : (
           <div className="course-source-actions">
+            {isPdf && (
+              <>
+                <button
+                  aria-label={`Open ${source.display_name} PDF`}
+                  className="quiet-button"
+                  disabled={busy}
+                  onClick={onOpenPdf}
+                  type="button"
+                >
+                  <Icon name="file" size={14} />
+                  Open PDF
+                </button>
+                <a
+                  aria-label={`Open ${source.display_name} PDF in new window`}
+                  className="quiet-button pdf-window-link"
+                  href={contentUrl}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Open in new window
+                </a>
+              </>
+            )}
             {source.extraction_status === "failed" && (
               <button
                 className="quiet-button"
@@ -197,6 +363,7 @@ export function CourseMaterials({
   );
   const [busySourceId, setBusySourceId] = useState<string | null>(null);
   const [confirmSourceId, setConfirmSourceId] = useState<string | null>(null);
+  const [viewerSource, setViewerSource] = useState<CourseSource | null>(null);
   const [error, setError] = useState<CourseMaterialError | null>(null);
 
   useEffect(() => {
@@ -357,6 +524,7 @@ export function CourseMaterials({
                         key={source.id}
                         onCancelDelete={() => setConfirmSourceId(null)}
                         onConfirmDelete={() => void remove(source)}
+                        onOpenPdf={() => setViewerSource(source)}
                         onRequestDelete={() => setConfirmSourceId(source.id)}
                         onRetry={() => void retry(source)}
                         source={source}
@@ -372,6 +540,13 @@ export function CourseMaterials({
             );
           })}
         </div>
+      )}
+      {viewerSource && (
+        <PdfViewerDialog
+          key={viewerSource.id}
+          onClose={() => setViewerSource(null)}
+          source={viewerSource}
+        />
       )}
     </div>
   );

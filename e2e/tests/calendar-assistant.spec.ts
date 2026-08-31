@@ -2,6 +2,8 @@ import { AxeBuilder } from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { AxeResults } from "axe-core";
 
+import { multiPagePdfFixture } from "./pdf-fixture.js";
+
 test.describe.configure({ mode: "serial" });
 
 function expectNoAccessibilityViolations(violations: AxeResults["violations"]) {
@@ -303,6 +305,124 @@ test("creates and manages a manual course through the UI", async ({
   expect(
     (await request.get(`/api/v1/events/${courseEvent.id}`)).ok(),
   ).toBeTruthy();
+});
+
+test("opens private Literature and Slides PDFs with byte-range support", async ({
+  page,
+  request,
+}) => {
+  const pdf = multiPagePdfFixture();
+  expect(pdf.length).toBeGreaterThan(100 * 1024);
+  const courseResponse = await request.post("/api/v1/courses", {
+    data: {
+      name: "M15 PDF viewing course",
+      course_code: "PDF15",
+      description: "Non-private end-to-end PDF viewing fixture.",
+      term: "Autumn 2026",
+      color: "#29584c",
+    },
+  });
+  expect(courseResponse.ok()).toBeTruthy();
+  const course = (await courseResponse.json()) as { id: string };
+
+  async function uploadPdf(
+    sourceType: "literature" | "slides",
+    fileName: string,
+  ) {
+    const query = new URLSearchParams({
+      source_type: sourceType,
+      file_name: fileName,
+    });
+    const response = await request.post(
+      `/api/v1/courses/${course.id}/sources?${query.toString()}`,
+      {
+        data: pdf,
+        headers: { "Content-Type": "application/octet-stream" },
+      },
+    );
+    expect(response.ok()).toBeTruthy();
+    return (await response.json()) as { id: string };
+  }
+
+  const literature = await uploadPdf("literature", "m15-reading.pdf");
+  const slides = await uploadPdf("slides", "m15-slides.pdf");
+  const literatureUrl = `/api/v1/course-sources/${literature.id}/content`;
+
+  const head = await request.head(literatureUrl);
+  expect(head.status()).toBe(200);
+  expect(head.headers()["content-type"]).toBe("application/pdf");
+  expect(head.headers()["content-length"]).toBe(String(pdf.length));
+  expect(head.headers()["accept-ranges"]).toBe("bytes");
+  const partial = await request.get(literatureUrl, {
+    headers: { Range: "bytes=65536-65663" },
+  });
+  expect(partial.status()).toBe(206);
+  expect(partial.headers()["content-range"]).toBe(
+    `bytes 65536-65663/${pdf.length}`,
+  );
+  expect(await partial.body()).toEqual(pdf.subarray(65536, 65664));
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Courses" }).click();
+  await page
+    .getByRole("button", { name: "Open M15 PDF viewing course" })
+    .click();
+  await page.getByRole("tab", { name: "Materials" }).click();
+
+  const literatureCard = page
+    .getByRole("article")
+    .filter({ hasText: "m15-reading" });
+  const openLiterature = literatureCard.getByRole("button", {
+    name: "Open m15-reading PDF",
+  });
+  await openLiterature.focus();
+  await openLiterature.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("m15-reading.pdf")).toBeVisible();
+  await expect(
+    dialog.locator('object[title="PDF viewer for m15-reading"]'),
+  ).toBeVisible();
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expectNoAccessibilityViolations(accessibility.violations);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(
+    dialog.getByRole("link", { name: "Open in new window" }).first(),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+
+  await dialog.getByRole("button", { name: "Close PDF viewer" }).click();
+  await expect(openLiterature).toBeFocused();
+
+  const slidesCard = page
+    .getByRole("article")
+    .filter({ hasText: "m15-slides" });
+  const newWindowLink = slidesCard.getByRole("link", {
+    name: "Open m15-slides PDF in new window",
+  });
+  await expect(newWindowLink).toHaveAttribute("target", "_blank");
+  await expect(newWindowLink).toHaveAttribute(
+    "rel",
+    /^(?=.*noopener)(?=.*noreferrer)/,
+  );
+  const [popup, popupRequest] = await Promise.all([
+    page.waitForEvent("popup"),
+    page.context().waitForEvent("request", {
+      predicate: (request) =>
+        request.url().includes(`/api/v1/course-sources/${slides.id}/content`),
+    }),
+    newWindowLink.click(),
+  ]);
+  expect(popupRequest.url()).toContain(
+    `/api/v1/course-sources/${slides.id}/content`,
+  );
+  if (!popup.isClosed()) {
+    expect(await popup.evaluate(() => window.opener === null)).toBe(true);
+    await popup.close();
+  }
 });
 
 test("explains a sanitized course-material error without exposing private input", async ({

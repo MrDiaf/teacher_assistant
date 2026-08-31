@@ -124,6 +124,25 @@ class CourseSourceStorageError(ApplicationError):
         super().__init__(message)
 
 
+class CourseSourceNotPdfError(ApplicationError):
+    code = "course_source_not_pdf"
+    status_code = HTTPStatus.UNSUPPORTED_MEDIA_TYPE
+
+    def __init__(self) -> None:
+        super().__init__("Only uploaded PDF course materials can be opened in the PDF viewer.")
+
+
+class CourseSourceContentUnavailableError(ApplicationError):
+    code = "course_source_content_unavailable"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self) -> None:
+        super().__init__(
+            "The stored PDF is missing, unreadable, or no longer matches its source record. "
+            "Delete this material and upload the PDF again."
+        )
+
+
 class CourseSourceExtractionStateError(ApplicationError):
     code = "course_source_extraction_state"
     status_code = HTTPStatus.CONFLICT

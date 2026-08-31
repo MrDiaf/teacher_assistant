@@ -24,14 +24,14 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `8f0eb0e milestones done`
-- M1 through M14 are complete.
+- Git `HEAD`: `0ca0cc7 milestone 14 done`
+- M1 through M15 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M15 through M19 are planned, but no implementation milestone is active.
-- The current uncommitted worktree is the completed M14 implementation and its
+- M16 through M19 are planned, but no implementation milestone is active.
+- The current uncommitted worktree is the completed M15 implementation and its
   documentation. Preserve it; no commit was requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
@@ -63,8 +63,9 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
   selection, validated calendar proposals, separate confirmations, linked
   creation batches, retries, diagnostics, progress, and cancellation.
 - Courses: manual CRUD/archive/restore, private Literature and Slides storage,
-  extraction, notes and slide references, AI summaries with provenance,
-  course-linked calendars, and course-aware Assistant answers.
+  extraction, in-app and new-window PDF viewing, notes and slide references, AI
+  summaries with provenance, course-linked calendars, and course-aware
+  Assistant answers.
 - Dashboard, Study Plan, and Settings remain placeholder modules unless the
   owner defines a new milestone.
 
@@ -73,41 +74,36 @@ The permanent safety and architecture rules are in `AGENTS.md` and
 
 ## Most recent completed work
 
-M14 data durability, relocation, and update safety:
+M15 private PDF viewing:
 
-- pins a stable, configurable per-installation Compose identity and records an
-  ignored initialization marker so a missing initialized database fails closed;
-- provides read-only `make data-preflight`, explicit new-clone initialization,
-  and preflighted `make data-adopt` with stopped-source checks, copy digests,
-  populated-target refusal, rollback records, and no automatic old-volume
-  deletion;
-- keeps host course storage configurable through `COURSE_DATA_DIR` and mounts
-  Codex auth at the configured persistent path;
-- creates unique coordinated PostgreSQL/course-file backup bundles with private
-  permissions, JSON manifests, byte counts, SHA-256 checksums, dump listing,
-  and safe archive validation;
-- restores only after validation and exact identity confirmation, takes a fresh
-  safety backup first, retains the prior course directory, runs migrations, and
-  excludes renewable Codex credentials;
-- documents persistent/disposable data, two-clone isolation, supported stopped
-  moves/renames, updates, rollback, backup, and clean restore;
-- adds a non-private end-to-end fixture drill for legacy adoption, migration,
-  rebuild, same-name move, rename, multi-clone isolation, backup/restore, and
-  corrupt/mismatched-data refusal.
+- streams only PDF course sources selected by validated UUID through
+  `GET`/`HEAD /api/v1/course-sources/{source_id}/content`;
+- rebuilds and contains the immutable storage path, then verifies stored-name,
+  extension, PDF signature, byte count, and SHA-256 content hash before serving;
+- returns safe inline filenames, `application/pdf`, private no-store and
+  no-sniff headers, same-origin resource policy, and native byte ranges;
+- adds PDF-only **Open PDF** and protected **Open in new window** actions to
+  both Literature and Slides without changing source metadata or extraction;
+- adds a large accessible in-app viewer with loading, safe API failure,
+  unsupported-embed fallback, keyboard close, focus restoration, and isolated
+  new-window links;
+- tests missing, changed, non-PDF, unknown, invalid, and tampered source access
+  without exposing server paths or arbitrary files;
+- adds a deterministic non-private two-page PDF E2E fixture larger than 100 KB,
+  verifies a byte range, both material types, popup isolation, and accessibility;
+- documents the owner-facing workflow and private endpoint behavior.
 
 Important implementation areas:
 
 ```text
-compose.yml
-.env.example
-Makefile
-scripts/data-safety.sh
-scripts/data-backup.sh
-scripts/data-restore.sh
-scripts/m14-relocation-drill.sh
-backend/app/maintenance/data_archive.py
-backend/tests/test_data_archive.py
-docs/data-durability.md
+backend/app/core/errors.py
+backend/app/course_sources/{routes,service,storage}.py
+backend/tests/test_course_sources.py
+frontend/src/features/courses/{CourseMaterials,CoursesPage.test}.tsx
+frontend/src/features/courses/api.ts
+frontend/src/styles.css
+e2e/tests/{calendar-assistant.spec.ts,pdf-fixture.ts}
+README.md
 ```
 
 ## Last full verification recorded
@@ -116,11 +112,11 @@ The latest implementation handoff recorded:
 
 ```text
 make test
-  Backend: 114 passed
-  Frontend: 39 passed
+  Backend: 117 passed
+  Frontend: 41 passed
 
 make e2e
-  Playwright/accessibility: 8 passed
+  Playwright/accessibility: 9 passed
 
 make lint: passed
 make data-relocation-test: passed
@@ -141,7 +137,7 @@ from Assistant or the optional configured API-key fallback.
 
 - [x] M14 — PostgreSQL, uploads, configuration, and Docker volumes are safe
   across supported `mv`, rebuild, migration, backup, and restore workflows.
-- [ ] M15 — Stream uploaded PDFs safely by source ID, show them inside Teacher
+- [x] M15 — Stream uploaded PDFs safely by source ID, show them inside Teacher
   Assistant, and allow a separate browser window/tab.
 - [ ] M16 — Add a lightweight Markdown-aware note editor where syntax markers
   remain visible while their content is styled, plus safe Markdown rendering.
@@ -159,7 +155,7 @@ advance them.
 
 ## Known limitations and cautions
 
-- M15–M19 are plans only and none of their application behavior exists yet.
+- M16–M19 are plans only and none of their application behavior exists yet.
 - Read-only preflight found another populated legacy database-volume candidate
   on this Docker host. It was intentionally left untouched. Never merge or
   delete it implicitly; any later cleanup requires explicit owner verification.
@@ -184,13 +180,13 @@ advance them.
 
 ## Next step
 
-M14 is complete. Stop before M15. The owner must explicitly select M15 before
-PDF-viewing implementation begins.
+M15 is complete. Stop before M16. The owner must explicitly select M16 before
+Markdown-note-editor implementation begins.
 
 Recommended next prompt:
 
 ```text
 Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m15-pdf-viewing.md. Implement M15 only and stop after its acceptance
-criteria are verified.
+milestones/m16-lightweight-markdown-note-editor.md. Implement M16 only and stop
+after its acceptance criteria are verified.
 ```

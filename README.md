@@ -173,6 +173,13 @@ libraries. PDF, PowerPoint (`.pptx`), UTF-8 text, and Markdown files are
 text-extracted when uploaded. A failed extraction can be retried, while an
 unsupported format is still stored safely.
 
+Uploaded PDF cards provide **Open PDF** for a large viewer inside Teacher
+Assistant and **Open in new window** for the browser's native PDF view. The
+viewer keeps the Materials tab in place, supports keyboard closing and focus
+return, and offers the new-window fallback when embedding is unavailable. Both
+Literature and Slides PDFs use the same private source-ID endpoint; other file
+types do not expose a PDF action.
+
 The **Notes** tab stores private plain text or Markdown notes. A note works
 without slides, or it can link to one or more whole slide decks or numbered
 slide ranges. Note text is displayed as text and user-entered HTML is never
@@ -225,6 +232,16 @@ or slide numbers, content hashes, notes, and slide-reference ranges. The
 original binary or text file is stored only under `data/course_content`. Server
 paths are not returned to the browser. `data/` is ignored by Git and must remain
 private.
+
+PDF viewing does not create a public or reusable share URL. The backend accepts
+only a validated source UUID, rebuilds the expected immutable storage path,
+and verifies the PDF signature, byte size, and SHA-256 content hash before
+streaming. Responses use private no-store caching, content sniffing protection,
+safe inline filenames, and browser `HEAD`/byte-range support. A missing,
+changed, unreadable, or non-PDF file fails safely without returning the host
+path, extracted text, directory contents, or another source's file. Keep the
+application on a trusted local network as described above; anyone who can reach
+this single-owner installation can reach its owner-facing API.
 
 Use the Materials tab to remove a source safely. It deletes only the selected
 `<source-id>` directory and its database rows, even if the raw file is already

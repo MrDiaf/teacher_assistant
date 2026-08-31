@@ -3,6 +3,7 @@ from http import HTTPStatus
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.course_sources.models import CourseSourceType
@@ -66,6 +67,31 @@ async def get_course_source(
 ) -> CourseSourceResponse:
     source = await CourseSourceService(session).get_source(source_id)
     return CourseSourceResponse.model_validate(source)
+
+
+@router.api_route(
+    "/course-sources/{source_id}/content",
+    methods=["GET", "HEAD"],
+    response_class=FileResponse,
+)
+async def get_course_source_content(
+    source_id: uuid.UUID,
+    session: SessionDependency,
+) -> FileResponse:
+    content = await CourseSourceService(session).get_pdf_content(source_id)
+    return FileResponse(
+        content.resolved_file.path,
+        filename=content.original_filename,
+        media_type="application/pdf",
+        content_disposition_type="inline",
+        stat_result=content.resolved_file.stat_result,
+        headers={
+            "Cache-Control": "private, no-store, max-age=0",
+            "Cross-Origin-Resource-Policy": "same-origin",
+            "Referrer-Policy": "no-referrer",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.delete(

@@ -1,6 +1,6 @@
 # M15 — Open uploaded PDFs in Teacher Assistant and a new window
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -55,17 +55,17 @@ viewer action.
 
 ## Completed checklist
 
-- [ ] Add safe backend source-content streaming.
-- [ ] Add MIME/path/file-integrity checks and safe response headers.
-- [ ] Support the browser behaviors needed for embedded and new-window viewing.
-- [ ] Add PDF actions to Literature and Slides cards.
-- [ ] Add an accessible in-app PDF viewer and focus restoration.
-- [ ] Add loading, missing-file, unsupported-browser, and API-error states.
-- [ ] Ensure new-window links cannot control the Teacher Assistant window.
-- [ ] Add backend route/storage tests.
-- [ ] Add frontend viewer and new-window interaction tests.
-- [ ] Add an end-to-end test using a small non-private PDF fixture.
-- [ ] Document PDF access and privacy behavior.
+- [x] Add safe backend source-content streaming.
+- [x] Add MIME/path/file-integrity checks and safe response headers.
+- [x] Support the browser behaviors needed for embedded and new-window viewing.
+- [x] Add PDF actions to Literature and Slides cards.
+- [x] Add an accessible in-app PDF viewer and focus restoration.
+- [x] Add loading, missing-file, unsupported-browser, and API-error states.
+- [x] Ensure new-window links cannot control the Teacher Assistant window.
+- [x] Add backend route/storage tests.
+- [x] Add frontend viewer and new-window interaction tests.
+- [x] Add an end-to-end test using a small non-private PDF fixture.
+- [x] Document PDF access and privacy behavior.
 
 ## Acceptance criteria
 

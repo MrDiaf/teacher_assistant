@@ -4245,15 +4245,18 @@ textarea:focus-visible {
   margin-top: 10px;
 }
 
-.course-source-actions button {
+.course-source-actions button,
+.course-source-actions a {
   min-height: 29px;
   font-size: 8px;
 }
 
-.course-source-actions .quiet-button {
+.course-source-actions .quiet-button,
+.pdf-window-link {
   display: flex;
   align-items: center;
   gap: 4px;
+  text-decoration: none;
 }
 
 .course-source-delete {
@@ -4299,6 +4302,147 @@ textarea:focus-visible {
 .course-source-delete-confirm button {
   min-height: 28px;
   font-size: 8px;
+}
+
+.pdf-viewer-backdrop {
+  padding: 20px;
+}
+
+.pdf-viewer-dialog {
+  display: flex;
+  width: min(1180px, 100%);
+  height: min(860px, calc(100dvh - 40px));
+  min-height: 520px;
+  overflow: hidden;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: 0 26px 80px rgba(5, 37, 31, 0.32);
+}
+
+.pdf-viewer-header {
+  display: flex;
+  min-height: 82px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #fffef9;
+}
+
+.pdf-viewer-header > div:first-child {
+  min-width: 0;
+}
+
+.pdf-viewer-header h2 {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--primary-text);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 23px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-viewer-header > div:first-child > p:last-child {
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--secondary-text);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-viewer-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-viewer-header-actions .pdf-window-link {
+  min-height: 38px;
+  font-size: 10px;
+}
+
+.pdf-viewer-content {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  background: #dce3df;
+  place-items: stretch;
+}
+
+.pdf-viewer-object {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
+.pdf-viewer-state {
+  display: flex;
+  max-width: 520px;
+  align-self: center;
+  justify-self: center;
+  align-items: center;
+  padding: 30px;
+  flex-direction: column;
+  color: var(--primary-text);
+  text-align: center;
+}
+
+.pdf-viewer-state strong {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.pdf-viewer-state p {
+  margin: 8px 0 0;
+  color: var(--secondary-text);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.pdf-viewer-state > div {
+  display: flex;
+  margin-top: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pdf-viewer-state.error {
+  color: #783c34;
+}
+
+.pdf-viewer-state.unsupported {
+  height: 100%;
+}
+
+.pdf-viewer-state.unsupported .pdf-window-link {
+  margin-top: 15px;
+}
+
+.pdf-viewer-spinner {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 14px;
+  border: 3px solid #b9c8c2;
+  border-top-color: var(--sidebar-active);
+  border-radius: 50%;
+  animation: pdf-viewer-spin 0.8s linear infinite;
+}
+
+@keyframes pdf-viewer-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .course-material-empty {
@@ -5117,6 +5261,28 @@ textarea:focus-visible {
   .dialog-backdrop {
     align-items: end;
     padding: 0;
+  }
+
+  .pdf-viewer-backdrop {
+    align-items: stretch;
+  }
+
+  .pdf-viewer-dialog {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .pdf-viewer-header {
+    min-height: 0;
+    align-items: flex-start;
+    padding: 13px 14px;
+  }
+
+  .pdf-viewer-header h2 {
+    font-size: 19px;
   }
 
   .event-dialog,

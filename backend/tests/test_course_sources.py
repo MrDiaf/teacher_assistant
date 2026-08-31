@@ -173,6 +173,131 @@ async def test_pdf_and_pptx_extraction_preserves_page_and_slide_numbers(
     assert any("Supporting slide text" in row.text for row in rows)
 
 
+async def test_pdf_content_streams_privately_with_head_and_byte_ranges(
+    client: AsyncClient,
+    session: AsyncSession,
+) -> None:
+    course = await create_course(client)
+    pdf_bytes = extractable_pdf("Private PDF byte-range fixture")
+    source = await upload_course_source(
+        client,
+        course["id"],
+        file_name="Course reading (week 1).pdf",
+        content=pdf_bytes,
+        source_type="literature",
+    )
+    content_url = f"/api/v1/course-sources/{source['id']}/content"
+
+    full = await client.get(content_url)
+    assert full.status_code == 200
+    assert full.content == pdf_bytes
+    assert full.headers["content-type"] == "application/pdf"
+    assert full.headers["content-disposition"] == (
+        "inline; filename*=utf-8''Course%20reading%20%28week%201%29.pdf"
+    )
+    assert full.headers["accept-ranges"] == "bytes"
+    assert full.headers["cache-control"] == "private, no-store, max-age=0"
+    assert full.headers["cross-origin-resource-policy"] == "same-origin"
+    assert full.headers["referrer-policy"] == "no-referrer"
+    assert full.headers["x-content-type-options"] == "nosniff"
+
+    head = await client.head(content_url)
+    assert head.status_code == 200
+    assert head.content == b""
+    assert head.headers["content-length"] == str(len(pdf_bytes))
+    assert head.headers["accept-ranges"] == "bytes"
+
+    ranged = await client.get(content_url, headers={"Range": "bytes=10-49"})
+    assert ranged.status_code == 206
+    assert ranged.content == pdf_bytes[10:50]
+    assert ranged.headers["content-range"] == f"bytes 10-49/{len(pdf_bytes)}"
+    assert ranged.headers["content-length"] == "40"
+    assert ranged.headers["x-content-type-options"] == "nosniff"
+
+    stored = await session.get(CourseSource, uuid.UUID(source["id"]))
+    assert stored is not None
+    assert stored.extraction_status.value == "completed"
+    assert stored.extracted_text_count == 1
+    assert "content_hash" not in source
+
+
+async def test_pdf_content_rejects_non_pdf_unknown_and_invalid_ids(
+    client: AsyncClient,
+) -> None:
+    course = await create_course(client)
+    text_source = await upload_course_source(
+        client,
+        course["id"],
+        file_name="reading.txt",
+        content=b"This is private course text.",
+    )
+
+    non_pdf = await client.get(f"/api/v1/course-sources/{text_source['id']}/content")
+    unknown = await client.get(f"/api/v1/course-sources/{uuid.uuid4()}/content")
+    invalid = await client.get("/api/v1/course-sources/not-a-uuid/content")
+    traversal = await client.get("/api/v1/course-sources/%2E%2E/content")
+
+    assert non_pdf.status_code == 415
+    assert non_pdf.json()["code"] == "course_source_not_pdf"
+    assert unknown.status_code == 404
+    assert unknown.json()["code"] == "course_source_not_found"
+    assert invalid.status_code == 422
+    assert traversal.status_code in {404, 422}
+    for response in (non_pdf, unknown, invalid, traversal):
+        assert "storage_path" not in response.text
+        assert str(get_settings().course_storage_root) not in response.text
+
+
+async def test_pdf_content_fails_closed_for_missing_changed_or_tampered_storage(
+    client: AsyncClient,
+    session: AsyncSession,
+    tmp_path: Path,
+) -> None:
+    course = await create_course(client)
+
+    missing = await upload_course_source(
+        client,
+        course["id"],
+        file_name="missing.pdf",
+        content=extractable_pdf("Missing file"),
+    )
+    stored_path(missing).unlink()
+    missing_response = await client.get(f"/api/v1/course-sources/{missing['id']}/content")
+
+    changed = await upload_course_source(
+        client,
+        course["id"],
+        file_name="changed.pdf",
+        content=extractable_pdf("Changed file"),
+    )
+    changed_path = stored_path(changed)
+    changed_bytes = bytearray(changed_path.read_bytes())
+    changed_bytes[-1] = ord("!")
+    changed_path.write_bytes(changed_bytes)
+    changed_response = await client.get(f"/api/v1/course-sources/{changed['id']}/content")
+
+    tampered = await upload_course_source(
+        client,
+        course["id"],
+        file_name="tampered.pdf",
+        content=extractable_pdf("Tampered metadata"),
+    )
+    secret = tmp_path / "must-not-be-returned.txt"
+    secret.write_text("arbitrary host content", encoding="utf-8")
+    stored = await session.get(CourseSource, uuid.UUID(tampered["id"]))
+    assert stored is not None
+    stored.storage_path = "../../must-not-be-returned.txt"
+    await session.commit()
+    tampered_response = await client.get(f"/api/v1/course-sources/{tampered['id']}/content")
+
+    for response in (missing_response, changed_response, tampered_response):
+        assert response.status_code == 409
+        assert response.json()["code"] == "course_source_content_unavailable"
+        assert "arbitrary host content" not in response.text
+        assert "storage_path" not in response.text
+        assert str(get_settings().course_storage_root) not in response.text
+
+
 async def test_unsupported_files_are_stored_and_spoofed_formats_are_rejected(
     client: AsyncClient,
     session: AsyncSession,

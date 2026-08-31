@@ -4,6 +4,7 @@ import hashlib
 import os
 import re
 import shutil
+import stat
 import unicodedata
 import uuid
 import zipfile
@@ -15,6 +16,7 @@ from typing import TYPE_CHECKING
 from starlette.concurrency import run_in_threadpool
 
 from app.core.errors import (
+    CourseSourceContentUnavailableError,
     CourseSourceFileTooLargeError,
     CourseSourceStorageError,
     InvalidCourseSourceFileError,
@@ -59,6 +61,12 @@ class StoredUpload:
 class QuarantinedPath:
     original: Path
     quarantined: Path
+
+
+@dataclass(frozen=True)
+class ResolvedCourseFile:
+    path: Path
+    stat_result: os.stat_result
 
 
 class CourseStorage:
@@ -160,6 +168,26 @@ class CourseStorage:
                 "The stored file is missing. Delete this record and upload the file again."
             )
         return path
+
+    async def resolve_pdf_file(self, source: CourseSource) -> ResolvedCourseFile:
+        """Resolve and verify a PDF against its immutable database identity."""
+        if (
+            source.mime_type != PDF_MIME_TYPE
+            or source.stored_filename != "original.pdf"
+            or Path(source.original_filename).suffix.lower() != ".pdf"
+        ):
+            raise CourseSourceContentUnavailableError()
+        try:
+            path = await self.resolve_source_file(source)
+            stat_result = await run_in_threadpool(
+                self._verify_pdf_integrity,
+                path,
+                source.file_size,
+                source.content_hash,
+            )
+        except (CourseSourceStorageError, StoredCourseFileMissingError, OSError) as exc:
+            raise CourseSourceContentUnavailableError() from exc
+        return ResolvedCourseFile(path=path, stat_result=stat_result)
 
     async def quarantine_source(
         self,
@@ -343,3 +371,25 @@ class CourseStorage:
                 raise InvalidCourseSourceFileError(
                     "Text and Markdown files must use UTF-8 encoding."
                 ) from exc
+
+    @staticmethod
+    def _verify_pdf_integrity(
+        path: Path,
+        expected_size: int,
+        expected_hash: str,
+    ) -> os.stat_result:
+        file_stat = path.stat()
+        if not stat.S_ISREG(file_stat.st_mode) or file_stat.st_size != expected_size:
+            raise CourseSourceContentUnavailableError()
+
+        digest = hashlib.sha256()
+        with path.open("rb") as stored:
+            sample = stored.read(1024)
+            if b"%PDF-" not in sample:
+                raise CourseSourceContentUnavailableError()
+            digest.update(sample)
+            for chunk in iter(lambda: stored.read(64 * 1024), b""):
+                digest.update(chunk)
+        if digest.hexdigest() != expected_hash:
+            raise CourseSourceContentUnavailableError()
+        return file_stat
