@@ -1,26 +1,52 @@
-# M17 — Summary decluttering and removable summary bullets
+# M17 — Minimized notes, summary decluttering, and removable bullets
 
-- [ ] This milestone
+- [x] This milestone
+
+Status: **complete and verified 2026-09-01**.
 
 ## Outcome
 
-Reduce visual clutter by allowing each AI summary to be minimized and expanded,
-and let the owner remove individual generated summary bullets they do not want.
+Reduce visual clutter by making every course note and its AI summary start in a
+minimized state whenever the owner enters the Notes page. The owner can expand
+notes and summaries independently and remove individual generated summary
+bullets they do not want.
 
 “Remove” in this milestone applies only to a generated summary bullet. It must
 never delete or edit the source note, linked slide references, uploaded files,
 or extracted slide text.
 
-## Minimize and expand behavior
+## Note minimize and expand behavior
 
+- Every note card starts minimized whenever the Notes view mounts, including
+  initial entry, page reload, returning from another module, and returning from
+  another course tab.
+- A newly created note also enters the list minimized.
+- A minimized note keeps a compact header visible with its title, last-updated
+  date, slide-reference count, and a concise summary-state indicator when one
+  exists.
+- Expanding one note reveals only that note's body, Markdown content,
+  references, actions, and summary section. It must not expand other notes.
+- Edit and destructive actions must remain clearly labeled and must not be
+  triggered by the expand/collapse control.
+- Use a real button with `aria-expanded`, `aria-controls`, a readable label,
+  visible focus, and keyboard operation.
+- Expansion lasts only for the current mounted Notes visit. Leaving and
+  returning deliberately restores the uncluttered all-minimized layout.
+
+## Summary minimize and expand behavior
+
+- Every summary starts minimized, independently of its containing note. Opening
+  a note must not automatically expand its summary.
 - Add a clear minimize/expand control to every summary section.
 - Keep a compact header visible while minimized, including summary state,
   model, stale warning when applicable, and bullet count.
-- Use `aria-expanded` and a readable accessible label.
+- Use `aria-expanded`, `aria-controls`, and a readable accessible label.
 - Do not discard an in-progress summary job or error state merely because the
   section is minimized.
-- M17 may retain collapse state while the page remains mounted. M19 will make
-  the preference survive navigation/reload.
+- A summary that finishes or is regenerated remains minimized until the owner
+  explicitly expands it; its compact header announces the updated state.
+- Summary expansion lasts only for the current mounted Notes visit. M19 must
+  not persist or restore note/summary expanded states.
 
 ## Individual bullet removal
 
@@ -57,23 +83,37 @@ may produce content similar to a previously removed bullet.
 
 ## Completed checklist
 
-- [ ] Add backend-owned stable IDs to persisted summary bullets.
-- [ ] Migrate or compatibly backfill existing summaries.
-- [ ] Add a validated remove-one-bullet service and API route.
-- [ ] Make repeated/concurrent removal idempotent or safely conflicting.
-- [ ] Add minimize/expand controls and compact summary headers.
-- [ ] Add an accessible cross button to each completed bullet.
-- [ ] Add empty-summary, busy, and persistence-failure states.
-- [ ] Preserve stale-summary and provenance behavior.
-- [ ] Add backend schema, migration, service, and API tests.
-- [ ] Add frontend interaction and accessibility tests.
-- [ ] Add E2E coverage for minimize, expand, remove, reload, and regenerate.
-- [ ] Update documentation.
+- [x] Add backend-owned stable IDs to persisted summary bullets.
+- [x] Migrate or compatibly backfill existing summaries.
+- [x] Add a validated remove-one-bullet service and API route.
+- [x] Make repeated/concurrent removal idempotent or safely conflicting.
+- [x] Make every note initialize minimized on every Notes-view mount.
+- [x] Add independent note minimize/expand controls and compact note headers.
+- [x] Make every nested summary initialize minimized independently.
+- [x] Add independent summary controls and compact summary headers.
+- [x] Keep new and regenerated note/summary content minimized until explicitly
+  expanded.
+- [x] Add an accessible cross button to each completed bullet.
+- [x] Add empty-summary, busy, and persistence-failure states.
+- [x] Preserve stale-summary and provenance behavior.
+- [x] Add backend schema, migration, service, and API tests.
+- [x] Add frontend interaction and accessibility tests.
+- [x] Add E2E coverage for default minimization, independent expansion,
+  navigation return, reload, remove, and regenerate.
+- [x] Update documentation.
 
 ## Acceptance criteria
 
-- The owner can minimize and expand each note summary independently.
+- Every note is minimized when the owner enters or returns to the Notes page.
+- Every nested summary is also minimized by default, even after its note is
+  expanded.
+- Notes and summaries expand independently; opening one does not open any
+  sibling note or nested summary.
+- Minimized note headers identify the note and show useful counts/state without
+  displaying the full body.
 - A minimized summary clearly shows what it is and whether it is stale.
+- Leaving and returning to Notes resets every note and summary to minimized,
+  including after M19 adds persistence for other frontend state.
 - Pressing a bullet's cross removes that exact generated bullet after a reload.
 - Removing one bullet leaves every other bullet and its provenance unchanged.
 - Repeating the same request cannot remove the next bullet accidentally.

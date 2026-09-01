@@ -4568,15 +4568,33 @@ textarea:focus-visible {
   line-height: 1.25;
 }
 
+.course-note-heading {
+  min-width: 0;
+}
+
+.course-note-compact-meta {
+  margin: 7px 0 0;
+  color: var(--secondary-text);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .course-note-actions {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
 }
 
 .course-note-actions button {
   min-height: 29px;
   font-size: 8px;
+}
+
+.course-note-toggle {
+  color: #244e44;
 }
 
 .course-note-delete {
@@ -4793,6 +4811,14 @@ textarea:focus-visible {
   font-size: 8px;
 }
 
+.note-summary-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
 .note-summary-empty {
   margin: 11px 0 0;
   color: #6f7d79;
@@ -4843,6 +4869,54 @@ textarea:focus-visible {
   border-radius: 8px;
 }
 
+.note-summary-bullet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.note-summary-remove-bullet {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  flex: 0 0 auto;
+  padding: 0;
+  color: #70423c;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  place-items: center;
+}
+
+.note-summary-remove-bullet:hover:not(:disabled) {
+  border-color: currentColor;
+  background: #fff;
+}
+
+.note-summary-remove-bullet:focus-visible {
+  outline: 3px solid rgba(213, 178, 78, 0.52);
+  outline-offset: 2px;
+}
+
+.note-summary-empty-state {
+  margin-top: 11px;
+  padding: 12px;
+  color: #40524e;
+  border: 1px dashed #b9c9c2;
+  border-radius: 9px;
+  background: #f4f7f3;
+  font-size: 9px;
+}
+
+.note-summary-empty-state p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+}
+
 .note-summary-bullets li.origin-note {
   border-color: #3e806b;
   background: #e8f2ed;
@@ -4886,7 +4960,7 @@ textarea:focus-visible {
 }
 
 .note-summary-bullets small {
-  color: #677772;
+  color: #40554f;
   font-size: 7px;
 }
 

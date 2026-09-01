@@ -193,12 +193,24 @@ as `javascript:` and `data:` are not clickable. The original Markdown string
 is preserved exactly through save and reopen; no rich-text document format is
 introduced.
 
+Every note starts minimized when the Notes tab is opened, reloaded, or revisited.
+Its compact header keeps the title, update date, slide-reference count, and
+summary state visible. Expanding one note does not open any other note, and its
+nested summary has a separate expand control that also starts minimized. These
+temporary expansion choices are deliberately not saved between Notes visits.
+
 A note works without slides, or it can link to one or more whole slide decks or
 numbered slide ranges. AI summaries use only the original note body and
 explicitly linked extracted slide text. Every stored bullet is labeled **From
 note**, **From slides**, or **From note + slides** with its exact source
 references. Summaries retain the selected model and source hashes, and are
 marked stale after their note or linked slide text changes.
+
+Each completed summary bullet has an accessible cross button that removes only
+that persisted bullet. Bullet identity is assigned and checked by the backend,
+so repeated or concurrent requests cannot shift to a different list item.
+Removing the last bullet leaves the source note, slide links, provenance, and
+uploaded files unchanged and shows an empty state with **Generate again**.
 
 The **Calendar** tab links a course to existing calendars without copying
 events. Unlinking or deleting a course does not delete a calendar or its events,

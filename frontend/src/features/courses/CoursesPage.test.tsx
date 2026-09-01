@@ -293,6 +293,7 @@ function installCourseApi(
         summary_json: {
           bullets: [
             {
+              id: `bullet-${noteId}-1`,
               text: "The note connects atomicity with reliable transactions.",
               origin: slide ? "mixed" : "note",
               source_references: [
@@ -324,6 +325,30 @@ function installCourseApi(
       };
       summaries[noteId] = created;
       return jsonResponse(created, 201);
+    }
+    if (
+      parsedUrl.pathname.includes("/api/v1/note-summaries/") &&
+      parsedUrl.pathname.includes("/bullets/") &&
+      method === "DELETE"
+    ) {
+      const parts = parsedUrl.pathname.split("/");
+      const summaryId = parts.at(-3);
+      const bulletId = parts.at(-1);
+      const summary = Object.values(summaries).find(
+        (item) => item?.id === summaryId,
+      )!;
+      const updated: NoteSummary = {
+        ...summary,
+        summary_json: {
+          bullets:
+            summary.summary_json?.bullets.filter(
+              (bullet) => bullet.id !== bulletId,
+            ) ?? [],
+        },
+        updated_at: new Date().toISOString(),
+      };
+      summaries[updated.note_id] = updated;
+      return jsonResponse(updated);
     }
     if (
       parsedUrl.pathname.includes("/api/v1/note-summaries/") &&
@@ -928,6 +953,23 @@ describe("CoursesPage", () => {
     });
     let noteCard = title.closest("article")!;
     expect(
+      within(noteCard).getByRole("button", {
+        name: "Expand note Isolation levels",
+      }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      within(noteCard).getByRole("heading", {
+        level: 4,
+        name: "Serializable",
+        hidden: true,
+      }),
+    ).not.toBeVisible();
+    fireEvent.click(
+      within(noteCard).getByRole("button", {
+        name: "Expand note Isolation levels",
+      }),
+    );
+    expect(
       within(noteCard).getByRole("heading", {
         level: 4,
         name: "Serializable",
@@ -1007,6 +1049,11 @@ describe("CoursesPage", () => {
       screen.getByRole("button", { name: "Open Database Systems" }),
     );
     fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Expand note Transaction notes",
+      }),
+    );
     const summaryRegion = await screen.findByRole("region", {
       name: "AI summary for Transaction notes",
     });
@@ -1021,6 +1068,17 @@ describe("CoursesPage", () => {
     );
 
     expect(
+      within(summaryRegion).getByRole("button", {
+        name: "Expand summary for Transaction notes",
+      }),
+    ).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(
+      within(summaryRegion).getByRole("button", {
+        name: "Expand summary for Transaction notes",
+      }),
+    );
+
+    expect(
       await within(summaryRegion).findByText("From note + slides"),
     ).toBeInTheDocument();
     expect(
@@ -1031,6 +1089,27 @@ describe("CoursesPage", () => {
     expect(
       within(summaryRegion).getByText(/Transactions deck, slide 2/),
     ).toBeInTheDocument();
+    fireEvent.click(
+      within(summaryRegion).getByRole("button", {
+        name: "Remove summary bullet 1",
+      }),
+    );
+    expect(
+      await within(summaryRegion).findByText("No summary bullets remain."),
+    ).toBeInTheDocument();
+    expect(
+      within(summaryRegion.closest("article")!).getByText(
+        "Atomicity keeps transaction changes together.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.some(
+        ([url, init]) =>
+          String(url).endsWith(
+            "/api/v1/note-summaries/summary-note-summary/bullets/bullet-note-summary-1",
+          ) && init?.method === "DELETE",
+      ),
+    ).toBe(true);
     const summaryCall = fetchMock.mock.calls.find(
       ([url, init]) =>
         String(url).endsWith("/api/v1/notes/note-summary/summaries") &&
@@ -1057,5 +1136,103 @@ describe("CoursesPage", () => {
         "This summary is stale because the note or linked slide text changed.",
       ),
     ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "Overview" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    expect(
+      await screen.findByRole("button", {
+        name: "Expand note Transaction notes",
+      }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("region", {
+        name: "AI summary for Transaction notes",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("expands notes independently and keeps a bullet when persistence fails", async () => {
+    const firstNote: CourseNote = {
+      id: "note-first",
+      course_id: activeCourse.id,
+      title: "First note",
+      body: "First private body",
+      slide_references: [],
+      created_at: now,
+      updated_at: now,
+    };
+    const secondNote: CourseNote = {
+      ...firstNote,
+      id: "note-second",
+      title: "Second note",
+      body: "Second private body",
+    };
+    const successfulFetch = installCourseApi(
+      [activeCourse],
+      [],
+      [firstNote, secondNote],
+    );
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        if (
+          String(input).includes("/api/v1/note-summaries/") &&
+          String(input).includes("/bullets/") &&
+          init?.method === "DELETE"
+        ) {
+          return jsonResponse(
+            {
+              code: "summary_persistence_failed",
+              message: "The summary change could not be saved.",
+            },
+            500,
+          );
+        }
+        return successfulFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<CoursesPage />);
+
+    await screen.findByText("Database Systems");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Database Systems" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    const firstToggle = await screen.findByRole("button", {
+      name: "Expand note First note",
+    });
+    const secondToggle = screen.getByRole("button", {
+      name: "Expand note Second note",
+    });
+    fireEvent.click(firstToggle);
+    expect(firstToggle).toHaveAttribute("aria-expanded", "true");
+    expect(secondToggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByText("First private body")).toBeVisible();
+    expect(screen.getByText("Second private body")).not.toBeVisible();
+
+    const summaryRegion = screen.getByRole("region", {
+      name: "AI summary for First note",
+    });
+    fireEvent.click(
+      within(summaryRegion).getByRole("button", { name: "Generate summary" }),
+    );
+    fireEvent.click(
+      await within(summaryRegion).findByRole("button", {
+        name: "Expand summary for First note",
+      }),
+    );
+    const bulletText =
+      "The note connects atomicity with reliable transactions.";
+    expect(await within(summaryRegion).findByText(bulletText)).toBeVisible();
+    fireEvent.click(
+      within(summaryRegion).getByRole("button", {
+        name: "Remove summary bullet 1",
+      }),
+    );
+
+    expect(await within(summaryRegion).findByRole("alert")).toHaveTextContent(
+      "The summary change could not be saved.",
+    );
+    expect(within(summaryRegion).getByText(bulletText)).toBeVisible();
   });
 });

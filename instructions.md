@@ -43,7 +43,7 @@ Teacher Assistant is a single-owner, self-hosted web application. Each cloned
 installation has its own database, calendars, events, courses, uploaded course
 content, Codex configuration, and private settings.
 
-The visible navigation is:
+The currently implemented visible navigation is:
 
 - Dashboard
 - Calendar
@@ -54,7 +54,9 @@ The visible navigation is:
 
 Calendar, Courses, and Assistant are implemented. Dashboard, Study Plan, and
 Settings may remain polished placeholders until the owner defines a milestone
-for them. Do not infer a new product phase from future-looking notes.
+for them. M20 is planned to make Settings functional for private integrations,
+and M21 is planned to add Inbox as a separate module after Courses. Do not show
+or claim either behavior before its milestone is implemented.
 
 Never add registration, multiple users, organizations, teams, roles, tenants,
 shared accounts, or public profiles.
@@ -85,10 +87,12 @@ models, and Codex prompts. Preserve the existing service/repository boundaries.
 Keep these responsibilities separate:
 
 ```text
-frontend calendar, courses, and assistant features
-calendar, course, note, source, summary, and assistant API routes
+frontend calendar, courses, assistant, settings, and inbox features
+calendar, course, note, source, summary, assistant, integration, and inbox API routes
 application services
 database repositories and models
+external Canvas, feed, and mail adapters
+private integration credential and content storage
 Codex SDK adapter
 runtime workspace construction
 proposal and structured-output validation
@@ -168,6 +172,39 @@ repository access.
 The runtime Assistant may suggest application improvements but may not edit
 source code or claim an improvement was implemented.
 
+## External integrations and Inbox safety
+
+Canvas and inbound mail are planned in M20–M22. External connection clients,
+sync services, repositories, routes, schedulers, credential storage, content
+storage, and React views must remain separate from calendar/course/Assistant
+business logic.
+
+Passwords, OAuth tokens, refresh tokens, API tokens, client secrets, mail
+credentials, tokenized feed URLs, cookies, and authorization headers are
+secrets. Keep them server-side in dedicated private credential storage, never
+return them to the browser after submission, and exclude them from Git, logs,
+diagnostics, browser storage, Codex workspaces, and coordinated backups. Clean
+restores require reconnecting renewable integrations.
+
+Treat remote names, IDs, HTML, mail headers/bodies, attachments, URLs, upstream
+errors, and feed fields as untrusted data. Bound all network responses and
+parsers, sanitize passive display content, block automatic remote resources,
+and never treat external content as runtime instructions. External content must
+not enter Codex context without a later explicit bounded-context milestone.
+
+Canvas access is read-only and least-privilege. Prefer institution-approved
+OAuth, permit a manually generated Canvas API token or per-course announcement
+feed only as labelled fallbacks, and never accept a Canvas password, browser
+cookie, copied session, or HTML-login/scraping workflow. Linking a remote Canvas
+course to a local course is explicit and relational; it does not import or
+overwrite the Course record. Automatic LMS course creation, assignments,
+grades, people, files, and submissions remain out of scope.
+
+Forwarded mail uses an owner-provisioned dedicated mailbox over verified TLS and
+read-only IMAP. Teacher Assistant does not create an address, configure external
+forwarding/DNS, send or reply to mail, or mutate the remote mailbox. Local Inbox
+read/archive/delete state never changes the upstream Canvas or mail source.
+
 ## Docker, private data, and Git
 
 Development remains Docker-first. A normal setup starts with:
@@ -232,25 +269,30 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M14 — Data durability, relocation, and update safety](milestones/m14-data-durability-and-relocation-safety.md)
 - [x] [M15 — Open uploaded PDFs in Teacher Assistant and a new window](milestones/m15-pdf-viewing.md)
 - [x] [M16 — Lightweight Markdown note editor](milestones/m16-lightweight-markdown-note-editor.md)
-- [ ] [M17 — Summary decluttering and removable summary bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
+- [x] [M17 — Minimized notes, summary decluttering, and removable bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
 - [ ] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
 - [ ] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
+- [ ] [M20 — Integration secrets and Canvas connection](milestones/m20-integration-secrets-and-canvas-connection.md)
+- [ ] [M21 — Canvas announcement Inbox](milestones/m21-canvas-announcement-inbox.md)
+- [ ] [M22 — Forwarded-mail Inbox](milestones/m22-forwarded-mail-inbox.md)
 
 Current active milestone: **none**.
 
-Next planned milestone: **M17 — Summary decluttering and removable summary
-bullets**. It must be explicitly selected before implementation begins.
+Next planned milestone: **M18 — Codex note prettify suggestions**. It must be
+explicitly selected before implementation
+begins.
 
-M1 through M16 and the post-M7 linked-batch milestone are complete. The
+M1 through M17 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
 response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M17 through M19 are planned and intentionally unchecked. Their required order
-is M17 summary organization, M18 Codex prettifying, and M19 frontend state
-persistence. Planning does not authorize implementation; the owner must select
-one milestone explicitly.
+M18 through M22 are planned and intentionally unchecked. Their required order
+is M18 Codex prettifying, M19 frontend state persistence, M20 integration
+secrets and Canvas connection, M21 Canvas announcements, and M22 forwarded
+mail. Planning does not authorize implementation; the owner must select one
+milestone explicitly.
 
 ## Definition of done
 

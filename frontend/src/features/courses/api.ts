@@ -257,4 +257,11 @@ export const courseApi = {
       method: "POST",
     });
   },
+
+  removeNoteSummaryBullet(summaryId: string, bulletId: string) {
+    return request<NoteSummary>(
+      `/note-summaries/${summaryId}/bullets/${bulletId}`,
+      { method: "DELETE" },
+    );
+  },
 };

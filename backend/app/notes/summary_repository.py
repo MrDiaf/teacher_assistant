@@ -46,13 +46,20 @@ class NoteSummaryRepository:
             raise NoteSummaryNotFoundError()
         return summary
 
-    async def latest_for_note(self, note_id: uuid.UUID) -> NoteSummary | None:
+    async def latest_for_note(
+        self,
+        note_id: uuid.UUID,
+        *,
+        for_update: bool = False,
+    ) -> NoteSummary | None:
         statement = (
             select(NoteSummary)
             .where(NoteSummary.note_id == note_id)
             .order_by(NoteSummary.created_at.desc(), NoteSummary.id.desc())
             .limit(1)
         )
+        if for_update:
+            statement = statement.with_for_update()
         return await self.session.scalar(statement)
 
     async def update(

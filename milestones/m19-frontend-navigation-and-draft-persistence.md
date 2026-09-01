@@ -23,8 +23,7 @@ Persist a small, versioned, namespaced set of values:
 - selected course ID and selected course tab;
 - selected Assistant conversation and conversation/activity sidebar mode;
 - unsent Assistant composer text, separately for each conversation and for a
-  not-yet-created conversation;
-- minimized/expanded summary preferences introduced in M17.
+  not-yet-created conversation.
 
 When a saved course, calendar, conversation, or summary no longer exists, fall
 back safely and remove the stale preference. The Today button must still reset
@@ -40,6 +39,8 @@ Do not persist:
 - active requests, timers, cancellation controllers, busy/error states, undo
   actions, modal dialogs, or destructive confirmations;
 - unsaved event/course/source deletion forms;
+- note and summary expanded/minimized state—M17 intentionally starts every note
+  and summary minimized whenever the Notes view mounts;
 - Codex runtime context or raw model output.
 
 Every authoritative record must still be reloaded from FastAPI when its page is
@@ -91,7 +92,8 @@ dialog, execute a proposal, or mutate calendar data.
 - [ ] Persist and restore Assistant conversation/sidebar selection.
 - [ ] Persist Assistant drafts per conversation and for a new conversation.
 - [ ] Clear only successfully sent or explicitly cleared drafts.
-- [ ] Persist M17 summary minimize/expand preferences.
+- [ ] Confirm M17 note/summary expansion state is not persisted and still
+  resets to minimized on every Notes-view mount.
 - [ ] Remove stale identifiers and reject malformed stored values.
 - [ ] Add privacy, size-limit, and storage-failure behavior.
 - [ ] Add unmount/remount, reload, multi-conversation, and accessibility tests.
@@ -107,6 +109,8 @@ dialog, execute a proposal, or mutate calendar data.
 - A successful send clears only the sent conversation's draft; a failed send
   retains it.
 - Returning to Courses restores the selected existing course and tab.
+- Returning to the Notes tab does not restore expanded note/summary panels;
+  every panel starts minimized as required by M17.
 - Invalid or stale stored values fall back without crashing or hiding data.
 - Reloading a page restores supported UI state but always reloads authoritative
   records and permissions from the backend.

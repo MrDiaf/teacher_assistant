@@ -84,6 +84,24 @@ class NoteSummaryNotRetryableError(ApplicationError):
         super().__init__("Only a failed note summary can be retried.")
 
 
+class NoteSummaryNotEditableError(ApplicationError):
+    code = "note_summary_not_editable"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self) -> None:
+        super().__init__("Bullets can only be removed from a completed note summary.")
+
+
+class NoteSummaryBulletNotFoundError(ApplicationError):
+    code = "note_summary_bullet_not_found"
+    status_code = HTTPStatus.CONFLICT
+
+    def __init__(self) -> None:
+        super().__init__(
+            "That summary bullet no longer exists. Refresh the note before trying again."
+        )
+
+
 class NoteSummarySourceUnavailableError(ApplicationError):
     code = "note_summary_source_unavailable"
 

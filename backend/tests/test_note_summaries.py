@@ -17,6 +17,7 @@ from app.codex_runtime.adapter import (
 from app.core.errors import AssistantRuntimeError, InvalidNoteSummaryResponseError
 from app.course_sources.models import ExtractedSourceText
 from app.main import app
+from app.notes.summary_models import NoteSummary
 from app.notes.summary_validation import parse_and_validate_summary
 from tests.helpers import create_course, create_note, upload_course_source
 
@@ -223,6 +224,9 @@ async def test_summary_uses_only_note_and_explicit_linked_slides_with_provenance
         "slide",
         "mixed",
     ]
+    assert all(
+        uuid.UUID(bullet["id"]) for bullet in body["summary_json"]["bullets"]
+    )
     assert len(body["note_content_hash"]) == 64
     assert len(body["slide_content_hash"]) == 64
 
@@ -251,6 +255,7 @@ async def test_summary_uses_only_note_and_explicit_linked_slides_with_provenance
         "OUTPUT_SCHEMA.json",
     }
     assert "hidden reasoning" in call["prompt"]
+    assert "id" not in call["schema"]["properties"]["bullets"]["items"]["properties"]
     assert not Path(call["root"]).exists()
 
     latest = await client.get(f"/api/v1/notes/{note['id']}/summary")
@@ -425,3 +430,114 @@ async def test_unavailable_linked_text_fails_safely_without_calling_codex(
     assert response.json()["safe_error_code"] == "note_summary_source_unavailable"
     assert "Linked slide text is unavailable" in response.json()["safe_error"]
     assert fake_summary_codex.calls == []
+
+
+async def test_removing_one_summary_bullet_is_exact_persistent_and_safely_repeatable(
+    client: AsyncClient,
+    fake_summary_codex: FakeSummaryCodexAdapter,
+) -> None:
+    course = await create_course(client)
+    slides = await upload_course_source(
+        client,
+        course["id"],
+        file_name="deck.txt",
+        content=b"Serializable schedules preserve transaction behavior.",
+        source_type="slides",
+    )
+    note = await create_note(
+        client,
+        course["id"],
+        body="Isolation prevents unsafe interleavings.",
+        slide_references=[
+            {
+                "source_id": slides["id"],
+                "start_slide": 1,
+                "end_slide": 1,
+            }
+        ],
+    )
+    fake_summary_codex.response = summary_payload(
+        note_id=note["id"],
+        source_id=slides["id"],
+    )
+    generated = await client.post(
+        f"/api/v1/notes/{note['id']}/summaries",
+        json={"model": "gpt-5.6-sol"},
+    )
+    original = generated.json()["summary_json"]["bullets"]
+    removed_id = original[1]["id"]
+
+    removed = await client.delete(
+        f"/api/v1/note-summaries/{generated.json()['id']}/bullets/{removed_id}"
+    )
+
+    assert removed.status_code == 200, removed.text
+    remaining = removed.json()["summary_json"]["bullets"]
+    assert remaining == [original[0], original[2]]
+    latest = await client.get(f"/api/v1/notes/{note['id']}/summary")
+    assert latest.json()["summary_json"]["bullets"] == remaining
+
+    repeated = await client.delete(
+        f"/api/v1/note-summaries/{generated.json()['id']}/bullets/{removed_id}"
+    )
+    assert repeated.status_code == 409
+    assert repeated.json()["code"] == "note_summary_bullet_not_found"
+    assert (await client.get(f"/api/v1/notes/{note['id']}/summary")).json()[
+        "summary_json"
+    ]["bullets"] == remaining
+
+    for bullet in remaining:
+        deleted = await client.delete(
+            f"/api/v1/note-summaries/{generated.json()['id']}/bullets/{bullet['id']}"
+        )
+        assert deleted.status_code == 200
+    final = await client.get(f"/api/v1/notes/{note['id']}/summary")
+    assert final.json()["summary_json"] == {"bullets": []}
+    assert (await client.get(f"/api/v1/notes/{note['id']}")).status_code == 200
+
+
+async def test_legacy_summary_bullets_receive_persisted_backend_ids(
+    client: AsyncClient,
+    session: AsyncSession,
+    fake_summary_codex: FakeSummaryCodexAdapter,
+) -> None:
+    course = await create_course(client)
+    note = await create_note(client, course["id"])
+    fake_summary_codex.response = summary_payload(note_id=note["id"])
+    generated = await client.post(
+        f"/api/v1/notes/{note['id']}/summaries",
+        json={"model": "gpt-5.6-sol"},
+    )
+    summary = await session.get(NoteSummary, uuid.UUID(generated.json()["id"]))
+    assert summary is not None
+    legacy_bullets = [
+        {key: value for key, value in bullet.items() if key != "id"}
+        for bullet in summary.summary_json["bullets"]
+    ]
+    summary.summary_json = {"bullets": legacy_bullets}
+    await session.commit()
+
+    first = await client.get(f"/api/v1/notes/{note['id']}/summary")
+    first_id = first.json()["summary_json"]["bullets"][0]["id"]
+    assert uuid.UUID(first_id)
+    second = await client.get(f"/api/v1/notes/{note['id']}/summary")
+    assert second.json()["summary_json"]["bullets"][0]["id"] == first_id
+
+
+async def test_bullets_cannot_be_removed_from_failed_summary(
+    client: AsyncClient,
+    fake_summary_codex: FakeSummaryCodexAdapter,
+) -> None:
+    course = await create_course(client)
+    note = await create_note(client, course["id"])
+    fake_summary_codex.fail_with = AssistantRuntimeError("Unavailable")
+    failed = await client.post(
+        f"/api/v1/notes/{note['id']}/summaries",
+        json={"model": "gpt-5.6-sol"},
+    )
+
+    response = await client.delete(
+        f"/api/v1/note-summaries/{failed.json()['id']}/bullets/{uuid.uuid4()}"
+    )
+    assert response.status_code == 409
+    assert response.json()["code"] == "note_summary_not_editable"

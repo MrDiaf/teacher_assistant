@@ -93,6 +93,54 @@ test("creates and manages a manual course through the UI", async ({
   page,
   request,
 }) => {
+  let summaryGeneration = 0;
+  let storedSummary: Record<string, unknown> | null = null;
+  await page.route("**/api/v1/notes/*/summary", async (route) => {
+    await route.fulfill({ json: storedSummary });
+  });
+  await page.route("**/api/v1/notes/*/summaries", async (route) => {
+    const noteId = new URL(route.request().url()).pathname.split("/").at(-2)!;
+    const payload = route.request().postDataJSON() as { model: string };
+    summaryGeneration += 1;
+    storedSummary = {
+      id: `summary-${noteId}`,
+      note_id: noteId,
+      model: payload.model,
+      status: "completed",
+      summary_json: {
+        bullets: [
+          {
+            id: `summary-bullet-${summaryGeneration}`,
+            text:
+              summaryGeneration === 1
+                ? "Isolation helps prevent unsafe transaction interleavings."
+                : "A regenerated summary can revisit the source note.",
+            origin: "note",
+            source_references: [
+              { note_id: noteId, source_id: null, slide: null },
+            ],
+          },
+        ],
+      },
+      note_content_hash: "a".repeat(64),
+      slide_content_hash: "b".repeat(64),
+      is_stale: false,
+      safe_error: null,
+      safe_error_code: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    await route.fulfill({ json: storedSummary, status: 201 });
+  });
+  await page.route("**/api/v1/note-summaries/*/bullets/*", async (route) => {
+    storedSummary = {
+      ...storedSummary,
+      summary_json: { bullets: [] },
+      updated_at: new Date().toISOString(),
+    };
+    await route.fulfill({ json: storedSummary });
+  });
+
   const courseCalendarResponse = await request.post("/api/v1/calendars", {
     data: {
       name: "Course E2E schedule",
@@ -278,6 +326,15 @@ test("creates and manages a manual course through the UI", async ({
     .getByRole("article")
     .filter({ hasText: "Transaction isolation" });
   await expect(
+    note.getByRole("button", { name: "Expand note Transaction isolation" }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await expect(
+    note.getByRole("heading", { level: 4, name: "Serializable" }),
+  ).toBeHidden();
+  await note
+    .getByRole("button", { name: "Expand note Transaction isolation" })
+    .click();
+  await expect(
     note.getByRole("heading", { level: 4, name: "Serializable" }),
   ).toBeVisible();
   await expect(note.getByText("write skew")).toHaveCSS("font-weight", "700");
@@ -290,13 +347,63 @@ test("creates and manages a manual course through the UI", async ({
     .getByLabel("Summary model")
     .selectOption({ value: "gpt-5.6-terra" });
   await note.getByRole("button", { name: "Generate summary" }).click();
-  await expect(note.getByText("Summary failed safely")).toBeVisible();
-  await expect(note.getByText("gpt-5.6-terra")).toBeVisible();
   await expect(
-    note.getByText(/Linked slide text is unavailable/),
+    note.getByRole("button", {
+      name: "Expand summary for Transaction isolation",
+    }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await expect(note.getByText("gpt-5.6-terra")).toBeVisible();
+  await note
+    .getByRole("button", {
+      name: "Expand summary for Transaction isolation",
+    })
+    .click();
+  await expect(
+    note.getByText(/Isolation helps prevent unsafe transaction interleavings/),
+  ).toBeVisible();
+  await note.getByRole("button", { name: "Remove summary bullet 1" }).click();
+  await expect(note.getByText("No summary bullets remain.")).toBeVisible();
+  await expect(note.getByText("Serializable")).toBeVisible();
+
+  await page.getByRole("tab", { name: "Materials" }).click();
+  await page.getByRole("tab", { name: "Notes" }).click();
+  await expect(
+    note.getByRole("button", { name: "Expand note Transaction isolation" }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await page.reload();
+  await page.getByRole("button", { name: "Courses" }).click();
+  await page
+    .getByRole("button", { name: "Open Edited end-to-end databases" })
+    .first()
+    .click();
+  await page.getByRole("tab", { name: "Notes" }).click();
+  const reloadedNote = page
+    .getByRole("article")
+    .filter({ hasText: "Transaction isolation" });
+  await expect(
+    reloadedNote.getByRole("button", {
+      name: "Expand note Transaction isolation",
+    }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await reloadedNote
+    .getByRole("button", { name: "Expand note Transaction isolation" })
+    .click();
+  await expect(
+    reloadedNote.getByText(/Summary empty · gpt-5.6-terra/),
+  ).toBeVisible();
+  await reloadedNote.getByRole("button", { name: "Generate again" }).click();
+  await reloadedNote
+    .getByRole("button", {
+      name: "Expand summary for Transaction isolation",
+    })
+    .click();
+  await expect(
+    reloadedNote.getByText(
+      "A regenerated summary can revisit the source note.",
+    ),
   ).toBeVisible();
 
-  await note.getByRole("button", { name: "Edit" }).click();
+  await reloadedNote.getByRole("button", { name: "Edit" }).click();
   await expect(noteDialog.getByLabel("Note body")).toHaveValue(markdownNote);
   await noteDialog.getByLabel("Note title").fill("Serializable isolation");
   await noteDialog.getByRole("button", { name: "Save changes" }).click();

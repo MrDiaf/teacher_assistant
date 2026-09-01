@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-08-31
+Updated: 2026-09-01
 
 ## Start here
 
@@ -24,15 +24,16 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `7ba8e9b milestone 15 done`
-- M1 through M16 are complete.
+- Git `HEAD`: `eab1686 good with markdown`
+- M1 through M17 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M17 through M19 are planned, but no implementation milestone is active.
-- The current uncommitted worktree is the completed M16 implementation and its
-  documentation. Preserve it; no commit was requested.
+- M18 through M22 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains the completed M17 implementation
+  and documentation, owner-selected M17/M19 refinements, and the new M20–M22
+  Canvas/Inbox/mail plans. Preserve it; no commit was requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
   `teacher_assistant_codex-auth-data`. The private `.env` and ignored
@@ -42,7 +43,7 @@ owner explicitly asks.
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`
   - PostgreSQL: healthy
-- Alembic is at `20260731_0017 (head)`.
+- Alembic is at `20260831_0018 (head)`.
 - `.openai/hosting.json` is absent. This is a self-hosted Docker application,
   not a Sites deployment.
 
@@ -66,13 +67,50 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
   extraction, in-app and new-window PDF viewing, notes and slide references, AI
   summaries with provenance, course-linked calendars, and course-aware
   Assistant answers.
-- Dashboard, Study Plan, and Settings remain placeholder modules unless the
-  owner defines a new milestone.
+- Dashboard and Study Plan remain placeholder modules. Settings also remains a
+  placeholder until the planned M20 integration work is explicitly selected
+  and implemented; Inbox does not exist until M21.
 
 The permanent safety and architecture rules are in `AGENTS.md` and
 `instructions.md`. Do not duplicate or weaken them in a new milestone.
 
 ## Most recent completed work
+
+M17 minimized notes, summary decluttering, and removable bullets:
+
+- starts every note minimized on each Notes-tab mount and keeps a compact title,
+  updated date, slide-reference count, and summary indicator visible;
+- expands each note independently with accessible disclosure controls, while
+  keeping its nested summary independently minimized until explicitly opened;
+- resets all disclosure state when leaving and returning, on reload, between
+  courses, and for newly created notes;
+- assigns backend-owned UUIDs after Codex summary validation without adding IDs
+  to the Codex output schema;
+- migrates existing saved bullets and retains a compatible runtime backfill;
+- removes one completed bullet through a summary-ID/bullet-ID endpoint under a
+  row lock, revalidates the stored result and provenance, and safely conflicts
+  on repeated or stale IDs;
+- preserves every remaining bullet and citation exactly, retains the source
+  note and slides after final-bullet removal, and offers Generate again from a
+  clear empty state;
+- keeps only the affected remove control busy, leaves a bullet visible when
+  persistence fails, and includes keyboard, accessibility, navigation, reload,
+  removal, regeneration, migration, and safety coverage.
+
+Important M17 implementation areas:
+
+```text
+backend/alembic/versions/20260831_0018_summary_bullet_ids.py
+backend/app/notes/summary_{validation,repository,service,routes,schemas}.py
+backend/tests/test_note_summaries.py
+frontend/src/features/courses/{CourseNotes,CoursesPage.test}.tsx
+frontend/src/features/courses/{api,types}.ts
+frontend/src/styles.css
+e2e/tests/calendar-assistant.spec.ts
+README.md
+```
+
+## Previous completed work
 
 M16 lightweight Markdown note editing:
 
@@ -110,8 +148,8 @@ The latest implementation handoff recorded:
 
 ```text
 make test
-  Backend: 118 passed
-  Frontend: 48 passed
+  Backend: 121 passed
+  Frontend: 49 passed
 
 make e2e
   Playwright/accessibility: 9 passed
@@ -119,7 +157,8 @@ make e2e
 make lint: passed
 Frontend production build: passed
 git diff --check: passed
-Alembic current: 20260731_0017 (head)
+Alembic current: 20260831_0018 (head)
+Legacy completed bullets without IDs: 0
 Backend health: passed
 Frontend HTTP check: passed
 ```
@@ -135,13 +174,21 @@ from Assistant or the optional configured API-key fallback.
   Assistant, and allow a separate browser window/tab.
 - [x] M16 — Add a lightweight Markdown-aware note editor where syntax markers
   remain visible while their content is styled, plus safe Markdown rendering.
-- [ ] M17 — Minimize/expand summaries and persistently remove individual
+- [x] M17 — Start every note and nested summary minimized on each Notes-page
+  visit, allow independent expansion, and persistently remove individual
   generated bullets without touching source notes or slides.
 - [ ] M18 — Add a Codex Prettify suggestion workflow with isolated context,
   strict validation, before/after preview, explicit acceptance, and no automatic
   note save.
 - [ ] M19 — Persist selected pages/views and per-conversation Assistant drafts
   in validated browser storage without caching authoritative backend data.
+- [ ] M20 — Add private integration credential storage and connect one Canvas
+  installation through institution-approved OAuth or a manual API-token
+  fallback, without importing course content yet.
+- [ ] M21 — Add Inbox and synchronize read-only Canvas announcements through
+  the connected API or a per-course announcement feed.
+- [ ] M22 — Ingest owner-forwarded email from a dedicated TLS/read-only IMAP
+  mailbox into Inbox, with safe MIME rendering and private attachments.
 
 The full scope, boundaries, checklist, acceptance criteria, and expected files
 are in the corresponding milestone files. Do not combine or automatically
@@ -149,7 +196,15 @@ advance them.
 
 ## Known limitations and cautions
 
-- M17–M19 are plans only and none of their application behavior exists yet.
+- M18–M22 are plans only and none of their application behavior exists yet.
+  M19 must not persist or restore M17 note/summary expansion state.
+- Canvas OAuth requires an institution-enabled developer key; a self-hosted
+  clone cannot manufacture one. M20 therefore includes a manual Canvas API-token
+  fallback, and M21/M22 include feed/email alternatives. Password/cookie-based
+  Canvas scraping is intentionally excluded.
+- Teacher Assistant cannot create a receiving email address or forwarding rule.
+  M22 requires the owner to provision a dedicated IMAP mailbox and configure
+  forwarding with the external mail provider.
 - Read-only preflight found another populated legacy database-volume candidate
   on this Docker host. It was intentionally left untouched. Never merge or
   delete it implicitly; any later cleanup requires explicit owner verification.
@@ -169,18 +224,20 @@ advance them.
 - `alembic check` may report four pre-existing enum/VARCHAR length differences:
   `assistant_messages.role`, `assistant_proposals.status`,
   `calendars.source_type`, and `events.status`.
-- Automatic LMS/course import, assignments, Study Plan, and new modules require
-  an owner-defined milestone.
+- Automatic LMS course creation/import, assignments, grades, people, files,
+  submissions, Study Plan, outbound mail, and provider-specific mail OAuth remain
+  out of scope. M20–M22 authorize only the connection and read-only Inbox scope
+  in their milestone files.
 
 ## Next step
 
-M16 is complete. Stop before M17. The owner must explicitly select M17 before
-summary-decluttering implementation begins.
+M17 is complete. Stop before M18. The owner must explicitly select M18 before
+Codex note-prettify implementation begins.
 
 Recommended next prompt:
 
 ```text
 Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m17-summary-decluttering-and-bullet-removal.md. Implement M17 only
+milestones/m18-codex-note-prettify.md. Implement M18 only
 and stop after its acceptance criteria are verified.
 ```

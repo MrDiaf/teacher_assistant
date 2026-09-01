@@ -14,6 +14,8 @@ from app.codex_runtime.adapter import CodexAdapter
 from app.codex_runtime.workspace import create_summary_workspace
 from app.core.errors import (
     ApplicationError,
+    NoteSummaryBulletNotFoundError,
+    NoteSummaryNotEditableError,
     NoteSummaryNotRetryableError,
     NoteSummarySourceUnavailableError,
 )
@@ -24,6 +26,9 @@ from app.notes.summary_models import NoteSummary, NoteSummaryStatus
 from app.notes.summary_repository import NoteSummaryRepository
 from app.notes.summary_validation import (
     SUMMARY_OUTPUT_SCHEMA,
+    StructuredNoteSummary,
+    assign_summary_bullet_ids,
+    normalize_stored_summary,
     parse_and_validate_summary,
 )
 
@@ -57,15 +62,15 @@ class NoteSummaryService:
 
     async def latest(self, note_id: uuid.UUID) -> SummaryResult | None:
         note = await self.notes.get(note_id)
-        summary = await self.summaries.latest_for_note(note_id)
+        summary = await self.summaries.latest_for_note(note_id, for_update=True)
         if summary is None:
             return None
+        await self._normalize_summary(summary)
         context = await self._build_context(note)
-        is_stale = summary.status == NoteSummaryStatus.COMPLETED and (
-            summary.note_content_hash != context.note_content_hash
-            or summary.slide_content_hash != context.slide_content_hash
+        return SummaryResult(
+            summary=summary,
+            is_stale=self._is_stale(summary, context),
         )
-        return SummaryResult(summary=summary, is_stale=is_stale)
 
     async def generate(
         self,
@@ -99,6 +104,43 @@ class NoteSummaryService:
         summary.safe_error_code = None
         await self.session.commit()
         return await self._execute(summary.id, context)
+
+    async def remove_bullet(
+        self,
+        summary_id: uuid.UUID,
+        bullet_id: uuid.UUID,
+    ) -> SummaryResult:
+        summary = await self.summaries.get(summary_id, for_update=True)
+        if (
+            summary.status != NoteSummaryStatus.COMPLETED
+            or summary.summary_json is None
+        ):
+            raise NoteSummaryNotEditableError()
+
+        stored, _ = normalize_stored_summary(
+            summary.summary_json,
+            note_id=summary.note_id,
+        )
+        if not any(bullet.id == bullet_id for bullet in stored.bullets):
+            raise NoteSummaryBulletNotFoundError()
+        remaining = StructuredNoteSummary(
+            bullets=[bullet for bullet in stored.bullets if bullet.id != bullet_id]
+        )
+        # Revalidate the complete remaining result before the locked write.
+        normalized, _ = normalize_stored_summary(
+            remaining.model_dump(mode="json"),
+            note_id=summary.note_id,
+        )
+        summary.summary_json = normalized.model_dump(mode="json")
+        await self.session.commit()
+        await self.session.refresh(summary)
+
+        note = await self.notes.get(summary.note_id)
+        context = await self._build_context(note)
+        return SummaryResult(
+            summary=summary,
+            is_stale=self._is_stale(summary, context),
+        )
 
     async def _execute(
         self,
@@ -145,7 +187,9 @@ class NoteSummaryService:
                 summary.id,
                 {
                     "status": NoteSummaryStatus.COMPLETED,
-                    "summary_json": validated.model_dump(mode="json"),
+                    "summary_json": assign_summary_bullet_ids(validated).model_dump(
+                        mode="json"
+                    ),
                     "safe_error": None,
                     "safe_error_code": None,
                 },
@@ -187,6 +231,26 @@ class NoteSummaryService:
         await self.session.commit()
         await self.session.refresh(summary)
         return SummaryResult(summary=summary, is_stale=False)
+
+    async def _normalize_summary(self, summary: NoteSummary) -> None:
+        if summary.status != NoteSummaryStatus.COMPLETED or summary.summary_json is None:
+            return
+        normalized, changed = normalize_stored_summary(
+            summary.summary_json,
+            note_id=summary.note_id,
+        )
+        if not changed:
+            return
+        summary.summary_json = normalized.model_dump(mode="json")
+        await self.session.commit()
+        await self.session.refresh(summary)
+
+    @staticmethod
+    def _is_stale(summary: NoteSummary, context: SummaryContext) -> bool:
+        return summary.status == NoteSummaryStatus.COMPLETED and (
+            summary.note_content_hash != context.note_content_hash
+            or summary.slide_content_hash != context.slide_content_hash
+        )
 
     async def _build_context(self, note: Note) -> SummaryContext:
         note_body = note.body

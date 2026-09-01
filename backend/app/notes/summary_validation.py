@@ -31,7 +31,7 @@ class SummarySourceReference(BaseModel):
         return self
 
 
-class SummaryBullet(BaseModel):
+class GeneratedSummaryBullet(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(min_length=1, max_length=1000)
@@ -42,10 +42,21 @@ class SummaryBullet(BaseModel):
     )
 
 
+class GeneratedStructuredNoteSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    bullets: list[GeneratedSummaryBullet] = Field(min_length=1, max_length=20)
+
+
+class SummaryBullet(GeneratedSummaryBullet):
+    id: uuid.UUID
+
+
 class StructuredNoteSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    bullets: list[SummaryBullet] = Field(min_length=1, max_length=20)
+    # A completed summary may be empty after the owner removes its final bullet.
+    bullets: list[SummaryBullet] = Field(max_length=20)
 
 
 SUMMARY_OUTPUT_SCHEMA = {
@@ -104,12 +115,12 @@ def parse_and_validate_summary(
     note_id: uuid.UUID,
     note_available: bool,
     available_slides: set[tuple[uuid.UUID, int]],
-) -> StructuredNoteSummary:
+) -> GeneratedStructuredNoteSummary:
     if not raw_response:
         raise InvalidNoteSummaryResponseError()
     try:
         payload = json.loads(raw_response)
-        summary = StructuredNoteSummary.model_validate(payload)
+        summary = GeneratedStructuredNoteSummary.model_validate(payload)
     except (json.JSONDecodeError, ValidationError, TypeError) as exc:
         raise InvalidNoteSummaryResponseError() from exc
 
@@ -135,3 +146,83 @@ def parse_and_validate_summary(
         if (has_note, has_slide) != expected:
             raise InvalidNoteSummaryResponseError()
     return summary
+
+
+def assign_summary_bullet_ids(
+    summary: GeneratedStructuredNoteSummary,
+) -> StructuredNoteSummary:
+    """Assign server-owned identities only after Codex output was validated."""
+    return StructuredNoteSummary(
+        bullets=[
+            SummaryBullet(id=uuid.uuid4(), **bullet.model_dump(mode="python"))
+            for bullet in summary.bullets
+        ]
+    )
+
+
+def normalize_stored_summary(
+    payload: object,
+    *,
+    note_id: uuid.UUID,
+) -> tuple[StructuredNoteSummary, bool]:
+    """Validate persisted data and compatibly add IDs to legacy bullets."""
+    if not isinstance(payload, dict) or set(payload) != {"bullets"}:
+        raise InvalidNoteSummaryResponseError()
+    raw_bullets = payload.get("bullets")
+    if not isinstance(raw_bullets, list) or len(raw_bullets) > 20:
+        raise InvalidNoteSummaryResponseError()
+
+    changed = False
+    bullets: list[SummaryBullet] = []
+    try:
+        for raw_bullet in raw_bullets:
+            if not isinstance(raw_bullet, dict):
+                raise InvalidNoteSummaryResponseError()
+            bullet_payload = dict(raw_bullet)
+            raw_id = bullet_payload.pop("id", None)
+            generated = GeneratedSummaryBullet.model_validate(bullet_payload)
+            if raw_id is None:
+                bullet_id = uuid.uuid4()
+                changed = True
+            else:
+                bullet_id = uuid.UUID(str(raw_id))
+            bullets.append(
+                SummaryBullet(
+                    id=bullet_id,
+                    **generated.model_dump(mode="python"),
+                )
+            )
+    except (ValidationError, TypeError, ValueError) as exc:
+        raise InvalidNoteSummaryResponseError() from exc
+
+    summary = StructuredNoteSummary(bullets=bullets)
+    _validate_stored_provenance(summary, note_id=note_id)
+    return summary, changed
+
+
+def _validate_stored_provenance(
+    summary: StructuredNoteSummary,
+    *,
+    note_id: uuid.UUID,
+) -> None:
+    seen_ids: set[uuid.UUID] = set()
+    for bullet in summary.bullets:
+        if bullet.id in seen_ids:
+            raise InvalidNoteSummaryResponseError()
+        seen_ids.add(bullet.id)
+        has_note = False
+        has_slide = False
+        for reference in bullet.source_references:
+            if reference.note_id is not None:
+                if reference.note_id != note_id:
+                    raise InvalidNoteSummaryResponseError()
+                has_note = True
+            else:
+                has_slide = True
+        expected = {
+            "note": (True, False),
+            "slide": (False, True),
+            "mixed": (True, True),
+        }[bullet.origin]
+        if (has_note, has_slide) != expected:
+            raise InvalidNoteSummaryResponseError()

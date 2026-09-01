@@ -64,3 +64,20 @@ async def retry_note_summary(
 ) -> NoteSummaryResponse:
     result = await NoteSummaryService(session, adapter).retry(summary_id)
     return summary_response(result)
+
+
+@router.delete(
+    "/note-summaries/{summary_id}/bullets/{bullet_id}",
+    response_model=NoteSummaryResponse,
+)
+async def remove_note_summary_bullet(
+    summary_id: uuid.UUID,
+    bullet_id: uuid.UUID,
+    session: SessionDependency,
+    adapter: AdapterDependency,
+) -> NoteSummaryResponse:
+    result = await NoteSummaryService(session, adapter).remove_bullet(
+        summary_id,
+        bullet_id,
+    )
+    return summary_response(result)

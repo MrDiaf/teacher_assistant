@@ -95,6 +95,7 @@ export interface SummarySourceReference {
 }
 
 export interface SummaryBullet {
+  id: string;
   text: string;
   origin: SummaryOrigin;
   source_references: SummarySourceReference[];
