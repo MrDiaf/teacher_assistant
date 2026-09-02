@@ -25,15 +25,15 @@ owner explicitly asks.
 ## Current state
 
 - Git `HEAD`: `a6e49a6 prettfie is done M18`
-- M1 through M18 are complete.
+- M1 through M19 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M19 through M26 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains documentation-only planning for
-  M23 through M26. No Documents application code or behavior was implemented;
-  preserve the planning changes because no commit was requested.
+- M20 through M26 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains the completed M19 implementation
+  and its documentation/test updates. No M20–M26 application code or behavior
+  was implemented. Preserve the work because no commit was requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
   `teacher_assistant_codex-auth-data`. The private `.env` and ignored
@@ -62,11 +62,14 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
   and subscriptions.
 - Assistant: private conversations, bounded calendar/course context, model
   selection, validated calendar proposals, separate confirmations, linked
-  creation batches, retries, diagnostics, progress, and cancellation.
+  creation batches, retries, diagnostics, progress, cancellation, restored
+  conversation/sidebar selection, and browser-local per-conversation drafts.
 - Courses: manual CRUD/archive/restore, private Literature and Slides storage,
   extraction, in-app and new-window PDF viewing, notes and slide references, AI
   summaries with provenance, Codex note-prettify suggestions, course-linked
   calendars, and course-aware Assistant answers.
+- Navigation convenience state restores the active module, main/per-course
+  Calendar view and anchor, and selected course/tab without caching API data.
 - Dashboard and Study Plan remain placeholder modules. Settings also remains a
   placeholder until the planned M20 integration work is explicitly selected
   and implemented; Inbox does not exist until M21, and Documents does not exist
@@ -78,7 +81,7 @@ The permanent safety and architecture rules are in `AGENTS.md` and
 ## Most recent planning update
 
 The owner approved a future Overleaf-inspired Documents/LaTeX roadmap. The
-roadmap is documentation only and follows the already planned M19–M22 sequence:
+roadmap is documentation only and follows M20–M22 after completed M19:
 
 - M23 adds durable UUID-based document projects, colored many-to-many tags,
   project search/actions, raw `.tex`/source-ZIP downloads, and coordinated
@@ -101,6 +104,46 @@ unchecked. No source, migration, dependency, Compose, environment, README, or
 runtime behavior was changed by this planning update.
 
 ## Most recent completed work
+
+M19 frontend navigation and Assistant-draft persistence:
+
+- adds one typed, versioned `teacher-assistant.ui-state.v1` browser-storage
+  boundary that validates allowed module/view/tab values, UUIDs, real local
+  dates, timestamps, text size, and record counts;
+- restores the active module, main and course-scoped Calendar view/anchor, and
+  selected existing course/tab before their first relevant render;
+- reloads authoritative calendars, events, courses, notes, conversations,
+  proposals, activity, authentication, and permissions from FastAPI on every
+  page mount rather than persisting those datasets;
+- keeps exact Assistant drafts separately for each conversation and a local
+  not-yet-created conversation, with a 4,000-character/20-draft cap that
+  protects the active draft;
+- creates a new backend conversation only when Send is pressed, moves only the
+  matching new-conversation draft, clears it only after a successful handoff,
+  and retains it on validation, auth, network, cancellation, or runtime failure;
+- adds an accessible Clear draft action, stale-ID cleanup, corrupt/full/disabled
+  storage fallback, and canonical sanitization that discards unknown/private
+  fields;
+- deliberately leaves M17 note and summary disclosures out of persistence, so
+  every Notes remount/reload still starts minimized;
+- includes storage/privacy/limit tests, unmount/reload and multi-conversation
+  integration coverage, course-scoped Calendar tests, and a Playwright
+  navigation/reload/accessibility scenario.
+
+Important M19 implementation areas:
+
+```text
+frontend/src/persistence/uiState.ts
+frontend/src/App.tsx
+frontend/src/features/calendar/CalendarPage.tsx
+frontend/src/features/courses/{CoursesPage,CourseCalendar}.tsx
+frontend/src/features/assistant/AssistantPage.tsx
+frontend/src/features/assistant/api.ts
+frontend/src/App.persistence.test.tsx
+frontend/src/styles.css
+frontend tests and e2e/tests/calendar-assistant.spec.ts
+README.md
+```
 
 M18 Codex note-prettify suggestions:
 
@@ -209,10 +252,10 @@ The latest implementation handoff recorded:
 ```text
 make test
   Backend: 142 passed
-  Frontend: 53 passed
+  Frontend: 65 passed
 
 make e2e
-  Playwright/accessibility: 9 passed
+  Playwright/accessibility: 10 passed
 
 make lint: passed
 Frontend production build: passed
@@ -240,7 +283,7 @@ from Assistant or the optional configured API-key fallback.
 - [x] M18 — Add a Codex Prettify suggestion workflow with isolated context,
   strict validation, before/after preview, explicit acceptance, and no automatic
   note save.
-- [ ] M19 — Persist selected pages/views and per-conversation Assistant drafts
+- [x] M19 — Persist selected pages/views and per-conversation Assistant drafts
   in validated browser storage without caching authoritative backend data.
 - [ ] M20 — Add private integration credential storage and connect one Canvas
   installation through institution-approved OAuth or a manual API-token
@@ -264,8 +307,11 @@ advance them.
 
 ## Known limitations and cautions
 
-- M19–M26 are plans only and none of their application behavior exists yet.
-  M19 must not persist or restore M17 note/summary expansion state.
+- M20–M26 are plans only and none of their application behavior exists yet.
+- M19 convenience state is browser-profile/origin specific. Clearing site data,
+  using another browser/device, or private browsing removes preferences and
+  unsent drafts but does not delete backend records. Cross-device sync and
+  offline API caching remain intentionally out of scope.
 - Documents intentionally has no sharing, collaboration, public links, visual
   editor, version history, arbitrary build commands, shell escape, runtime
   package downloads, automatic Codex fixes, or additional compiler engines in
@@ -303,15 +349,15 @@ advance them.
 
 ## Next step
 
-M18 is complete, and the M23–M26 Documents roadmap is approved as planning only.
-Stop before M19. The owner must explicitly select M19 before frontend navigation
-and Assistant-draft persistence implementation begins. Do not skip to M23 or
-reorder the roadmap without another explicit owner decision.
+M19 is complete, and the M23–M26 Documents roadmap remains planning only. Stop
+before M20. The owner must explicitly select M20 before integration-secret and
+Canvas-connection implementation begins. Do not skip to M23 or reorder the
+roadmap without another explicit owner decision.
 
 Recommended next prompt:
 
 ```text
 Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m19-frontend-navigation-and-draft-persistence.md. Implement M19 only
+milestones/m20-integration-secrets-and-canvas-connection.md. Implement M20 only
 and stop after its acceptance criteria are verified.
 ```

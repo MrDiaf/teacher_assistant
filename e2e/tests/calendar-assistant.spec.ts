@@ -6,6 +6,13 @@ import { multiPagePdfFixture } from "./pdf-fixture.js";
 
 test.describe.configure({ mode: "serial" });
 
+test.beforeEach(async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    window.localStorage.removeItem("teacher-assistant.ui-state.v1");
+  });
+});
+
 function expectNoAccessibilityViolations(violations: AxeResults["violations"]) {
   expect(
     violations.map((violation) => ({
@@ -87,6 +94,82 @@ test("keeps a protected event visible but immutable", async ({
   await expect(
     dialog.getByRole("button", { name: "Save changes" }),
   ).toHaveCount(0);
+});
+
+test("restores Calendar navigation and an unsent Assistant draft", async ({
+  page,
+}) => {
+  const conversation = {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    title: "Persistent E2E conversation",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  await page.route("**/api/v1/assistant/**", async (route) => {
+    const request = route.request();
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === "/api/v1/assistant/auth") {
+      await route.fulfill({
+        json: {
+          authenticated: true,
+          auth_type: "chatgpt",
+          email: "owner@example.test",
+          plan_type: "plus",
+        },
+      });
+      return;
+    }
+    if (pathname === "/api/v1/assistant/conversations") {
+      await route.fulfill({ json: [conversation] });
+      return;
+    }
+    if (pathname === `/api/v1/assistant/conversations/${conversation.id}`) {
+      await route.fulfill({
+        json: {
+          ...conversation,
+          messages: [],
+          jobs: [],
+          proposals: [],
+        },
+      });
+      return;
+    }
+    await route.abort();
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Day", exact: true }).click();
+  await page.getByRole("button", { name: "Previous date range" }).click();
+  const rememberedHeading =
+    (await page.locator("#calendar-page-title").textContent()) ?? "";
+
+  await page.getByRole("button", { name: "Assistant" }).click();
+  const composer = page.getByLabel("Message the Assistant");
+  await expect(composer).toBeEnabled();
+  await composer.fill("  exact unsent E2E draft  ");
+
+  await page.getByRole("button", { name: "Calendar" }).click();
+  await expect(
+    page.getByRole("button", { name: "Day", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#calendar-page-title")).toHaveText(
+    rememberedHeading,
+  );
+
+  await page.getByRole("button", { name: "Assistant" }).click();
+  await expect(composer).toHaveValue("  exact unsent E2E draft  ");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Assistant" })).toBeVisible();
+  await expect(page.getByLabel("Message the Assistant")).toHaveValue(
+    "  exact unsent E2E draft  ",
+  );
+
+  expectNoAccessibilityViolations(
+    (await new AxeBuilder({ page }).include(".assistant-composer").analyze())
+      .violations,
+  );
+  await page.getByRole("button", { name: "Clear draft" }).click();
+  await expect(page.getByLabel("Message the Assistant")).toHaveValue("");
 });
 
 test("creates and manages a manual course through the UI", async ({
@@ -418,12 +501,13 @@ test("creates and manages a manual course through the UI", async ({
     note.getByRole("button", { name: "Expand note Transaction isolation" }),
   ).toHaveAttribute("aria-expanded", "false");
   await page.reload();
-  await page.getByRole("button", { name: "Courses" }).click();
-  await page
-    .getByRole("button", { name: "Open Edited end-to-end databases" })
-    .first()
-    .click();
-  await page.getByRole("tab", { name: "Notes" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Edited end-to-end databases" }),
+  ).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Notes" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   const reloadedNote = page
     .getByRole("article")
     .filter({ hasText: "Transaction isolation" });

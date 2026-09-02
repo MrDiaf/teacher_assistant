@@ -1,6 +1,6 @@
 # M19 — Frontend navigation and Assistant-draft persistence
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -83,21 +83,21 @@ dialog, execute a proposal, or mutate calendar data.
 
 ## Completed checklist
 
-- [ ] Define and document the versioned persisted-state schema and privacy
+- [x] Define and document the versioned persisted-state schema and privacy
   boundary.
-- [ ] Add a typed, validated browser-storage helper with graceful fallback.
-- [ ] Persist and restore the active application module.
-- [ ] Persist and restore main/course Calendar view and anchor state.
-- [ ] Persist and restore selected course and course tab.
-- [ ] Persist and restore Assistant conversation/sidebar selection.
-- [ ] Persist Assistant drafts per conversation and for a new conversation.
-- [ ] Clear only successfully sent or explicitly cleared drafts.
-- [ ] Confirm M17 note/summary expansion state is not persisted and still
+- [x] Add a typed, validated browser-storage helper with graceful fallback.
+- [x] Persist and restore the active application module.
+- [x] Persist and restore main/course Calendar view and anchor state.
+- [x] Persist and restore selected course and course tab.
+- [x] Persist and restore Assistant conversation/sidebar selection.
+- [x] Persist Assistant drafts per conversation and for a new conversation.
+- [x] Clear only successfully sent or explicitly cleared drafts.
+- [x] Confirm M17 note/summary expansion state is not persisted and still
   resets to minimized on every Notes-view mount.
-- [ ] Remove stale identifiers and reject malformed stored values.
-- [ ] Add privacy, size-limit, and storage-failure behavior.
-- [ ] Add unmount/remount, reload, multi-conversation, and accessibility tests.
-- [ ] Add E2E navigation-return scenarios and update documentation.
+- [x] Remove stale identifiers and reject malformed stored values.
+- [x] Add privacy, size-limit, and storage-failure behavior.
+- [x] Add unmount/remount, reload, multi-conversation, and accessibility tests.
+- [x] Add E2E navigation-return scenarios and update documentation.
 
 ## Acceptance criteria
 

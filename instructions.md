@@ -304,7 +304,7 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M16 — Lightweight Markdown note editor](milestones/m16-lightweight-markdown-note-editor.md)
 - [x] [M17 — Minimized notes, summary decluttering, and removable bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
 - [x] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
-- [ ] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
+- [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
 - [ ] [M20 — Integration secrets and Canvas connection](milestones/m20-integration-secrets-and-canvas-connection.md)
 - [ ] [M21 — Canvas announcement Inbox](milestones/m21-canvas-announcement-inbox.md)
 - [ ] [M22 — Forwarded-mail Inbox](milestones/m22-forwarded-mail-inbox.md)
@@ -315,21 +315,21 @@ below. Update `handoff.md` with the new current state and exact next step.
 
 Current active milestone: **none**.
 
-Next planned milestone: **M19 — Frontend navigation and Assistant-draft
-persistence**. It must be explicitly selected before implementation begins.
+Next planned milestone: **M20 — Integration secrets and Canvas connection**.
+It must be explicitly selected before implementation begins.
 
-M1 through M18 and the post-M7 linked-batch milestone are complete. The
+M1 through M19 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
 response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M19 through M26 are planned and intentionally unchecked. Their required order
-is M19 frontend state persistence, M20 integration secrets and Canvas
-connection, M21 Canvas announcements, M22 forwarded mail, M23 durable Documents
-foundation, M24 relative LaTeX editing, M25 isolated compilation, and M26 Codex
-error advice. Planning does not authorize implementation; the owner must select
-one milestone explicitly. Reordering also requires an explicit owner decision.
+M20 through M26 are planned and intentionally unchecked. Their required order
+is M20 integration secrets and Canvas connection, M21 Canvas announcements, M22
+forwarded mail, M23 durable Documents foundation, M24 relative LaTeX editing,
+M25 isolated compilation, and M26 Codex error advice. Planning does not
+authorize implementation; the owner must select one milestone explicitly.
+Reordering also requires an explicit owner decision.
 
 ## Definition of done
 

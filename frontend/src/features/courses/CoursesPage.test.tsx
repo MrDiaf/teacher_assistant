@@ -8,6 +8,12 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import {
+  getCalendarPreference,
+  getCourseSelection,
+  setCalendarPreference,
+  setCourseSelection,
+} from "../../persistence/uiState";
 import { CoursesPage } from "./CoursesPage";
 import type {
   CourseModel,
@@ -468,6 +474,77 @@ describe("CoursesPage", () => {
     expect(
       screen.getByRole("heading", { name: "Active courses" }),
     ).toBeInTheDocument();
+  });
+
+  it("restores an existing course and tab while remounting Notes minimized", async () => {
+    const persistentCourse: CourseModel = {
+      ...activeCourse,
+      id: "11111111-1111-4111-8111-111111111111",
+    };
+    const note: CourseNote = {
+      id: "note-persisted-view",
+      course_id: persistentCourse.id,
+      title: "Normalization review",
+      body: "A private note body",
+      slide_references: [],
+      created_at: now,
+      updated_at: now,
+    };
+    const fetchMock = installCourseApi([persistentCourse], [], [note]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const firstRender = render(<CoursesPage />);
+    await screen.findByText("Database Systems");
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open Database Systems" }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    const expandNote = await screen.findByRole("button", {
+      name: /^Expand note/,
+    });
+    fireEvent.click(expandNote);
+    expect(
+      screen.getByRole("button", { name: /^Minimize note/ }),
+    ).toHaveAttribute("aria-expanded", "true");
+
+    firstRender.unmount();
+    render(<CoursesPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Database Systems" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Notes" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(
+      await screen.findByRole("button", { name: /^Expand note/ }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(
+      screen.queryByRole("button", { name: /^Minimize note/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) =>
+          String(url).endsWith("/api/v1/courses") &&
+          (init?.method ?? "GET") === "GET",
+      ),
+    ).toHaveLength(2);
+  });
+
+  it("removes a stale saved course and its Calendar preference after a successful reload", async () => {
+    const staleCourseId = "99999999-9999-4999-8999-999999999999";
+    setCourseSelection({ courseId: staleCourseId, tab: "calendar" });
+    setCalendarPreference({ view: "day", anchor: "2026-09-02" }, staleCourseId);
+    vi.stubGlobal("fetch", installCourseApi([activeCourse]));
+
+    render(<CoursesPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Active courses" }),
+    ).toBeInTheDocument();
+    expect(getCourseSelection()).toBeNull();
+    expect(getCalendarPreference(staleCourseId)).toBeUndefined();
   });
 
   it("shows an empty state and creates a manual course", async () => {

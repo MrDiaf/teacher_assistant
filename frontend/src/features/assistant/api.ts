@@ -117,8 +117,10 @@ export const assistantApi = {
     return request<AssistantJob>(`/assistant/jobs/${jobId}`);
   },
 
-  listAudit(limit = 50) {
-    return request<AssistantProposal[]>(`/assistant/audit?limit=${limit}`);
+  listAudit(limit = 50, signal?: AbortSignal) {
+    return request<AssistantProposal[]>(`/assistant/audit?limit=${limit}`, {
+      signal,
+    });
   },
 
   retryJob(jobId: string, signal?: AbortSignal) {

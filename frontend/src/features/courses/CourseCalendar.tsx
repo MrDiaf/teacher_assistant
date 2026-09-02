@@ -355,6 +355,7 @@ export function CourseCalendar({
         eyebrow={`${course.course_code ?? course.name} schedule`}
         loadCalendars={loadLinkedCalendars}
         loadEvents={loadCourseEvents}
+        persistenceCourseId={course.id}
         reloadToken={reloadToken}
         renderSidebar={(sidebarProps) => (
           <CourseCalendarSidebar

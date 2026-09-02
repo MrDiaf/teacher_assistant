@@ -8,6 +8,17 @@ import {
 } from "react";
 
 import { Icon } from "../../components/Icon";
+import {
+  clearAssistantDraft,
+  getAssistantDraft,
+  getAssistantPreference,
+  moveAssistantDraft,
+  pruneAssistantConversations,
+  setAssistantConversation,
+  setAssistantDraft,
+  setAssistantSidebarMode,
+  type AssistantSidebarMode,
+} from "../../persistence/uiState";
 import { AiModelSelector } from "../ai/AiModelSelector";
 import { useAiModelSelection } from "../ai/useAiModelSelection";
 import { assistantApi } from "./api";
@@ -428,6 +439,7 @@ function ProposalCard({
 export function AssistantPage() {
   const { modelList, selectedModel, setSelectedModel, modelError } =
     useAiModelSelection();
+  const [initialPreference] = useState(getAssistantPreference);
   const [conversations, setConversations] = useState<AssistantConversation[]>(
     [],
   );
@@ -436,11 +448,20 @@ export function AssistantPage() {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [proposals, setProposals] = useState<AssistantProposal[]>([]);
   const [auditItems, setAuditItems] = useState<AssistantProposal[]>([]);
-  const [sidebarMode, setSidebarMode] = useState<"conversations" | "activity">(
-    "conversations",
+  const [sidebarMode, setSidebarMode] = useState<AssistantSidebarMode>(
+    initialPreference.sidebarMode,
   );
   const [isAuditLoading, setIsAuditLoading] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [draftConversationId, setDraftConversationId] = useState<string | null>(
+    typeof initialPreference.conversationId === "string"
+      ? initialPreference.conversationId
+      : null,
+  );
+  const [draft, setDraft] = useState(() =>
+    initialPreference.conversationId !== undefined
+      ? getAssistantDraft(initialPreference.conversationId)
+      : "",
+  );
   const [failedJob, setFailedJob] = useState<AssistantJob | null>(null);
   const [cancelledJob, setCancelledJob] = useState<AssistantJob | null>(null);
   const [busyProposalId, setBusyProposalId] = useState<string | null>(null);
@@ -472,18 +493,44 @@ export function AssistantPage() {
     async function load() {
       try {
         const loaded = await assistantApi.listConversations(controller.signal);
+        if (controller.signal.aborted) return;
         setConversations(loaded);
-        if (loaded[0]) {
+        pruneAssistantConversations(
+          loaded.map((conversation) => conversation.id),
+        );
+        const requestedConversationId = initialPreference.conversationId;
+        const selected =
+          requestedConversationId === null
+            ? null
+            : typeof requestedConversationId === "string"
+              ? (loaded.find(
+                  (conversation) => conversation.id === requestedConversationId,
+                ) ??
+                loaded[0] ??
+                null)
+              : (loaded[0] ?? null);
+        if (selected) {
+          setAssistantConversation(selected.id);
+          setDraftConversationId(selected.id);
+          setDraft(getAssistantDraft(selected.id));
           const detail = await assistantApi.getConversation(
-            loaded[0].id,
+            selected.id,
             controller.signal,
           );
+          if (controller.signal.aborted) return;
           setActiveConversation(detail);
           setMessages(detail.messages);
           setProposals(detail.proposals ?? []);
           const newestJob = latestJob(detail.jobs);
           setFailedJob(newestJob?.status === "failed" ? newestJob : null);
           setCancelledJob(newestJob?.status === "cancelled" ? newestJob : null);
+        } else {
+          setActiveConversation(null);
+          setMessages([]);
+          setProposals([]);
+          setAssistantConversation(null);
+          setDraftConversationId(null);
+          setDraft(getAssistantDraft(null));
         }
       } catch (loadError) {
         if ((loadError as Error).name !== "AbortError") {
@@ -494,12 +541,36 @@ export function AssistantPage() {
           );
         }
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     }
     void load();
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (sidebarMode !== "activity" || auditItems.length > 0) return;
+    const controller = new AbortController();
+    async function loadAudit() {
+      setIsAuditLoading(true);
+      setError(null);
+      try {
+        setAuditItems(await assistantApi.listAudit(50, controller.signal));
+      } catch (loadError) {
+        if ((loadError as Error).name !== "AbortError") {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Assistant activity could not be loaded.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsAuditLoading(false);
+      }
+    }
+    void loadAudit();
+    return () => controller.abort();
+  }, [auditItems.length, sidebarMode]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -593,6 +664,9 @@ export function AssistantPage() {
     setCancelledJob(null);
     setRevisionProposal(null);
     setActiveConversation(conversation);
+    setAssistantConversation(conversation.id);
+    setDraftConversationId(conversation.id);
+    setDraft(getAssistantDraft(conversation.id));
     try {
       const detail = await assistantApi.getConversation(conversation.id);
       setActiveConversation(detail);
@@ -610,26 +684,16 @@ export function AssistantPage() {
     }
   }
 
-  async function showAudit() {
+  function showAudit() {
     setSidebarMode("activity");
-    if (auditItems.length || isAuditLoading) return;
-    setIsAuditLoading(true);
-    setError(null);
-    try {
-      setAuditItems(await assistantApi.listAudit());
-    } catch (loadError) {
-      setError(
-        loadError instanceof Error
-          ? loadError.message
-          : "Assistant activity could not be loaded.",
-      );
-    } finally {
-      setIsAuditLoading(false);
-    }
+    setAssistantSidebarMode("activity");
   }
 
   async function openAuditItem(proposal: AssistantProposal) {
     setError(null);
+    setAssistantConversation(proposal.conversation_id);
+    setDraftConversationId(proposal.conversation_id);
+    setDraft(getAssistantDraft(proposal.conversation_id));
     try {
       const detail = await assistantApi.getConversation(
         proposal.conversation_id,
@@ -649,37 +713,34 @@ export function AssistantPage() {
     }
   }
 
-  async function startConversation() {
+  function startConversation() {
     if (isSending) return;
     setError(null);
     setFailedJob(null);
     setCancelledJob(null);
     setRevisionProposal(null);
-    try {
-      const created = await assistantApi.createConversation();
-      setConversations((current) => [created, ...current]);
-      setActiveConversation(created);
-      setMessages([]);
-      setProposals([]);
-      setDraft("");
-    } catch (createError) {
-      setError(
-        createError instanceof Error
-          ? createError.message
-          : "A conversation could not be created.",
-      );
-    }
+    setActiveConversation(null);
+    setMessages([]);
+    setProposals([]);
+    setAssistantConversation(null);
+    setDraftConversationId(null);
+    setDraft(getAssistantDraft(null));
+    window.setTimeout(() => composer.current?.focus(), 0);
   }
 
   async function ensureConversation(): Promise<AssistantConversation> {
     if (activeConversation) return activeConversation;
     const created = await assistantApi.createConversation();
+    moveAssistantDraft(null, created.id);
+    setAssistantConversation(created.id);
+    setDraftConversationId(created.id);
     setActiveConversation(created);
     setConversations((current) => [created, ...current]);
+    setDraft(getAssistantDraft(created.id));
     return created;
   }
 
-  async function send(content: string) {
+  async function send(content: string, clearDraftAfterSuccess = true) {
     const normalized = content.trim();
     if (!normalized || isSending) return;
     if (!isAuthenticated) {
@@ -694,7 +755,6 @@ export function AssistantPage() {
     setError(null);
     setFailedJob(null);
     setCancelledJob(null);
-    setDraft("");
     let controller: AbortController | null = null;
     try {
       const conversation = await ensureConversation();
@@ -736,6 +796,14 @@ export function AssistantPage() {
       ]);
       setFailedJob(turn.job.status === "failed" ? turn.job : null);
       setCancelledJob(turn.job.status === "cancelled" ? turn.job : null);
+      if (
+        clearDraftAfterSuccess &&
+        turn.job.status !== "failed" &&
+        turn.job.status !== "cancelled"
+      ) {
+        clearAssistantDraft(conversation.id);
+        setDraft("");
+      }
     } catch (sendError) {
       if ((sendError as Error).name === "AbortError") return;
       setMessages((current) =>
@@ -880,8 +948,18 @@ export function AssistantPage() {
 
   function reviseProposal(proposal: AssistantProposal) {
     setRevisionProposal(proposal);
-    setDraft("");
     window.setTimeout(() => composer.current?.focus(), 0);
+  }
+
+  function updateDraft(value: string) {
+    setDraft(value);
+    setAssistantDraft(draftConversationId, value);
+  }
+
+  function clearCurrentDraft() {
+    clearAssistantDraft(draftConversationId);
+    setDraft("");
+    composer.current?.focus();
   }
 
   function submit(event: FormEvent) {
@@ -966,7 +1044,7 @@ export function AssistantPage() {
               aria-label="New conversation"
               className="calendar-add-button"
               disabled={isSending}
-              onClick={() => void startConversation()}
+              onClick={startConversation}
               type="button"
             >
               <Icon name="plus" size={15} />
@@ -979,7 +1057,10 @@ export function AssistantPage() {
           >
             <button
               aria-selected={sidebarMode === "conversations"}
-              onClick={() => setSidebarMode("conversations")}
+              onClick={() => {
+                setSidebarMode("conversations");
+                setAssistantSidebarMode("conversations");
+              }}
               role="tab"
               type="button"
             >
@@ -987,7 +1068,7 @@ export function AssistantPage() {
             </button>
             <button
               aria-selected={sidebarMode === "activity"}
-              onClick={() => void showAudit()}
+              onClick={showAudit}
               role="tab"
               type="button"
             >
@@ -1182,7 +1263,7 @@ export function AssistantPage() {
                   {SUGGESTIONS.map((suggestion) => (
                     <button
                       key={suggestion}
-                      onClick={() => void send(suggestion)}
+                      onClick={() => void send(suggestion, false)}
                       type="button"
                     >
                       {suggestion}
@@ -1401,7 +1482,7 @@ export function AssistantPage() {
               disabled={isSending || !isAuthenticated || !selectedModel}
               id="assistant-message"
               maxLength={4000}
-              onChange={(event) => setDraft(event.target.value)}
+              onChange={(event) => updateDraft(event.target.value)}
               onKeyDown={handleComposerKeyDown}
               placeholder={
                 isAuthenticated
@@ -1423,13 +1504,23 @@ export function AssistantPage() {
             >
               <Icon name="send" size={18} />
             </button>
-            <small>
-              {isAuthenticated
-                ? revisionProposal
-                  ? "Sending this will reject the old proposal and request a revised one"
-                  : "Enter to send · Shift+Enter for a new line"
-                : "Connect ChatGPT above to enable the assistant"}
-            </small>
+            <div className="assistant-composer-footer">
+              <small>
+                {isAuthenticated
+                  ? revisionProposal
+                    ? "Sending this will reject the old proposal and request a revised one"
+                    : "Enter to send · Shift+Enter for a new line"
+                  : "Connect ChatGPT above to enable the assistant"}
+              </small>
+              <button
+                className="assistant-clear-draft"
+                disabled={isSending || draft.length === 0}
+                onClick={clearCurrentDraft}
+                type="button"
+              >
+                Clear draft
+              </button>
+            </div>
           </form>
         </div>
       </section>

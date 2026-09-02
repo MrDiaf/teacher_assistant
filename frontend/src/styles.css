@@ -3185,11 +3185,35 @@ textarea:focus-visible {
   background: var(--accent);
 }
 
-.assistant-composer > small {
+.assistant-composer-footer {
+  display: flex;
   grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 0 6px 1px;
+}
+
+.assistant-composer-footer small {
   color: var(--secondary-text);
   font-size: 8px;
+}
+
+.assistant-composer-footer .assistant-clear-draft {
+  flex: 0 0 auto;
+  padding: 2px 0;
+  color: #48665f;
+  border: 0;
+  background: transparent;
+  font-size: 8px;
+  font-weight: 750;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.assistant-composer-footer .assistant-clear-draft:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .assistant-revision-notice {

@@ -5,6 +5,7 @@ import { Icon } from "./components/Icon";
 import { AssistantPage } from "./features/assistant/AssistantPage";
 import { CalendarPage } from "./features/calendar/CalendarPage";
 import { CoursesPage } from "./features/courses/CoursesPage";
+import { getActiveModule, setActiveModule } from "./persistence/uiState";
 
 const PLACEHOLDER_COPY: Record<
   Exclude<ModuleId, "calendar" | "assistant" | "courses">,
@@ -44,10 +45,16 @@ function PlaceholderPage({
 }
 
 export default function App() {
-  const [activeModule, setActiveModule] = useState<ModuleId>("calendar");
+  const [activeModule, setActiveModuleState] =
+    useState<ModuleId>(getActiveModule);
+
+  function navigate(module: ModuleId) {
+    setActiveModuleState(module);
+    setActiveModule(module);
+  }
 
   return (
-    <AppShell activeModule={activeModule} onNavigate={setActiveModule}>
+    <AppShell activeModule={activeModule} onNavigate={navigate}>
       {activeModule === "calendar" && <CalendarPage />}
       {activeModule === "courses" && <CoursesPage />}
       {activeModule === "assistant" && <AssistantPage />}

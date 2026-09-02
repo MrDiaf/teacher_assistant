@@ -95,6 +95,29 @@ The Assistant and note summaries share the server-configured model list.
 allowlist. The browser can select only IDs returned by the backend and remembers
 the last valid choice locally. Restart the backend after changing either value.
 
+## Browser navigation convenience state
+
+This browser profile remembers a small set of owner-controlled navigation
+choices under the versioned `teacher-assistant.ui-state.v1` site-storage key:
+the active module; main and per-course Calendar view/anchor; selected course and
+tab; selected Assistant conversation/sidebar; and unsent composer text per
+conversation, including a separate not-yet-created conversation draft. The
+schema accepts only known values, UUIDs, real `YYYY-MM-DD` dates, bounded text,
+and timestamps. It keeps at most 20 drafts of up to 4,000 characters and 50
+per-course Calendar preferences.
+
+This convenience state is not an offline cache. Events, courses, notes,
+summaries, messages, proposals, permissions, authentication data, errors, and
+active operations are never stored there and are always reloaded from FastAPI.
+Assistant drafts stay in this browser until sent successfully or cleared with
+**Clear draft**; failed or cancelled sends retain the matching draft. Corrupt,
+disabled, unavailable, or full browser storage falls back safely to defaults.
+
+Clearing site data, using a private window, or opening another browser profile
+or device removes these navigation choices and unsent drafts. It does not
+delete any backend record. Note and summary expansion is intentionally not
+remembered, so Notes always remounts minimized.
+
 ## Calendar-change safety
 
 - Read-only calendars remain viewable and searchable but cannot be mutated.

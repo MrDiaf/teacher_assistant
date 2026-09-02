@@ -7,6 +7,10 @@ import {
 } from "react";
 
 import { Icon } from "../../components/Icon";
+import {
+  getCalendarPreference,
+  setCalendarPreference,
+} from "../../persistence/uiState";
 import { calendarApi } from "./api";
 import { CalendarDialog } from "./CalendarDialog";
 import { CalendarFilters } from "./CalendarFilters";
@@ -14,6 +18,7 @@ import { CalendarList } from "./CalendarList";
 import { CalendarToolbar } from "./CalendarToolbar";
 import {
   addDays,
+  dateKey,
   getViewDays,
   getViewRange,
   moveAnchor,
@@ -74,6 +79,7 @@ interface CalendarWorkspaceProps {
       signal?: AbortSignal;
     },
   ) => Promise<CalendarEvent[]>;
+  persistenceCourseId?: string;
   reloadToken?: number;
   renderSidebar?: (props: CalendarSidebarRenderProps) => ReactNode;
 }
@@ -143,11 +149,21 @@ export function CalendarWorkspace({
   eyebrow = "Personal schedule",
   loadCalendars = calendarApi.listCalendars,
   loadEvents = calendarApi.listEvents,
+  persistenceCourseId,
   reloadToken = 0,
   renderSidebar,
 }: CalendarWorkspaceProps) {
-  const [view, setView] = useState<CalendarView>("month");
-  const [anchor, setAnchor] = useState(() => new Date());
+  const [initialPreference] = useState(() =>
+    getCalendarPreference(persistenceCourseId),
+  );
+  const [view, setView] = useState<CalendarView>(
+    () => initialPreference?.view ?? "month",
+  );
+  const [anchor, setAnchor] = useState(() =>
+    initialPreference
+      ? new Date(`${initialPreference.anchor}T00:00:00`)
+      : new Date(),
+  );
   const [calendars, setCalendars] = useState<CalendarModel[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [filters, setFilters] = useState<EventFilters>(EMPTY_FILTERS);
@@ -160,6 +176,13 @@ export function CalendarWorkspace({
     useState<CalendarDialogState | null>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [undoState, setUndoState] = useState<UndoState | null>(null);
+
+  useEffect(() => {
+    setCalendarPreference(
+      { view, anchor: dateKey(anchor) },
+      persistenceCourseId,
+    );
+  }, [anchor, persistenceCourseId, view]);
 
   useEffect(() => {
     if (!undoState || undoState.isRunning) return;

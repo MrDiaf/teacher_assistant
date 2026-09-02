@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "../../components/Icon";
+import {
+  clearCourseSelection,
+  getCourseSelection,
+  pruneCourseCalendars,
+  removeCourseCalendarPreference,
+  setCourseSelection,
+} from "../../persistence/uiState";
 import { CourseCalendar } from "./CourseCalendar";
 import { CourseDialog } from "./CourseDialog";
 import { CourseMaterials } from "./CourseMaterials";
@@ -139,6 +146,7 @@ function CourseCollection({
 }
 
 function CourseDetail({
+  activeTab,
   busy,
   course,
   onArchive,
@@ -146,9 +154,11 @@ function CourseDetail({
   onDelete,
   onEdit,
   onRestore,
+  onTabChange,
   onCalendarCountChange,
   onSourceCountChange,
 }: {
+  activeTab: CourseTab;
   busy: boolean;
   course: CourseModel;
   onArchive: () => void;
@@ -156,11 +166,10 @@ function CourseDetail({
   onDelete: () => void;
   onEdit: () => void;
   onRestore: () => void;
+  onTabChange: (tab: CourseTab) => void;
   onCalendarCountChange: (count: number) => void;
   onSourceCountChange: (count: number) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<CourseTab>("overview");
-
   return (
     <main className="course-detail-page" aria-labelledby="course-detail-title">
       <button className="course-back-button" onClick={onBack} type="button">
@@ -219,7 +228,7 @@ function CourseDetail({
             aria-selected={activeTab === tab.id}
             id={`course-tab-${tab.id}`}
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => onTabChange(tab.id)}
             role="tab"
             type="button"
           >
@@ -305,11 +314,17 @@ function CourseDetail({
 }
 
 export function CoursesPage() {
+  const [initialSelection] = useState(getCourseSelection);
   const [courses, setCourses] = useState<CourseModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadVersion, setLoadVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
+    initialSelection?.courseId ?? null,
+  );
+  const [activeCourseTab, setActiveCourseTab] = useState<CourseTab>(
+    initialSelection?.tab ?? "overview",
+  );
   const [dialogCourse, setDialogCourse] = useState<
     CourseModel | null | undefined
   >(undefined);
@@ -322,7 +337,19 @@ export function CoursesPage() {
       setIsLoading(true);
       setError(null);
       try {
-        setCourses(await courseApi.list(controller.signal));
+        const loaded = await courseApi.list(controller.signal);
+        if (controller.signal.aborted) return;
+        setCourses(loaded);
+        const loadedIds = loaded.map((course) => course.id);
+        pruneCourseCalendars(loadedIds);
+        setSelectedCourseId((current) => {
+          if (current && !loadedIds.includes(current)) {
+            clearCourseSelection();
+            removeCourseCalendarPreference(current);
+            return null;
+          }
+          return current;
+        });
       } catch (loadError) {
         if (!controller.signal.aborted) {
           setError(
@@ -391,6 +418,24 @@ export function CoursesPage() {
     );
   }
 
+  function openCourse(course: CourseModel) {
+    setSelectedCourseId(course.id);
+    setActiveCourseTab("overview");
+    setCourseSelection({ courseId: course.id, tab: "overview" });
+  }
+
+  function changeCourseTab(tab: CourseTab) {
+    if (!selectedCourseId) return;
+    setActiveCourseTab(tab);
+    setCourseSelection({ courseId: selectedCourseId, tab });
+  }
+
+  function closeCourse() {
+    setSelectedCourseId(null);
+    setActiveCourseTab("overview");
+    clearCourseSelection();
+  }
+
   async function handleSave(
     payload: CourseMutation,
     existingCourse: CourseModel | null,
@@ -432,7 +477,8 @@ export function CoursesPage() {
   async function handleDelete(course: CourseModel) {
     await courseApi.delete(course.id);
     setCourses((current) => current.filter((item) => item.id !== course.id));
-    if (selectedCourseId === course.id) setSelectedCourseId(null);
+    removeCourseCalendarPreference(course.id);
+    if (selectedCourseId === course.id) closeCourse();
     setDeleteCourse(null);
   }
 
@@ -445,13 +491,15 @@ export function CoursesPage() {
           </div>
         )}
         <CourseDetail
+          activeTab={activeCourseTab}
           busy={busyCourseId === selectedCourse.id}
           course={selectedCourse}
           onArchive={() => void changeStatus(selectedCourse, "archive")}
-          onBack={() => setSelectedCourseId(null)}
+          onBack={closeCourse}
           onDelete={() => setDeleteCourse(selectedCourse)}
           onEdit={() => setDialogCourse(selectedCourse)}
           onRestore={() => void changeStatus(selectedCourse, "restore")}
+          onTabChange={changeCourseTab}
           onCalendarCountChange={updateSelectedCourseCalendarCount}
           onSourceCountChange={updateSelectedCourseSourceCount}
         />
@@ -543,7 +591,7 @@ export function CoursesPage() {
             emptyCopy="No active courses. Restore an archived course or create a new one."
             onArchive={(course) => void changeStatus(course, "archive")}
             onEdit={setDialogCourse}
-            onOpen={(course) => setSelectedCourseId(course.id)}
+            onOpen={openCourse}
             onRestore={(course) => void changeStatus(course, "restore")}
             title="Active courses"
           />
@@ -553,7 +601,7 @@ export function CoursesPage() {
             emptyCopy="Archived courses will stay here until you restore or delete them."
             onArchive={(course) => void changeStatus(course, "archive")}
             onEdit={setDialogCourse}
-            onOpen={(course) => setSelectedCourseId(course.id)}
+            onOpen={openCourse}
             onRestore={(course) => void changeStatus(course, "restore")}
             title="Archived courses"
           />

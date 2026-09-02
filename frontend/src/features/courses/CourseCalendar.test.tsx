@@ -14,7 +14,7 @@ import type { CourseModel } from "./types";
 
 const now = new Date().toISOString();
 const course: CourseModel = {
-  id: "course-calendar-test",
+  id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
   name: "Database Systems",
   course_code: "DAT101",
   description: "Relational data and query design",
@@ -275,5 +275,40 @@ describe("CourseCalendar", () => {
           init?.method === "PATCH",
       ),
     ).toBe(true);
+  });
+
+  it("restores a course-scoped Calendar view and anchor after remount", async () => {
+    const fetchMock = installCalendarApi([writableCalendar.id]);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const firstRender = render(
+      <CourseCalendar
+        course={{ ...course, calendar_count: 1 }}
+        onCalendarCountChange={vi.fn()}
+      />,
+    );
+    await screen.findByText("Linked database lecture");
+    fireEvent.click(screen.getByRole("button", { name: "Day" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Previous date range" }),
+    );
+    const rememberedHeading = screen.getByRole("heading", {
+      level: 1,
+    }).textContent;
+
+    firstRender.unmount();
+    render(
+      <CourseCalendar
+        course={{ ...course, calendar_count: 1 }}
+        onCalendarCountChange={vi.fn()}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Day", pressed: true }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      rememberedHeading ?? "",
+    );
   });
 });

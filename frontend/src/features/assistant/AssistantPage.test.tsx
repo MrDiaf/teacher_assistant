@@ -33,6 +33,18 @@ const conversation: AssistantConversation = {
   created_at: now,
   updated_at: now,
 };
+const firstPersistentConversation: AssistantConversation = {
+  id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  title: "First saved conversation",
+  created_at: now,
+  updated_at: now,
+};
+const secondPersistentConversation: AssistantConversation = {
+  id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  title: "Second saved conversation",
+  created_at: now,
+  updated_at: now,
+};
 const ownerMessage: AssistantMessage = {
   id: "message-owner",
   conversation_id: conversation.id,
@@ -697,6 +709,225 @@ describe("AssistantPage", () => {
     expect(within(auditDetails).getByText(/Requested/)).toBeInTheDocument();
     expect(within(auditDetails).getByText(/Confirmed/)).toBeInTheDocument();
     expect(within(auditDetails).getByText(/Executed/)).toBeInTheDocument();
+  });
+
+  it("keeps separate conversation and new-conversation drafts across navigation and reload", async () => {
+    const persistentConversations = [
+      firstPersistentConversation,
+      secondPersistentConversation,
+    ];
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/v1/calendars") && method === "GET") {
+          return response([]);
+        }
+        if (url.includes("/api/v1/events?") && method === "GET") {
+          return response([]);
+        }
+        if (url.endsWith("/api/v1/assistant/auth") && method === "GET") {
+          return response(connectedAuth);
+        }
+        if (
+          url.endsWith("/api/v1/assistant/conversations") &&
+          method === "GET"
+        ) {
+          return response(persistentConversations);
+        }
+        const selected = persistentConversations.find((candidate) =>
+          url.endsWith(`/api/v1/assistant/conversations/${candidate.id}`),
+        );
+        if (selected && method === "GET") {
+          return response({
+            ...selected,
+            messages: [],
+            jobs: [],
+            proposals: [],
+          });
+        }
+        if (
+          url.endsWith("/api/v1/assistant/audit?limit=50") &&
+          method === "GET"
+        ) {
+          return response([]);
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const firstRender = render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    const composer = await screen.findByLabelText("Message the Assistant");
+    fireEvent.change(composer, { target: { value: "exact first draft  " } });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Second saved conversation/ }),
+    );
+    await waitFor(() => expect(composer).toHaveValue(""));
+    fireEvent.change(composer, { target: { value: "second draft" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }));
+    expect(composer).toHaveValue("");
+    fireEvent.change(composer, { target: { value: "brand new draft" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: /First saved conversation/ }),
+    );
+    await waitFor(() => expect(composer).toHaveValue("exact first draft  "));
+    fireEvent.click(screen.getByRole("button", { name: "New conversation" }));
+    expect(composer).toHaveValue("brand new draft");
+    fireEvent.click(
+      screen.getByRole("button", { name: /First saved conversation/ }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Dashboard" }));
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    expect(await screen.findByLabelText("Message the Assistant")).toHaveValue(
+      "exact first draft  ",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
+    await screen.findByText("Confirmed and rejected proposals appear here.");
+
+    firstRender.unmount();
+    render(<App />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Assistant" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Activity" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Conversations" }));
+    expect(
+      await screen.findByRole("button", {
+        name: /First saved conversation/,
+      }),
+    ).toBeInTheDocument();
+    const restoredComposer = screen.getByLabelText("Message the Assistant");
+    expect(restoredComposer).toHaveValue("exact first draft  ");
+    fireEvent.click(screen.getByRole("button", { name: "Clear draft" }));
+    expect(restoredComposer).toHaveValue("");
+    expect(restoredComposer).toHaveFocus();
+
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url, init]) =>
+          String(url).endsWith("/api/v1/assistant/conversations") &&
+          (init?.method ?? "GET") === "GET",
+      ),
+    ).toHaveLength(3);
+  });
+
+  it("retains a failed draft and clears only the successfully sent conversation", async () => {
+    const persistentConversations = [
+      firstPersistentConversation,
+      secondPersistentConversation,
+    ];
+    const conversationState = new Map<
+      string,
+      { messages: AssistantMessage[]; jobs: AssistantJob[] }
+    >(
+      persistentConversations.map((item) => [
+        item.id,
+        { messages: [], jobs: [] },
+      ]),
+    );
+    const makeJob = (
+      selected: AssistantConversation,
+      status: AssistantJob["status"],
+    ): AssistantJob => ({
+      ...job(status, status === "failed" ? "Runtime failure" : null),
+      id: `job-${selected.id}`,
+      conversation_id: selected.id,
+      owner_message_id: `owner-${selected.id}`,
+    });
+    const fetchMock = vi.fn(
+      async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+        if (url.endsWith("/api/v1/calendars") && method === "GET") {
+          return response([]);
+        }
+        if (url.includes("/api/v1/events?") && method === "GET") {
+          return response([]);
+        }
+        if (url.endsWith("/api/v1/assistant/auth") && method === "GET") {
+          return response(connectedAuth);
+        }
+        if (
+          url.endsWith("/api/v1/assistant/conversations") &&
+          method === "GET"
+        ) {
+          return response(persistentConversations);
+        }
+        const selected = persistentConversations.find((candidate) =>
+          url.includes(`/api/v1/assistant/conversations/${candidate.id}`),
+        );
+        if (selected && url.endsWith("/messages") && method === "POST") {
+          const failed = selected.id === firstPersistentConversation.id;
+          const sentJob = makeJob(selected, failed ? "failed" : "completed");
+          const payload = JSON.parse(String(init?.body)) as { content: string };
+          const sentOwner: AssistantMessage = {
+            ...ownerMessage,
+            id: `owner-${selected.id}`,
+            conversation_id: selected.id,
+            content: payload.content,
+          };
+          const sentAssistant: AssistantMessage | null = failed
+            ? null
+            : {
+                ...assistantMessage,
+                id: `assistant-${selected.id}`,
+                conversation_id: selected.id,
+                content: "Successful answer",
+                job_id: sentJob.id,
+              };
+          conversationState.set(selected.id, {
+            messages: sentAssistant ? [sentOwner, sentAssistant] : [sentOwner],
+            jobs: [sentJob],
+          });
+          return response({
+            conversation: selected,
+            owner_message: sentOwner,
+            assistant_message: sentAssistant,
+            job: sentJob,
+            proposals: [],
+          });
+        }
+        if (selected && method === "GET") {
+          const state = conversationState.get(selected.id)!;
+          return response({ ...selected, ...state, proposals: [] });
+        }
+        throw new Error(`Unexpected request: ${method} ${url}`);
+      },
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Assistant" }));
+    const composer = await screen.findByLabelText("Message the Assistant");
+    fireEvent.change(composer, { target: { value: "retain after failure" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    expect(
+      await screen.findByText("The assistant could not finish"),
+    ).toBeInTheDocument();
+    expect(composer).toHaveValue("retain after failure");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Second saved conversation/ }),
+    );
+    await waitFor(() => expect(composer).toHaveValue(""));
+    fireEvent.change(composer, { target: { value: "clear after success" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    expect(await screen.findByText("Successful answer")).toBeInTheDocument();
+    expect(composer).toHaveValue("");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /First saved conversation/ }),
+    );
+    await waitFor(() => expect(composer).toHaveValue("retain after failure"));
   });
 
   it("offers a safe ChatGPT subscription device-login link when signed out", async () => {
