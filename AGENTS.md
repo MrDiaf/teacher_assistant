@@ -23,7 +23,7 @@ product scope currently includes:
 2. Calendar Assistant powered by Codex
 3. Courses, course materials, notes, summaries, and course-linked calendars
 
-The visible application navigation should contain:
+The currently implemented visible application navigation should contain:
 
 - Dashboard
 - Calendar
@@ -31,6 +31,10 @@ The visible application navigation should contain:
 - Study Plan
 - Assistant
 - Settings
+
+The approved future milestone sequence adds Inbox after Courses in M21 and
+Documents after Inbox in M23. Do not show either module before its milestone is
+explicitly selected, implemented, and verified.
 
 Calendar, Courses, and Assistant have real functionality. Dashboard, Study
 Plan, and Settings may display a polished placeholder page.
@@ -216,6 +220,14 @@ assistant application service
 Codex SDK adapter
 proposal validation
 database
+frontend documents feature
+document API routes
+document application service
+document database repository
+document filesystem storage
+LaTeX compilation queue and adapter
+isolated LaTeX compiler worker
+document compilation-advice service
 ```
 
 Business logic must not live directly inside:
@@ -399,7 +411,34 @@ A typo or unclear request must never result in broad deletion.
 
 ---
 
-# 13. Testing
+# 13. Documents and LaTeX Safety
+
+M23 through M26 are approved planning scope for a future private Documents
+module. Planning does not activate those milestones, and no Documents behavior
+may be claimed before its selected milestone is implemented and tested.
+
+Document source files and generated PDFs are private owner data. Store source
+under a configurable host-backed document root, keep it out of Git, include it
+in coordinated backup/restore and relocation checks, and never expose physical
+server paths to the browser.
+
+Teacher Assistant must use an established LaTeX distribution and build driver,
+not implement its own TeX/LaTeX engine. Compilation must not run inside the
+FastAPI process or against the live source directory. Use a disposable source
+snapshot and an isolated compiler worker with no network, repository, database,
+Docker socket, credentials, other private modules, or arbitrary command access.
+Disable shell escape and project-controlled compiler configuration, enforce
+resource and owner-configured time limits, and publish only a backend-validated
+PDF.
+
+Codex compilation-error advice is read-only. The backend selects bounded,
+sanitized log/source context and validates the response. Codex may not edit or
+save LaTeX, execute the compiler, install packages, delete projects, or claim a
+fix or compilation succeeded.
+
+---
+
+# 14. Testing
 
 Add tests for every safety-sensitive rule.
 
@@ -424,7 +463,7 @@ The standard test suite must not require real Codex credentials.
 
 ---
 
-# 14. Git Rules
+# 15. Git Rules
 
 Do not automatically:
 
@@ -447,10 +486,11 @@ Never commit:
 - Runtime Codex workspaces
 - Imported calendar files containing private data
 - Logs containing private calendar events
+- Private LaTeX projects, generated document PDFs, or compiler logs
 
 ---
 
-# 15. Definition of Done
+# 16. Definition of Done
 
 A requested milestone is complete only when:
 

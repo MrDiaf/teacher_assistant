@@ -55,8 +55,9 @@ The currently implemented visible navigation is:
 Calendar, Courses, and Assistant are implemented. Dashboard, Study Plan, and
 Settings may remain polished placeholders until the owner defines a milestone
 for them. M20 is planned to make Settings functional for private integrations,
-and M21 is planned to add Inbox as a separate module after Courses. Do not show
-or claim either behavior before its milestone is implemented.
+M21 is planned to add Inbox as a separate module after Courses, and M23 is
+planned to add Documents after Inbox. Do not show or claim any of those
+behaviors before its milestone is implemented.
 
 Never add registration, multiple users, organizations, teams, roles, tenants,
 shared accounts, or public profiles.
@@ -87,12 +88,14 @@ models, and Codex prompts. Preserve the existing service/repository boundaries.
 Keep these responsibilities separate:
 
 ```text
-frontend calendar, courses, assistant, settings, and inbox features
-calendar, course, note, source, summary, assistant, integration, and inbox API routes
+frontend calendar, courses, assistant, settings, inbox, and documents features
+calendar, course, note, source, summary, assistant, integration, inbox, and document API routes
 application services
 database repositories and models
 external Canvas, feed, and mail adapters
-private integration credential and content storage
+private integration credential, course-content, and document-source storage
+LaTeX compilation queue and adapter
+isolated LaTeX compiler worker
 Codex SDK adapter
 runtime workspace construction
 proposal and structured-output validation
@@ -205,6 +208,35 @@ read-only IMAP. Teacher Assistant does not create an address, configure external
 forwarding/DNS, send or reply to mail, or mutate the remote mailbox. Local Inbox
 read/archive/delete state never changes the upstream Canvas or mail source.
 
+## Documents and LaTeX safety
+
+M23 through M26 plan a private Documents module after the existing M19–M22
+sequence. Document metadata belongs in PostgreSQL, while source files and
+verified generated PDFs live beneath a configurable host-backed document root.
+They are private owner data and must participate in preflight, coordinated
+backup/restore, relocation, clone isolation, and Git-ignore protection from the
+first milestone that creates them.
+
+Use a mature TeX Live/latexmk toolchain rather than building a LaTeX engine.
+The FastAPI process must not compile LaTeX. Compile an exact committed source
+revision in a disposable snapshot through a separately isolated worker with no
+network, repository, database, Docker socket, credentials, other project data,
+or live-source write access. Disable shell escape, arbitrary commands, custom
+compiler initialization, and runtime package downloads. Enforce bounded input,
+output, processes, memory, CPU, storage, and an owner-adjustable compilation
+timeout subject to a server hard ceiling.
+
+Compiler output and LaTeX source are untrusted data. Validate a successful PDF
+before publishing it, retain clear revision provenance, and never replace the
+latest verified PDF with a failed, timed-out, malformed, or stale result.
+
+Codex compilation-error advice is a separate read-only workflow. Backend code
+selects bounded sanitized logs and source excerpts, embeds them as untrusted
+context in a private tool-disabled workspace, validates every returned path and
+line reference, and deletes the workspace immediately. Codex never edits or
+saves source, executes a compiler, installs a package, deletes a project, or
+claims that an error was fixed.
+
 ## Docker, private data, and Git
 
 Development remains Docker-first. A normal setup starts with:
@@ -219,9 +251,10 @@ Preserve the root commands `make dev`, `make down`, `make restart`,
 not require host Python or Node.js.
 
 Never commit `.env`, credentials, database data, runtime workspaces, uploaded
-course content, imported private calendar files, or logs containing private
-owner data. Do not commit, push, merge, rebase, delete branches, or discard
-owner work without an explicit request.
+course content, private LaTeX projects or generated PDFs, imported private
+calendar files, or logs containing private owner data. Do not commit, push,
+merge, rebase, delete branches, or discard owner work without an explicit
+request.
 
 ## Milestone workflow
 
@@ -275,6 +308,10 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [ ] [M20 — Integration secrets and Canvas connection](milestones/m20-integration-secrets-and-canvas-connection.md)
 - [ ] [M21 — Canvas announcement Inbox](milestones/m21-canvas-announcement-inbox.md)
 - [ ] [M22 — Forwarded-mail Inbox](milestones/m22-forwarded-mail-inbox.md)
+- [ ] [M23 — Durable Documents foundation and project overview](milestones/m23-durable-documents-foundation.md)
+- [ ] [M24 — Relative LaTeX file tree and source editor](milestones/m24-relative-latex-editor.md)
+- [ ] [M25 — Isolated LaTeX compilation and PDF preview](milestones/m25-isolated-latex-compilation.md)
+- [ ] [M26 — Codex advice for LaTeX compilation errors](milestones/m26-codex-latex-error-advice.md)
 
 Current active milestone: **none**.
 
@@ -287,10 +324,12 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M19 through M22 are planned and intentionally unchecked. Their required order
+M19 through M26 are planned and intentionally unchecked. Their required order
 is M19 frontend state persistence, M20 integration secrets and Canvas
-connection, M21 Canvas announcements, and M22 forwarded mail. Planning does
-not authorize implementation; the owner must select one milestone explicitly.
+connection, M21 Canvas announcements, M22 forwarded mail, M23 durable Documents
+foundation, M24 relative LaTeX editing, M25 isolated compilation, and M26 Codex
+error advice. Planning does not authorize implementation; the owner must select
+one milestone explicitly. Reordering also requires an explicit owner decision.
 
 ## Definition of done
 

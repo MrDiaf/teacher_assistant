@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-01
+Updated: 2026-09-02
 
 ## Start here
 
@@ -24,15 +24,16 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `eab1686 good with markdown`
+- Git `HEAD`: `a6e49a6 prettfie is done M18`
 - M1 through M18 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M19 through M22 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains the completed M18 implementation
-  and documentation. Preserve it; no commit was requested.
+- M19 through M26 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains documentation-only planning for
+  M23 through M26. No Documents application code or behavior was implemented;
+  preserve the planning changes because no commit was requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
   `teacher_assistant_codex-auth-data`. The private `.env` and ignored
@@ -68,10 +69,36 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
   calendars, and course-aware Assistant answers.
 - Dashboard and Study Plan remain placeholder modules. Settings also remains a
   placeholder until the planned M20 integration work is explicitly selected
-  and implemented; Inbox does not exist until M21.
+  and implemented; Inbox does not exist until M21, and Documents does not exist
+  until M23.
 
 The permanent safety and architecture rules are in `AGENTS.md` and
 `instructions.md`. Do not duplicate or weaken them in a new milestone.
+
+## Most recent planning update
+
+The owner approved a future Overleaf-inspired Documents/LaTeX roadmap. The
+roadmap is documentation only and follows the already planned M19–M22 sequence:
+
+- M23 adds durable UUID-based document projects, colored many-to-many tags,
+  project search/actions, raw `.tex`/source-ZIP downloads, and coordinated
+  preflight/backup/restore before creating private document data.
+- M24 adds a CodeMirror-based root-relative LaTeX file tree and source editor,
+  bounded verified assets, server-backed autosave, stale-write protection, and
+  a selected main `.tex` file.
+- M25 adds pdfLaTeX through a pinned TeX Live/latexmk toolchain in a separate
+  offline non-root compiler worker, disposable source snapshots, resource and
+  process limits, a per-project 10–600-second timeout with a hard ceiling,
+  revision-aware logs, validated PDF preview, and overview downloads.
+- M26 adds read-only Codex advice for failed/timed-out compilations using only
+  bounded sanitized logs and relevant source excerpts. Codex cannot edit,
+  compile, install, delete, or claim a fix was applied.
+
+The detailed scope, boundaries, checklists, acceptance criteria, and expected
+implementation areas are in `milestones/m23-durable-documents-foundation.md`
+through `milestones/m26-codex-latex-error-advice.md`. All four milestones remain
+unchecked. No source, migration, dependency, Compose, environment, README, or
+runtime behavior was changed by this planning update.
 
 ## Most recent completed work
 
@@ -222,6 +249,14 @@ from Assistant or the optional configured API-key fallback.
   the connected API or a per-course announcement feed.
 - [ ] M22 — Ingest owner-forwarded email from a dedicated TLS/read-only IMAP
   mailbox into Inbox, with safe MIME rendering and private attachments.
+- [ ] M23 — Add durable private LaTeX projects, searchable/tagged overview,
+  source downloads, and coordinated document backup/restore.
+- [ ] M24 — Add the root-relative multi-file LaTeX tree and CodeMirror source
+  editor with safe assets, autosave, and stale-write protection.
+- [ ] M25 — Add isolated TeX Live/latexmk compilation, adjustable timeouts,
+  bounded logs, validated PDF preview, and overview PDF downloads.
+- [ ] M26 — Add bounded read-only Codex advice for failed and timed-out LaTeX
+  compilations without automatic source changes.
 
 The full scope, boundaries, checklist, acceptance criteria, and expected files
 are in the corresponding milestone files. Do not combine or automatically
@@ -229,8 +264,12 @@ advance them.
 
 ## Known limitations and cautions
 
-- M19–M22 are plans only and none of their application behavior exists yet.
+- M19–M26 are plans only and none of their application behavior exists yet.
   M19 must not persist or restore M17 note/summary expansion state.
+- Documents intentionally has no sharing, collaboration, public links, visual
+  editor, version history, arbitrary build commands, shell escape, runtime
+  package downloads, automatic Codex fixes, or additional compiler engines in
+  M23–M26. The initial M25 compiler is pdfLaTeX through TeX Live/latexmk.
 - Canvas OAuth requires an institution-enabled developer key; a self-hosted
   clone cannot manufacture one. M20 therefore includes a manual Canvas API-token
   fallback, and M21/M22 include feed/email alternatives. Password/cookie-based
@@ -264,8 +303,10 @@ advance them.
 
 ## Next step
 
-M18 is complete. Stop before M19. The owner must explicitly select M19 before
-frontend navigation and Assistant-draft persistence implementation begins.
+M18 is complete, and the M23–M26 Documents roadmap is approved as planning only.
+Stop before M19. The owner must explicitly select M19 before frontend navigation
+and Assistant-draft persistence implementation begins. Do not skip to M23 or
+reorder the roadmap without another explicit owner decision.
 
 Recommended next prompt:
 
