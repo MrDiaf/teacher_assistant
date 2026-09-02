@@ -25,15 +25,14 @@ owner explicitly asks.
 ## Current state
 
 - Git `HEAD`: `eab1686 good with markdown`
-- M1 through M17 are complete.
+- M1 through M18 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M18 through M22 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains the completed M17 implementation
-  and documentation, owner-selected M17/M19 refinements, and the new M20–M22
-  Canvas/Inbox/mail plans. Preserve it; no commit was requested.
+- M19 through M22 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains the completed M18 implementation
+  and documentation. Preserve it; no commit was requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
   `teacher_assistant_codex-auth-data`. The private `.env` and ignored
@@ -65,8 +64,8 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
   creation batches, retries, diagnostics, progress, and cancellation.
 - Courses: manual CRUD/archive/restore, private Literature and Slides storage,
   extraction, in-app and new-window PDF viewing, notes and slide references, AI
-  summaries with provenance, course-linked calendars, and course-aware
-  Assistant answers.
+  summaries with provenance, Codex note-prettify suggestions, course-linked
+  calendars, and course-aware Assistant answers.
 - Dashboard and Study Plan remain placeholder modules. Settings also remains a
   placeholder until the planned M20 integration work is explicitly selected
   and implemented; Inbox does not exist until M21.
@@ -75,6 +74,42 @@ The permanent safety and architecture rules are in `AGENTS.md` and
 `instructions.md`. Do not duplicate or weaken them in a new milestone.
 
 ## Most recent completed work
+
+M18 Codex note-prettify suggestions:
+
+- adds a visually secondary Prettify action beside the Markdown editor and
+  reuses the installation's shared, server-authoritative AI model selector;
+- sends only the current unsaved note body to a dedicated private runtime
+  workspace with a correction-only policy and strict proposed-body schema;
+- limits Prettify input to 40,000 characters without truncation and rejects
+  invalid UTF-8, malformed output, extra fields, changed Markdown structure,
+  line structure, code, links, URLs, formulas, citations, or quoted text;
+- deletes every temporary workspace immediately and never persists model output,
+  a rejected suggestion, hidden reasoning, or any note mutation;
+- shows the complete original and proposed Markdown in an accessible comparison,
+  with explicit Keep and Use actions and focus returned to the editor;
+- replaces only the local draft after acceptance, keeps Create/Save separate,
+  and preserves the draft through rejection, close, cancellation, timeout,
+  invalid model, oversized input, runtime failure, and no-change responses;
+- includes backend privacy/prompt-injection/validation tests, frontend interaction
+  and cancellation tests, and an accessible Playwright owner workflow.
+
+Important M18 implementation areas:
+
+```text
+backend/app/notes/prettify_{routes,schemas,service}.py
+backend/app/codex_runtime/workspace.py
+backend/app/codex_runtime/workspace_template/PRETTIFY_AGENT.md
+backend/tests/test_note_prettify.py
+frontend/src/features/courses/{NoteDialog,MarkdownNoteEditor}.tsx
+frontend/src/features/courses/NoteDialog.test.tsx
+frontend/src/features/courses/{api,types}.ts
+frontend/src/styles.css
+e2e/tests/calendar-assistant.spec.ts
+README.md
+```
+
+## Earlier completed work
 
 M17 minimized notes, summary decluttering, and removable bullets:
 
@@ -109,8 +144,6 @@ frontend/src/styles.css
 e2e/tests/calendar-assistant.spec.ts
 README.md
 ```
-
-## Previous completed work
 
 M16 lightweight Markdown note editing:
 
@@ -148,8 +181,8 @@ The latest implementation handoff recorded:
 
 ```text
 make test
-  Backend: 121 passed
-  Frontend: 49 passed
+  Backend: 142 passed
+  Frontend: 53 passed
 
 make e2e
   Playwright/accessibility: 9 passed
@@ -177,7 +210,7 @@ from Assistant or the optional configured API-key fallback.
 - [x] M17 — Start every note and nested summary minimized on each Notes-page
   visit, allow independent expansion, and persistently remove individual
   generated bullets without touching source notes or slides.
-- [ ] M18 — Add a Codex Prettify suggestion workflow with isolated context,
+- [x] M18 — Add a Codex Prettify suggestion workflow with isolated context,
   strict validation, before/after preview, explicit acceptance, and no automatic
   note save.
 - [ ] M19 — Persist selected pages/views and per-conversation Assistant drafts
@@ -196,7 +229,7 @@ advance them.
 
 ## Known limitations and cautions
 
-- M18–M22 are plans only and none of their application behavior exists yet.
+- M19–M22 are plans only and none of their application behavior exists yet.
   M19 must not persist or restore M17 note/summary expansion state.
 - Canvas OAuth requires an institution-enabled developer key; a self-hosted
   clone cannot manufacture one. M20 therefore includes a manual Canvas API-token
@@ -231,13 +264,13 @@ advance them.
 
 ## Next step
 
-M17 is complete. Stop before M18. The owner must explicitly select M18 before
-Codex note-prettify implementation begins.
+M18 is complete. Stop before M19. The owner must explicitly select M19 before
+frontend navigation and Assistant-draft persistence implementation begins.
 
 Recommended next prompt:
 
 ```text
 Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m18-codex-note-prettify.md. Implement M18 only
+milestones/m19-frontend-navigation-and-draft-persistence.md. Implement M19 only
 and stop after its acceptance criteria are verified.
 ```

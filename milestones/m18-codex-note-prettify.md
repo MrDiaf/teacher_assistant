@@ -1,6 +1,6 @@
 # M18 — Codex note prettify suggestions
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -81,18 +81,18 @@ unchanged.
 
 ## Completed checklist
 
-- [ ] Define the strict prettify request/response schema and runtime policy.
-- [ ] Add a dedicated prettify service and API route.
-- [ ] Add isolated temporary workspaces containing only the current draft.
-- [ ] Validate selected models, input size, output, and Markdown preservation.
-- [ ] Add the Prettify button and shared model selector to the note editor.
-- [ ] Add a complete accessible before/after or diff preview.
-- [ ] Require explicit owner acceptance before replacing the editor draft.
-- [ ] Keep normal Save/Create confirmation separate.
-- [ ] Add safe timeout, cancellation/failure, and no-change states.
-- [ ] Add prompt-injection, malformed-output, no-auto-save, and privacy tests.
-- [ ] Add frontend interaction/accessibility and E2E tests.
-- [ ] Update runtime policy documentation and `README.md`.
+- [x] Define the strict prettify request/response schema and runtime policy.
+- [x] Add a dedicated prettify service and API route.
+- [x] Add isolated temporary workspaces containing only the current draft.
+- [x] Validate selected models, input size, output, and Markdown preservation.
+- [x] Add the Prettify button and shared model selector to the note editor.
+- [x] Add a complete accessible before/after or diff preview.
+- [x] Require explicit owner acceptance before replacing the editor draft.
+- [x] Keep normal Save/Create confirmation separate.
+- [x] Add safe timeout, cancellation/failure, and no-change states.
+- [x] Add prompt-injection, malformed-output, no-auto-save, and privacy tests.
+- [x] Add frontend interaction/accessibility and E2E tests.
+- [x] Update runtime policy documentation and `README.md`.
 
 ## Acceptance criteria
 

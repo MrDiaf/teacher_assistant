@@ -271,7 +271,7 @@ class AssistantRuntimeError(ApplicationError):
 
     def __init__(
         self,
-        message: str = "The calendar assistant is temporarily unavailable. Try again safely.",
+        message: str = "The private AI runtime is temporarily unavailable. Try again safely.",
         details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message, details)
@@ -282,7 +282,7 @@ class AssistantNotConfiguredError(AssistantRuntimeError):
 
     def __init__(self) -> None:
         super().__init__(
-            "The calendar assistant is not connected. Sign in with ChatGPT on the "
+            "The private AI runtime is not connected. Sign in with ChatGPT on the "
             "Assistant page, or configure the optional API-key fallback."
         )
 
@@ -329,6 +329,27 @@ class InvalidNoteSummaryResponseError(AssistantRuntimeError):
 
     def __init__(self) -> None:
         super().__init__("The summary response was invalid, so no summary was saved. Retry safely.")
+
+
+class NotePrettifyInputTooLargeError(ApplicationError):
+    code = "note_prettify_input_too_large"
+    status_code = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+    def __init__(self, maximum_characters: int) -> None:
+        super().__init__(
+            f"Prettify accepts up to {maximum_characters:,} characters at a time. "
+            "Shorten the draft and try again; the note was not changed."
+        )
+
+
+class InvalidNotePrettifyResponseError(AssistantRuntimeError):
+    code = "invalid_note_prettify_response"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "The prettify suggestion did not preserve the note's required Markdown "
+            "and protected content, so it was rejected. The note was not changed."
+        )
 
 
 class InvalidDiagnosticExplanationError(AssistantRuntimeError):

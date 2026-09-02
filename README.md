@@ -187,6 +187,20 @@ and fenced code blocks. The toolbar provides the common formatting operations,
 Ctrl/Cmd+B and Ctrl/Cmd+I work on the current selection, and **Plain text**
 turns highlighting off without changing the stored source.
 
+**Prettify** sends only the current unsaved note body to the selected model in
+a private, temporary Codex workspace. It corrects only clear spelling,
+capitalization, punctuation, and grammar issues. The backend rejects output
+that changes Markdown structure or protected code, links, URLs, formulas,
+citations, and quoted text. Drafts are limited to 40,000 characters for this
+operation and are never silently truncated.
+
+The complete original and proposed Markdown are shown before anything changes.
+**Keep my version** leaves the draft byte-for-byte unchanged; **Use prettified
+version** replaces only the local editor draft and returns focus to the editor.
+Neither action saves the note. Use **Create note** or **Save changes** separately
+after reviewing and making any further edits. Failure, cancellation, invalid
+output, or closing the dialog never writes the suggestion to the database.
+
 Note cards safely render that same supported Markdown subset. Raw HTML remains
 readable text, embedded content is never created, and unsafe link schemes such
 as `javascript:` and `data:` are not clickable. The original Markdown string
@@ -390,7 +404,8 @@ bodies. Keep Docker logs private and review them before sharing.
 
 Runtime Codex workspaces are private temporary directories containing one of:
 bounded calendar/course context selected for the question, one note body plus
-its explicitly linked slide text, or one sanitized error report. Diagnostic
-workspaces never contain calendars or course files. Tools, network access,
-repository access, source editing, and host filesystem access are disabled;
-each workspace is deleted immediately after the job.
+its explicitly linked slide text, one current editor draft for Prettify, or one
+sanitized error report. Prettify and diagnostic workspaces never contain
+calendars or course files. Tools, network access, repository access, source
+editing, and host filesystem access are disabled; each workspace is deleted
+immediately after the job.

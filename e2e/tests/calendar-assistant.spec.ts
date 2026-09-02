@@ -95,6 +95,22 @@ test("creates and manages a manual course through the UI", async ({
 }) => {
   let summaryGeneration = 0;
   let storedSummary: Record<string, unknown> | null = null;
+  const prettifyRequests: Array<{ body: string; model: string }> = [];
+  await page.route("**/api/v1/notes/prettify", async (route) => {
+    const payload = route.request().postDataJSON() as {
+      body: string;
+      model: string;
+    };
+    prettifyRequests.push(payload);
+    await route.fulfill({
+      json: {
+        proposed_body: payload.body.replace("Serializble", "Serializable"),
+        has_changes: payload.body.includes("Serializble"),
+        message: "Review every proposed change before using this draft.",
+        model: payload.model,
+      },
+    });
+  });
   await page.route("**/api/v1/notes/*/summary", async (route) => {
     await route.fulfill({ json: storedSummary });
   });
@@ -313,6 +329,37 @@ test("creates and manages a manual course through the UI", async ({
   const markdownNote =
     "# Serializable\nAvoid **write skew** and _dirty reads_.";
   await expect(noteBody).toHaveValue(markdownNote);
+  const misspelledMarkdown = markdownNote.replace(
+    "Serializable",
+    "Serializble",
+  );
+  await noteBody.fill(misspelledMarkdown);
+  await noteDialog
+    .getByLabel("Prettify model")
+    .selectOption({ value: "gpt-5.6-terra" });
+  await noteDialog.getByRole("button", { name: "Prettify" }).click();
+  const comparison = noteDialog.getByRole("region", {
+    name: "Prettify comparison",
+  });
+  await expect(comparison.locator("pre").nth(0)).toHaveText(misspelledMarkdown);
+  await expect(comparison.locator("pre").nth(1)).toHaveText(markdownNote);
+  expectNoAccessibilityViolations(
+    (await new AxeBuilder({ page }).include(".note-prettify-preview").analyze())
+      .violations,
+  );
+  await comparison.getByRole("button", { name: "Keep my version" }).click();
+  await expect(noteDialog.getByLabel("Note body")).toHaveValue(
+    misspelledMarkdown,
+  );
+  await noteDialog.getByRole("button", { name: "Prettify" }).click();
+  await comparison
+    .getByRole("button", { name: "Use prettified version" })
+    .click();
+  await expect(noteDialog.getByLabel("Note body")).toHaveValue(markdownNote);
+  expect(prettifyRequests).toEqual([
+    { body: misspelledMarkdown, model: "gpt-5.6-terra" },
+    { body: misspelledMarkdown, model: "gpt-5.6-terra" },
+  ]);
   await noteDialog.getByRole("button", { name: "Add reference" }).click();
   await noteDialog
     .getByLabel("Slide deck 1")

@@ -157,14 +157,14 @@ class CodexSdkAdapter:
                     )
                     if _used_runtime_tool(result):
                         raise AssistantRuntimeError(
-                            "The calendar assistant attempted an unavailable runtime tool. "
-                            "No calendar data changed. Retry safely."
+                            "The private AI runtime attempted an unavailable tool. "
+                            "No application data changed. Retry safely."
                         )
         except AssistantRuntimeError:
             raise
         except TimeoutError as exc:
             raise AssistantRuntimeError(
-                "The calendar assistant timed out. No calendar data changed."
+                "The private AI request timed out. No application data changed."
             ) from exc
         except (CodexError, RuntimeError) as exc:
             raise AssistantRuntimeError() from exc

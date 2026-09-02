@@ -1,7 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Icon } from "../../components/Icon";
 import { useModalDialog } from "../../hooks/useModalDialog";
+import { AiModelSelector } from "../ai/AiModelSelector";
+import { useAiModelSelection } from "../ai/useAiModelSelection";
+import { courseApi } from "./api";
 import { MarkdownNoteEditor } from "./MarkdownNoteEditor";
 import type {
   CourseNote,
@@ -16,6 +19,12 @@ interface EditableReference {
   startSlide: string;
   endSlide: string;
   label: string;
+}
+
+interface PrettifyPreview {
+  original: string;
+  proposed: string;
+  message: string;
 }
 
 let referenceSequence = 0;
@@ -51,8 +60,105 @@ export function NoteDialog({
     note?.slide_references.map(editableReference) ?? [],
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [isPrettifying, setIsPrettifying] = useState(false);
+  const [prettifyPreview, setPrettifyPreview] =
+    useState<PrettifyPreview | null>(null);
+  const [prettifyStatus, setPrettifyStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const dialogRef = useModalDialog(onClose);
+  const prettifyController = useRef<AbortController | null>(null);
+  const {
+    modelList,
+    selectedModel,
+    setSelectedModel,
+    modelError,
+    isModelLoading,
+  } = useAiModelSelection();
+
+  function handleClose() {
+    prettifyController.current?.abort();
+    onClose();
+  }
+
+  const dialogRef = useModalDialog(handleClose);
+
+  useEffect(
+    () => () => {
+      prettifyController.current?.abort();
+    },
+    [],
+  );
+
+  function focusEditor() {
+    window.requestAnimationFrame(() => {
+      document.getElementById("note-body")?.focus();
+    });
+  }
+
+  async function handlePrettify() {
+    if (isPrettifying || !selectedModel) return;
+    const original = body;
+    const controller = new AbortController();
+    prettifyController.current = controller;
+    setError(null);
+    setPrettifyStatus(null);
+    setPrettifyPreview(null);
+    setIsPrettifying(true);
+    try {
+      const suggestion = await courseApi.prettifyNote(
+        original,
+        selectedModel,
+        controller.signal,
+      );
+      if (suggestion.has_changes) {
+        setPrettifyPreview({
+          original,
+          proposed: suggestion.proposed_body,
+          message: suggestion.message,
+        });
+      } else {
+        setPrettifyStatus(suggestion.message);
+        focusEditor();
+      }
+    } catch (prettifyError) {
+      if (
+        prettifyError instanceof DOMException &&
+        prettifyError.name === "AbortError"
+      ) {
+        setPrettifyStatus("Prettify cancelled. Your draft is unchanged.");
+      } else {
+        setError(
+          prettifyError instanceof Error
+            ? prettifyError.message
+            : "The note could not be prettified. Your draft is unchanged.",
+        );
+      }
+    } finally {
+      if (prettifyController.current === controller) {
+        prettifyController.current = null;
+      }
+      setIsPrettifying(false);
+    }
+  }
+
+  function cancelPrettify() {
+    prettifyController.current?.abort();
+  }
+
+  function keepOriginal() {
+    setPrettifyPreview(null);
+    setPrettifyStatus("Your original draft is unchanged.");
+    focusEditor();
+  }
+
+  function usePrettifiedVersion() {
+    if (!prettifyPreview) return;
+    setBody(prettifyPreview.proposed);
+    setPrettifyPreview(null);
+    setPrettifyStatus(
+      "The prettified text is now in your unsaved draft. Save the note when ready.",
+    );
+    focusEditor();
+  }
 
   function updateReference(
     localId: string,
@@ -152,7 +258,7 @@ export function NoteDialog({
           <button
             aria-label="Close note dialog"
             className="icon-button"
-            onClick={onClose}
+            onClick={handleClose}
             type="button"
           >
             <Icon name="x" size={19} />
@@ -172,15 +278,102 @@ export function NoteDialog({
             />
           </label>
 
-          <div className="field">
-            <label htmlFor="note-body">Note body</label>
-            <MarkdownNoteEditor onChange={setBody} value={body} />
-          </div>
-          <p className="note-format-hint">
-            Use the toolbar or type Markdown directly. Syntax characters remain
-            visible and are stored exactly as written. Raw HTML is displayed as
-            text, never executed.
-          </p>
+          {!prettifyPreview && (
+            <div className="field">
+              <label htmlFor="note-body">Note body</label>
+              <MarkdownNoteEditor
+                disabled={isPrettifying}
+                onChange={setBody}
+                value={body}
+              />
+            </div>
+          )}
+          {!prettifyPreview && (
+            <p className="note-format-hint">
+              Use the toolbar or type Markdown directly. Syntax characters
+              remain visible and are stored exactly as written. Raw HTML is
+              displayed as text, never executed.
+            </p>
+          )}
+
+          {prettifyPreview ? (
+            <section
+              aria-label="Prettify comparison"
+              className="note-prettify-preview"
+            >
+              <header>
+                <div>
+                  <p className="eyebrow">Suggestion only</p>
+                  <h3>Review every change</h3>
+                </div>
+                <p>{prettifyPreview.message}</p>
+              </header>
+              <div className="note-prettify-columns">
+                <section aria-labelledby="prettify-before-title">
+                  <h4 id="prettify-before-title">Your version</h4>
+                  <pre tabIndex={0}>{prettifyPreview.original}</pre>
+                </section>
+                <section aria-labelledby="prettify-after-title">
+                  <h4 id="prettify-after-title">Prettified version</h4>
+                  <pre tabIndex={0}>{prettifyPreview.proposed}</pre>
+                </section>
+              </div>
+              <div className="note-prettify-actions">
+                <button
+                  className="quiet-button"
+                  onClick={keepOriginal}
+                  type="button"
+                >
+                  Keep my version
+                </button>
+                <button
+                  className="secondary-button"
+                  onClick={usePrettifiedVersion}
+                  type="button"
+                >
+                  Use prettified version
+                </button>
+              </div>
+            </section>
+          ) : (
+            <section className="note-prettify-controls">
+              <div>
+                <AiModelSelector
+                  disabled={isPrettifying || isSaving}
+                  label="Prettify model"
+                  modelList={modelList}
+                  onChange={setSelectedModel}
+                  value={selectedModel}
+                />
+                {modelError && <p className="form-error">{modelError}</p>}
+              </div>
+              <button
+                className="quiet-button note-prettify-button"
+                disabled={isSaving || isModelLoading || Boolean(modelError)}
+                onClick={isPrettifying ? cancelPrettify : handlePrettify}
+                type="button"
+              >
+                <Icon name={isPrettifying ? "x" : "assistant"} size={14} />
+                {isPrettifying ? "Cancel prettify" : "Prettify"}
+              </button>
+              <p>
+                Sends only this current draft to the configured private Codex
+                runtime. You review the suggestion, and nothing is saved
+                automatically. Maximum 40,000 characters.
+              </p>
+            </section>
+          )}
+
+          {isPrettifying && (
+            <p className="note-prettify-working" role="status">
+              Checking the draft for clear corrections…
+            </p>
+          )}
+          {prettifyStatus && (
+            <p className="note-prettify-status" role="status">
+              {prettifyStatus}
+            </p>
+          )}
 
           <section
             aria-labelledby="slide-references-title"
@@ -196,7 +389,9 @@ export function NoteDialog({
               </div>
               <button
                 className="quiet-button"
-                disabled={slideSources.length === 0 || isSaving}
+                disabled={
+                  slideSources.length === 0 || isSaving || isPrettifying
+                }
                 onClick={() =>
                   setReferences((current) => [...current, editableReference()])
                 }
@@ -220,6 +415,7 @@ export function NoteDialog({
                   <span>Slide deck</span>
                   <select
                     aria-label={`Slide deck ${index + 1}`}
+                    disabled={isPrettifying}
                     onChange={(event) =>
                       updateReference(reference.localId, {
                         sourceId: event.target.value,
@@ -240,6 +436,7 @@ export function NoteDialog({
                   <span>Start slide</span>
                   <input
                     aria-label={`Start slide ${index + 1}`}
+                    disabled={isPrettifying}
                     min={1}
                     onChange={(event) =>
                       updateReference(reference.localId, {
@@ -255,6 +452,7 @@ export function NoteDialog({
                   <span>End slide</span>
                   <input
                     aria-label={`End slide ${index + 1}`}
+                    disabled={isPrettifying}
                     min={1}
                     onChange={(event) =>
                       updateReference(reference.localId, {
@@ -270,6 +468,7 @@ export function NoteDialog({
                   <span>Label</span>
                   <input
                     aria-label={`Reference label ${index + 1}`}
+                    disabled={isPrettifying}
                     maxLength={240}
                     onChange={(event) =>
                       updateReference(reference.localId, {
@@ -283,7 +482,7 @@ export function NoteDialog({
                 <button
                   aria-label={`Remove reference ${index + 1}`}
                   className="note-reference-remove"
-                  disabled={isSaving}
+                  disabled={isSaving || isPrettifying}
                   onClick={() =>
                     setReferences((current) =>
                       current.filter(
@@ -310,15 +509,15 @@ export function NoteDialog({
             <div>
               <button
                 className="quiet-button"
-                disabled={isSaving}
-                onClick={onClose}
+                disabled={isSaving || isPrettifying}
+                onClick={handleClose}
                 type="button"
               >
                 Cancel
               </button>
               <button
                 className="primary-button"
-                disabled={isSaving}
+                disabled={isSaving || isPrettifying || Boolean(prettifyPreview)}
                 type="submit"
               >
                 {isSaving ? "Saving…" : note ? "Save changes" : "Create note"}

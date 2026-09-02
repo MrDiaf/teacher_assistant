@@ -5,6 +5,7 @@ import type {
   CourseNote,
   CourseSource,
   NoteMutation,
+  NotePrettifySuggestion,
   NoteSummary,
 } from "./types";
 import type { CalendarEvent, CalendarModel } from "../calendar/types";
@@ -239,6 +240,14 @@ export const courseApi = {
 
   deleteNote(noteId: string) {
     return request<void>(`/notes/${noteId}`, { method: "DELETE" });
+  },
+
+  prettifyNote(body: string, model: string, signal?: AbortSignal) {
+    return request<NotePrettifySuggestion>("/notes/prettify", {
+      method: "POST",
+      body: JSON.stringify({ body, model }),
+      signal,
+    });
   },
 
   getNoteSummary(noteId: string, signal?: AbortSignal) {

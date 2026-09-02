@@ -26,6 +26,7 @@ from app.database.session import session_factory
 from app.diagnostics.redaction import redact_text
 from app.diagnostics.routes import router as diagnostic_router
 from app.diagnostics.service import DiagnosticService
+from app.notes.prettify_routes import router as note_prettify_router
 from app.notes.routes import router as note_router
 from app.notes.summary_routes import router as note_summary_router
 
@@ -58,6 +59,7 @@ app.include_router(
 )
 app.include_router(course_source_router, prefix="/api/v1", tags=["course-materials"])
 app.include_router(note_router, prefix="/api/v1", tags=["course-notes"])
+app.include_router(note_prettify_router, prefix="/api/v1", tags=["course-note-prettify"])
 app.include_router(
     note_summary_router,
     prefix="/api/v1",

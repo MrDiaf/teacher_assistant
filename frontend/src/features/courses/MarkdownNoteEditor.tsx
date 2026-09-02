@@ -144,6 +144,7 @@ export function highlightMarkdownSource(source: string): ReactNode[] {
 }
 
 interface MarkdownNoteEditorProps {
+  disabled?: boolean;
   id?: string;
   maxLength?: number;
   onChange: (value: string) => void;
@@ -151,6 +152,7 @@ interface MarkdownNoteEditorProps {
 }
 
 export function MarkdownNoteEditor({
+  disabled = false,
   id = "note-body",
   maxLength = DEFAULT_MAX_LENGTH,
   onChange,
@@ -290,6 +292,7 @@ export function MarkdownNoteEditor({
       >
         <button
           aria-label="Bold (Ctrl or Command+B)"
+          disabled={disabled}
           onClick={() => wrapSelection("**", "bold text")}
           onMouseDown={(event) => event.preventDefault()}
           title="Bold (Ctrl/Cmd+B)"
@@ -299,6 +302,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Italic (Ctrl or Command+I)"
+          disabled={disabled}
           onClick={() => wrapSelection("_", "italic text")}
           onMouseDown={(event) => event.preventDefault()}
           title="Italic (Ctrl/Cmd+I)"
@@ -308,6 +312,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Heading"
+          disabled={disabled}
           onClick={() => prefixSelectedLines(() => "# ")}
           onMouseDown={(event) => event.preventDefault()}
           title="Heading"
@@ -317,6 +322,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Bulleted list"
+          disabled={disabled}
           onClick={() => prefixSelectedLines(() => "- ")}
           onMouseDown={(event) => event.preventDefault()}
           title="Bulleted list"
@@ -326,6 +332,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Numbered list"
+          disabled={disabled}
           onClick={() => prefixSelectedLines((index) => `${index + 1}. `)}
           onMouseDown={(event) => event.preventDefault()}
           title="Numbered list"
@@ -335,6 +342,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Blockquote"
+          disabled={disabled}
           onClick={() => prefixSelectedLines(() => "> ")}
           onMouseDown={(event) => event.preventDefault()}
           title="Blockquote"
@@ -344,6 +352,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Link"
+          disabled={disabled}
           onClick={insertLink}
           onMouseDown={(event) => event.preventDefault()}
           title="Link"
@@ -353,6 +362,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Inline code"
+          disabled={disabled}
           onClick={() => wrapSelection("`", "code")}
           onMouseDown={(event) => event.preventDefault()}
           title="Inline code"
@@ -362,6 +372,7 @@ export function MarkdownNoteEditor({
         </button>
         <button
           aria-label="Code block"
+          disabled={disabled}
           onClick={insertCodeBlock}
           onMouseDown={(event) => event.preventDefault()}
           title="Code block"
@@ -378,6 +389,7 @@ export function MarkdownNoteEditor({
           }
           aria-pressed={plainText}
           className="markdown-editor-fallback"
+          disabled={disabled}
           onClick={() => setPlainText((current) => !current)}
           type="button"
         >
@@ -400,6 +412,7 @@ export function MarkdownNoteEditor({
           aria-describedby={`${id}-status`}
           aria-label="Note body"
           className="markdown-editor-input"
+          disabled={disabled}
           id={id}
           maxLength={maxLength}
           onChange={(event) => {

@@ -80,6 +80,13 @@ export interface NoteMutation {
   slide_references: SlideReferenceMutation[];
 }
 
+export interface NotePrettifySuggestion {
+  proposed_body: string;
+  has_changes: boolean;
+  message: string;
+  model: string;
+}
+
 export type NoteSummaryStatus =
   | "queued"
   | "running"
