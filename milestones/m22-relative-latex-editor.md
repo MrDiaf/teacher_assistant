@@ -1,15 +1,15 @@
-# M24 — Relative LaTeX file tree and source editor
+# M22 — Relative LaTeX file tree and source editor
 
 - [ ] This milestone
 
 ## Outcome
 
-Turn an M23 document project into an Overleaf-inspired source workspace with a
+Turn an M21 document project into an Overleaf-inspired source workspace with a
 relative file tree and an established LaTeX-aware code editor. Source files are
 saved to the project's durable `source/` folder. This milestone still does not
 compile LaTeX or produce a PDF.
 
-M23 must be complete first. Planning this milestone does not make it active.
+M21 must be complete first. Planning this milestone does not make it active.
 
 ## Owner workflow
 
@@ -25,7 +25,7 @@ Owner opens Documents
 ```
 
 The desktop layout should reserve a left pane for the file tree and a large
-center pane for source. M25 will add the right-side PDF pane. On narrower
+center pane for source. M23 will add the right-side PDF pane. On narrower
 screens, use accessible pane tabs or toggles instead of forcing an unusable
 three-column layout.
 
@@ -107,7 +107,7 @@ text file carries a revision, content hash, or equivalent concurrency token.
 - Do not put complete LaTeX projects, images, or authoritative file contents in
   `localStorage`.
 
-The M23 source ZIP must include the complete current nested tree after M24, but
+The M21 source ZIP must include the complete current nested tree after M22, but
 must still exclude build artifacts and internal metadata.
 
 ## Milestone checklist
@@ -173,5 +173,5 @@ README.md
 handoff.md
 ```
 
-Do not begin M25 until source persistence, relative paths, conflict protection,
+Do not begin M23 until source persistence, relative paths, conflict protection,
 and recovery are verified.

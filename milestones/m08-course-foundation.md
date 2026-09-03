@@ -56,5 +56,5 @@ automatic LMS import, assignments, grades, or multi-user course roles here.
   `CourseDialog.tsx`, and `DeleteCourseDialog.tsx`
 - Tests: `backend/tests/test_course_api.py` and Courses frontend tests
 
-Automatic Canvas/LMS import remains future scope and must receive its own
-owner-defined milestone.
+Automatic LMS import remains out of scope and may only be reconsidered in a
+future owner-defined milestone.

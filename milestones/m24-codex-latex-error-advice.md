@@ -1,15 +1,15 @@
-# M26 — Codex advice for LaTeX compilation errors
+# M24 — Codex advice for LaTeX compilation errors
 
 - [ ] This milestone
 
 ## Outcome
 
-After a failed or timed-out M25 compilation, let the owner ask Codex for a
+After a failed or timed-out M23 compilation, let the owner ask Codex for a
 bounded explanation and practical advice. Codex receives only the relevant
 sanitized compilation context and never edits a document, executes a compiler,
 or claims that a fix was applied.
 
-M25 must be complete first. Planning this milestone does not make it active.
+M23 must be complete first. Planning this milestone does not make it active.
 
 ## Owner workflow
 
@@ -80,7 +80,7 @@ If safe relevant context cannot be selected, return a clear explanation that
 advice is unavailable rather than broadening access. The Codex runtime never
 opens files independently; required context is embedded by backend code.
 
-The compilation timeout from M25 controls only TeX. Codex advice continues to
+The compilation timeout from M23 controls only TeX. Codex advice continues to
 use the separate configured AI timeout and may not raise or reuse the compiler
 deadline.
 
@@ -202,6 +202,6 @@ backend/app/codex_runtime/README.md
 handoff.md
 ```
 
-M26 completes only the approved Documents/LaTeX roadmap. Do not infer a later
+M24 completes only the approved Documents/LaTeX roadmap. Do not infer a later
 automatic-fix, collaboration, history, course-linking, or additional compiler
 milestone from its limitations.

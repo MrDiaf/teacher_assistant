@@ -32,8 +32,8 @@ The currently implemented visible application navigation should contain:
 - Assistant
 - Settings
 
-The approved future milestone sequence adds Inbox after Courses in M21 and
-Documents after Inbox in M23. Do not show either module before its milestone is
+The approved future milestone sequence adds Inbox after Courses in M20 and
+Documents after Inbox in M21. Do not show either module before its milestone is
 explicitly selected, implemented, and verified.
 
 Calendar, Courses, and Assistant have real functionality. Dashboard, Study
@@ -413,7 +413,7 @@ A typo or unclear request must never result in broad deletion.
 
 # 13. Documents and LaTeX Safety
 
-M23 through M26 are approved planning scope for a future private Documents
+M21 through M24 are approved planning scope for a future private Documents
 module. Planning does not activate those milestones, and no Documents behavior
 may be claimed before its selected milestone is implemented and tested.
 

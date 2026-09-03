@@ -1,13 +1,18 @@
-# M22 — Forwarded-mail Inbox
+# M20 — Forwarded-mail Inbox
 
 - [ ] This milestone
 
 ## Outcome
 
-Extend the M21 Inbox with inbound email that the owner deliberately forwards to
-a dedicated mailbox. Teacher Assistant polls that mailbox over read-only IMAP,
-stores a private local copy, and displays it beside Canvas announcements with
-clear source labels.
+Add an Inbox module for email that the owner deliberately forwards to a
+dedicated mailbox. Teacher Assistant polls that mailbox over read-only IMAP,
+stores a private local copy, and displays it with clear Mail provenance. This
+milestone also turns Settings into a functional integration page for the mail
+connection and establishes the private credential boundary it requires.
+
+M19 must be complete before this milestone starts. M20 is self-contained and
+does not depend on an LMS connection. Planning this milestone does not make it
+active.
 
 Teacher Assistant does not create an email address or configure DNS/MX records.
 The owner must provision a dedicated mailbox with an email provider and create
@@ -23,7 +28,7 @@ scope.
 
 ```text
 Owner creates a dedicated mailbox with an IMAP-capable provider
-    -> forwards selected school/Canvas messages to that address
+    -> forwards selected school or course messages to that address
     -> opens Settings > Mail inbox
     -> enters IMAP host, port, TLS mode, mailbox name, username, and app password
     -> backend tests the TLS/auth/read-only mailbox connection
@@ -37,8 +42,20 @@ password, or provider OAuth registration.
 
 ## Mail connection and secret boundary
 
-- Reuse M20's integration connection and private credential store. Support one
-  dedicated inbound mailbox for the single owner.
+- Add a generic backend-owned integration connection and credential store under
+  a configurable private root mounted as a persistent Docker volume. Support
+  one dedicated inbound mailbox for the single owner.
+- Store secret payloads in opaque files with private directory/file permissions
+  and atomic replacement. Database rows retain only generated credential
+  references and safe connection metadata; the browser never supplies a path.
+- Exclude renewable mail credentials from Git, coordinated backups, browser
+  storage, logs, diagnostics, database responses, and Codex workspaces. A clean
+  restore requires reconnecting the mailbox.
+- Treat missing, corrupt, or incorrectly permissioned credential files as
+  reconnect-required without leaking their content or crashing the app.
+- Keep mail credentials separate from the Codex authentication directory and
+  lifecycle. Disconnect removes the local credential without deleting imported
+  Inbox messages or attachments.
 - Require implicit TLS or STARTTLS with hostname/certificate verification;
   reject plaintext login, invalid certificates, URL-embedded credentials, and
   silent TLS downgrade.
@@ -62,7 +79,7 @@ password, or provider OAuth registration.
 - Parse RFC-style headers and MIME with a maintained bounded parser. Preserve
   safe normalized `From`, `Reply-To`, `To`, subject, source date, Message-ID,
   thread references, and ingestion timestamps. Do not retain the raw wire
-  message after the accepted body and attachments are persisted in M22.
+  message after the accepted body and attachments are persisted in M20.
 - Use mailbox identity + UIDVALIDITY + UID as the authoritative ingestion key.
   Treat Message-ID and content hashes as secondary duplicate signals, not as
   trusted unique values that may silently discard different mail.
@@ -92,15 +109,17 @@ password, or provider OAuth registration.
   Enforce per-message, per-attachment, part-count, and total-storage limits.
 - Serve attachments through the existing single-owner API boundary only by
   opaque database ID, with safe content disposition, `nosniff`, bounded
-  streaming, and no active inline rendering in M22. Show when an attachment was
+  streaming, and no active inline rendering in M20. Show when an attachment was
   omitted.
 - Mail content and attachments do not become Course materials, calendar events,
   or Assistant/Codex context automatically.
 
 ## Inbox behavior and local lifecycle
 
-- Extend the M21 Inbox with **All**, **Canvas**, and **Mail** source filters while
-  retaining local unread/read state, source timestamps, and safe search.
+- Add **Inbox** to the existing navigation after Courses and extend M19's
+  versioned module validation without invalidating unrelated saved state.
+- Provide safe search plus local unread/read and archive state, source
+  timestamps, and a clear Mail source label.
 - Provide an accessible list/detail experience with sender, recipient, subject,
   received time, attachment count, source label, and obvious forwarded/unverified
   provenance.
@@ -116,16 +135,21 @@ password, or provider OAuth registration.
 
 ## Completed checklist
 
-- [ ] Define mail connection, message, recipient/header, attachment, sync cursor,
-  quarantine/failure, and local state schemas.
+- [ ] Define integration connection, credential-reference, mail message,
+  recipient/header, attachment, sync cursor, quarantine/failure, and local state
+  schemas.
+- [ ] Add the private integration credential root and Docker volume with atomic
+  secret read/write/delete behavior and strict permissions.
 - [ ] Add the private mail-storage root and coordinated backup/restore support.
 - [ ] Add TLS-only, read-only IMAP connection testing and credential lifecycle.
+- [ ] Make Settings a real page with connect, test, reconnect, disconnect, and
+  sanitized mailbox-health states.
 - [ ] Add UIDVALIDITY/UID cursoring, serialized polling, retries, and manual
   checking.
 - [ ] Add bounded RFC/MIME parsing and conservative deduplication.
 - [ ] Add safe plain-text/HTML body rendering with all remote resources blocked.
 - [ ] Add bounded attachment storage and safe ID-based downloads.
-- [ ] Extend Inbox list/detail/search/filter/read/archive states for Mail.
+- [ ] Add Inbox navigation and accessible list/detail/search/read/archive states.
 - [ ] Add explicit one-message local deletion with recoverable file cleanup.
 - [ ] Keep remote mutation, outbound email, auto-course/calendar import, and
   automatic Codex context out of scope.
@@ -136,6 +160,10 @@ password, or provider OAuth registration.
 
 ## Acceptance criteria
 
+- The owner can connect, test, reconnect, and disconnect one dedicated mailbox
+  from Settings without the password ever returning to browser code.
+- Missing, corrupt, or removed credentials produce a clear reconnect-required
+  state without deleting previously imported Inbox content.
 - After the owner forwards a test message to the configured dedicated mailbox,
   it appears once in Inbox with accurate Mail provenance and local read state.
 - Repeated checks and service restarts do not duplicate already imported mail.
@@ -154,13 +182,14 @@ password, or provider OAuth registration.
   and never affects the remote mailbox or another Inbox item.
 - Backup/restore preserves mail metadata/body and attachment files while clean
   restore requires the renewable mailbox credential to be entered again.
-- Existing Canvas announcements, Calendar, Courses, Assistant, navigation
-  persistence, Docker, and accessibility behavior remain intact.
+- Existing Calendar, Courses, Assistant, navigation persistence, Docker, and
+  accessibility behavior remain intact.
 
 ## Expected implementation areas
 
 ```text
 backend/alembic/versions/<revision>_forwarded_mail_inbox.py
+backend/app/integrations/{credentials,models,repository,routes,schemas,service}.py
 backend/app/integrations/mail/{client,schemas,sync}.py
 backend/app/inbox/{models,repository,routes,schemas,service}.py
 backend/app/inbox/mail_storage.py
@@ -169,7 +198,9 @@ backend/app/core/config.py
 backend/app/main.py
 backend tests with local IMAP/MIME fixtures
 frontend/src/features/inbox/{InboxPage,MailDetail,api,types}.tsx
-frontend/src/features/settings/MailConnection.tsx
+frontend/src/features/settings/{SettingsPage,MailConnection}.tsx
+frontend/src/components/AppShell.tsx
+frontend/src/App.tsx
 frontend/src/styles.css
 frontend tests and e2e/tests/calendar-assistant.spec.ts
 compose.yml

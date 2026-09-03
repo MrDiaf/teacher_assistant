@@ -1,4 +1,4 @@
-# M25 — Isolated LaTeX compilation and PDF preview
+# M23 — Isolated LaTeX compilation and PDF preview
 
 - [ ] This milestone
 
@@ -9,7 +9,7 @@ beside the source editor, and let the owner download the latest successful PDF
 from either the editor or project overview. Compilation runs in a separately
 isolated worker and has a per-project owner-adjustable timeout.
 
-M24 must be complete first. Planning this milestone does not make it active.
+M22 must be complete first. Planning this milestone does not make it active.
 
 ## Compiler decision
 
@@ -113,7 +113,7 @@ implying that it came from the failed current source.
 
 ## PDF experience and downloads
 
-Extend the M24 editor to a responsive file-tree/source/PDF layout. Reuse M15's
+Extend the M22 editor to a responsive file-tree/source/PDF layout. Reuse M15's
 safe source-ID PDF behaviors where appropriate:
 
 - an accessible in-app PDF preview with loading, empty, stale, and failure
@@ -210,5 +210,5 @@ docs/data-durability.md
 handoff.md
 ```
 
-Do not begin M26 until isolation, timeout enforcement, revision safety, and PDF
+Do not begin M24 until isolation, timeout enforcement, revision safety, and PDF
 integrity are verified with the real compiler container.

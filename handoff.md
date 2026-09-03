@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-02
+Updated: 2026-09-03
 
 ## Start here
 
@@ -24,16 +24,17 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `a6e49a6 prettfie is done M18`
+- Git `HEAD`: `1d5a374 milestone 19 is complete`
 - M1 through M19 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M20 through M26 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains the completed M19 implementation
-  and its documentation/test updates. No M20–M26 application code or behavior
-  was implemented. Preserve the work because no commit was requested.
+- M20 through M24 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains only the planning-document changes
+  that retire the Canvas roadmap and renumber the remaining milestones. No
+  M20–M24 application code or behavior was implemented. Preserve the work
+  because no commit was requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
   `teacher_assistant_codex-auth-data`. The private `.env` and ignored
@@ -71,37 +72,42 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
 - Navigation convenience state restores the active module, main/per-course
   Calendar view and anchor, and selected course/tab without caching API data.
 - Dashboard and Study Plan remain placeholder modules. Settings also remains a
-  placeholder until the planned M20 integration work is explicitly selected
-  and implemented; Inbox does not exist until M21, and Documents does not exist
-  until M23.
+  placeholder until the planned M20 inbound-mail work is explicitly selected
+  and implemented; Inbox does not exist until M20, and Documents does not exist
+  until M21.
 
 The permanent safety and architecture rules are in `AGENTS.md` and
 `instructions.md`. Do not duplicate or weaken them in a new milestone.
 
 ## Most recent planning update
 
-The owner approved a future Overleaf-inspired Documents/LaTeX roadmap. The
-roadmap is documentation only and follows M20–M22 after completed M19:
+The owner retired the unimplemented Canvas connection and announcement roadmap
+because the required external resources are unavailable. The former M20 and M21
+Canvas milestone files were removed. Forwarded-mail Inbox moved from M22 to M20
+and now owns the private credential-store setup it previously depended on.
 
-- M23 adds durable UUID-based document projects, colored many-to-many tags,
+The approved Overleaf-inspired Documents/LaTeX roadmap moved forward by two
+positions and remains documentation only after completed M19 and planned M20:
+
+- M21 adds durable UUID-based document projects, colored many-to-many tags,
   project search/actions, raw `.tex`/source-ZIP downloads, and coordinated
   preflight/backup/restore before creating private document data.
-- M24 adds a CodeMirror-based root-relative LaTeX file tree and source editor,
+- M22 adds a CodeMirror-based root-relative LaTeX file tree and source editor,
   bounded verified assets, server-backed autosave, stale-write protection, and
   a selected main `.tex` file.
-- M25 adds pdfLaTeX through a pinned TeX Live/latexmk toolchain in a separate
+- M23 adds pdfLaTeX through a pinned TeX Live/latexmk toolchain in a separate
   offline non-root compiler worker, disposable source snapshots, resource and
   process limits, a per-project 10–600-second timeout with a hard ceiling,
   revision-aware logs, validated PDF preview, and overview downloads.
-- M26 adds read-only Codex advice for failed/timed-out compilations using only
+- M24 adds read-only Codex advice for failed/timed-out compilations using only
   bounded sanitized logs and relevant source excerpts. Codex cannot edit,
   compile, install, delete, or claim a fix was applied.
 
 The detailed scope, boundaries, checklists, acceptance criteria, and expected
-implementation areas are in `milestones/m23-durable-documents-foundation.md`
-through `milestones/m26-codex-latex-error-advice.md`. All four milestones remain
-unchecked. No source, migration, dependency, Compose, environment, README, or
-runtime behavior was changed by this planning update.
+implementation areas are in `milestones/m21-durable-documents-foundation.md`
+through `milestones/m24-codex-latex-error-advice.md`. Those four milestones and
+M20 remain unchecked. No application source, migration, dependency, Compose,
+environment, README, or runtime behavior was changed by this planning update.
 
 ## Most recent completed work
 
@@ -285,20 +291,16 @@ from Assistant or the optional configured API-key fallback.
   note save.
 - [x] M19 — Persist selected pages/views and per-conversation Assistant drafts
   in validated browser storage without caching authoritative backend data.
-- [ ] M20 — Add private integration credential storage and connect one Canvas
-  installation through institution-approved OAuth or a manual API-token
-  fallback, without importing course content yet.
-- [ ] M21 — Add Inbox and synchronize read-only Canvas announcements through
-  the connected API or a per-course announcement feed.
-- [ ] M22 — Ingest owner-forwarded email from a dedicated TLS/read-only IMAP
-  mailbox into Inbox, with safe MIME rendering and private attachments.
-- [ ] M23 — Add durable private LaTeX projects, searchable/tagged overview,
+- [ ] M20 — Add Inbox and ingest owner-forwarded email from a dedicated
+  TLS/read-only IMAP mailbox, with private credential storage, safe MIME
+  rendering, and private attachments.
+- [ ] M21 — Add durable private LaTeX projects, searchable/tagged overview,
   source downloads, and coordinated document backup/restore.
-- [ ] M24 — Add the root-relative multi-file LaTeX tree and CodeMirror source
+- [ ] M22 — Add the root-relative multi-file LaTeX tree and CodeMirror source
   editor with safe assets, autosave, and stale-write protection.
-- [ ] M25 — Add isolated TeX Live/latexmk compilation, adjustable timeouts,
+- [ ] M23 — Add isolated TeX Live/latexmk compilation, adjustable timeouts,
   bounded logs, validated PDF preview, and overview PDF downloads.
-- [ ] M26 — Add bounded read-only Codex advice for failed and timed-out LaTeX
+- [ ] M24 — Add bounded read-only Codex advice for failed and timed-out LaTeX
   compilations without automatic source changes.
 
 The full scope, boundaries, checklist, acceptance criteria, and expected files
@@ -307,7 +309,7 @@ advance them.
 
 ## Known limitations and cautions
 
-- M20–M26 are plans only and none of their application behavior exists yet.
+- M20–M24 are plans only and none of their application behavior exists yet.
 - M19 convenience state is browser-profile/origin specific. Clearing site data,
   using another browser/device, or private browsing removes preferences and
   unsent drafts but does not delete backend records. Cross-device sync and
@@ -315,13 +317,9 @@ advance them.
 - Documents intentionally has no sharing, collaboration, public links, visual
   editor, version history, arbitrary build commands, shell escape, runtime
   package downloads, automatic Codex fixes, or additional compiler engines in
-  M23–M26. The initial M25 compiler is pdfLaTeX through TeX Live/latexmk.
-- Canvas OAuth requires an institution-enabled developer key; a self-hosted
-  clone cannot manufacture one. M20 therefore includes a manual Canvas API-token
-  fallback, and M21/M22 include feed/email alternatives. Password/cookie-based
-  Canvas scraping is intentionally excluded.
+  M21–M24. The initial M23 compiler is pdfLaTeX through TeX Live/latexmk.
 - Teacher Assistant cannot create a receiving email address or forwarding rule.
-  M22 requires the owner to provision a dedicated IMAP mailbox and configure
+  M20 requires the owner to provision a dedicated IMAP mailbox and configure
   forwarding with the external mail provider.
 - Read-only preflight found another populated legacy database-volume candidate
   on this Docker host. It was intentionally left untouched. Never merge or
@@ -344,20 +342,20 @@ advance them.
   `calendars.source_type`, and `events.status`.
 - Automatic LMS course creation/import, assignments, grades, people, files,
   submissions, Study Plan, outbound mail, and provider-specific mail OAuth remain
-  out of scope. M20–M22 authorize only the connection and read-only Inbox scope
-  in their milestone files.
+  out of scope. M20 authorizes only the dedicated inbound-mail connection and
+  local Inbox scope defined in its milestone file.
 
 ## Next step
 
-M19 is complete, and the M23–M26 Documents roadmap remains planning only. Stop
-before M20. The owner must explicitly select M20 before integration-secret and
-Canvas-connection implementation begins. Do not skip to M23 or reorder the
-roadmap without another explicit owner decision.
+M19 is complete, and the M21–M24 Documents roadmap remains planning only. Stop
+before M20. The owner must explicitly select M20 before forwarded-mail Inbox
+implementation begins. Do not skip to M21 or reorder the roadmap without
+another explicit owner decision.
 
 Recommended next prompt:
 
 ```text
 Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m20-integration-secrets-and-canvas-connection.md. Implement M20 only
+milestones/m20-forwarded-mail-inbox.md. Implement M20 only
 and stop after its acceptance criteria are verified.
 ```

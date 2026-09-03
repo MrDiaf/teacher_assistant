@@ -1,4 +1,4 @@
-# M23 — Durable Documents foundation and project overview
+# M21 — Durable Documents foundation and project overview
 
 - [ ] This milestone
 
@@ -8,7 +8,7 @@ Add a new **Documents** module for private LaTeX projects, with searchable and
 tagged project management plus recoverable source storage. This milestone does
 not add the multi-file editor, compilation, PDF preview, or Codex advice.
 
-M19 through M22 must be complete first unless the owner explicitly changes the
+M19 and M20 must be complete first unless the owner explicitly changes the
 planned milestone order. Planning this milestone does not make it active.
 
 ## Product boundary
@@ -65,8 +65,8 @@ data/document_projects/
 ```
 
 `source/` contains owner-authored project files. `build/` is reserved for
-verified derived artifacts introduced in M25. A new project starts with a
-small valid `main.tex`, but M23 manages only that initial root file.
+verified derived artifacts introduced in M23. A new project starts with a
+small valid `main.tex`, but M21 manages only that initial root file.
 
 The storage service must:
 
@@ -161,7 +161,7 @@ silently attach another clone's document directory or delete legacy data.
   exact source hashes.
 - Moving or renaming the stopped installation retains document records and
   source files under the stable installation identity.
-- Existing Calendar, Courses, Assistant, Inbox planning, read-only rules, and
+- Existing Calendar, Courses, Assistant, Inbox behavior, read-only rules, and
   M19 state validation remain intact.
 - Relevant tests, Docker startup, migrations, lint, production build, E2E,
   relocation checks, and `git diff --check` pass.
@@ -194,5 +194,5 @@ docs/data-durability.md
 handoff.md
 ```
 
-Do not begin M24 until this milestone's durability and recovery acceptance
+Do not begin M22 until this milestone's durability and recovery acceptance
 criteria are verified.

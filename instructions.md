@@ -54,10 +54,10 @@ The currently implemented visible navigation is:
 
 Calendar, Courses, and Assistant are implemented. Dashboard, Study Plan, and
 Settings may remain polished placeholders until the owner defines a milestone
-for them. M20 is planned to make Settings functional for private integrations,
-M21 is planned to add Inbox as a separate module after Courses, and M23 is
-planned to add Documents after Inbox. Do not show or claim any of those
-behaviors before its milestone is implemented.
+for them. M20 is planned to make Settings functional for a private inbound-mail
+connection and add Inbox as a separate module after Courses. M21 is planned to
+add Documents after Inbox. Do not show or claim any of those behaviors before
+its milestone is implemented.
 
 Never add registration, multiple users, organizations, teams, roles, tenants,
 shared accounts, or public profiles.
@@ -92,7 +92,7 @@ frontend calendar, courses, assistant, settings, inbox, and documents features
 calendar, course, note, source, summary, assistant, integration, inbox, and document API routes
 application services
 database repositories and models
-external Canvas, feed, and mail adapters
+external mail adapters
 private integration credential, course-content, and document-source storage
 LaTeX compilation queue and adapter
 isolated LaTeX compiler worker
@@ -175,43 +175,36 @@ repository access.
 The runtime Assistant may suggest application improvements but may not edit
 source code or claim an improvement was implemented.
 
-## External integrations and Inbox safety
+## External mail and Inbox safety
 
-Canvas and inbound mail are planned in M20–M22. External connection clients,
-sync services, repositories, routes, schedulers, credential storage, content
-storage, and React views must remain separate from calendar/course/Assistant
-business logic.
+Inbound mail is planned in M20. Mail connection clients, sync services,
+repositories, routes, schedulers, credential storage, attachment storage, and
+React views must remain separate from calendar/course/Assistant business logic.
 
-Passwords, OAuth tokens, refresh tokens, API tokens, client secrets, mail
-credentials, tokenized feed URLs, cookies, and authorization headers are
-secrets. Keep them server-side in dedicated private credential storage, never
-return them to the browser after submission, and exclude them from Git, logs,
-diagnostics, browser storage, Codex workspaces, and coordinated backups. Clean
-restores require reconnecting renewable integrations.
+Passwords, app passwords, provider tokens, refresh tokens, mail credentials,
+cookies, and authorization headers are secrets. Keep them server-side in
+dedicated private credential storage, never return them to the browser after
+submission, and exclude them from Git, logs, diagnostics, browser storage,
+Codex workspaces, and coordinated backups. Clean restores require reconnecting
+renewable integrations.
 
-Treat remote names, IDs, HTML, mail headers/bodies, attachments, URLs, upstream
-errors, and feed fields as untrusted data. Bound all network responses and
-parsers, sanitize passive display content, block automatic remote resources,
-and never treat external content as runtime instructions. External content must
-not enter Codex context without a later explicit bounded-context milestone.
-
-Canvas access is read-only and least-privilege. Prefer institution-approved
-OAuth, permit a manually generated Canvas API token or per-course announcement
-feed only as labelled fallbacks, and never accept a Canvas password, browser
-cookie, copied session, or HTML-login/scraping workflow. Linking a remote Canvas
-course to a local course is explicit and relational; it does not import or
-overwrite the Course record. Automatic LMS course creation, assignments,
-grades, people, files, and submissions remain out of scope.
+Treat remote names, IDs, HTML, mail headers/bodies, attachments, URLs, and
+upstream errors as untrusted data. Bound all network responses and parsers,
+sanitize passive display content, block automatic remote resources, and never
+treat external content as runtime instructions. External content must not enter
+Codex context without a later explicit bounded-context milestone.
 
 Forwarded mail uses an owner-provisioned dedicated mailbox over verified TLS and
 read-only IMAP. Teacher Assistant does not create an address, configure external
 forwarding/DNS, send or reply to mail, or mutate the remote mailbox. Local Inbox
-read/archive/delete state never changes the upstream Canvas or mail source.
+read/archive/delete state never changes the upstream mail source. Automatic LMS
+course creation or import, assignments, grades, people, files, and submissions
+remain out of scope.
 
 ## Documents and LaTeX safety
 
-M23 through M26 plan a private Documents module after the existing M19–M22
-sequence. Document metadata belongs in PostgreSQL, while source files and
+M21 through M24 plan a private Documents module after the M20 Inbox milestone.
+Document metadata belongs in PostgreSQL, while source files and
 verified generated PDFs live beneath a configurable host-backed document root.
 They are private owner data and must participate in preflight, coordinated
 backup/restore, relocation, clone isolation, and Git-ignore protection from the
@@ -305,17 +298,15 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M17 — Minimized notes, summary decluttering, and removable bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
 - [x] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
 - [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
-- [ ] [M20 — Integration secrets and Canvas connection](milestones/m20-integration-secrets-and-canvas-connection.md)
-- [ ] [M21 — Canvas announcement Inbox](milestones/m21-canvas-announcement-inbox.md)
-- [ ] [M22 — Forwarded-mail Inbox](milestones/m22-forwarded-mail-inbox.md)
-- [ ] [M23 — Durable Documents foundation and project overview](milestones/m23-durable-documents-foundation.md)
-- [ ] [M24 — Relative LaTeX file tree and source editor](milestones/m24-relative-latex-editor.md)
-- [ ] [M25 — Isolated LaTeX compilation and PDF preview](milestones/m25-isolated-latex-compilation.md)
-- [ ] [M26 — Codex advice for LaTeX compilation errors](milestones/m26-codex-latex-error-advice.md)
+- [ ] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
+- [ ] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
+- [ ] [M22 — Relative LaTeX file tree and source editor](milestones/m22-relative-latex-editor.md)
+- [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
+- [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
 Current active milestone: **none**.
 
-Next planned milestone: **M20 — Integration secrets and Canvas connection**.
+Next planned milestone: **M20 — Forwarded-mail Inbox**.
 It must be explicitly selected before implementation begins.
 
 M1 through M19 and the post-M7 linked-batch milestone are complete. The
@@ -324,12 +315,11 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M20 through M26 are planned and intentionally unchecked. Their required order
-is M20 integration secrets and Canvas connection, M21 Canvas announcements, M22
-forwarded mail, M23 durable Documents foundation, M24 relative LaTeX editing,
-M25 isolated compilation, and M26 Codex error advice. Planning does not
-authorize implementation; the owner must select one milestone explicitly.
-Reordering also requires an explicit owner decision.
+M20 through M24 are planned and intentionally unchecked. Their required order
+is M20 forwarded-mail Inbox, M21 durable Documents foundation, M22 relative
+LaTeX editing, M23 isolated compilation, and M24 Codex error advice. Planning
+does not authorize implementation; the owner must select one milestone
+explicitly. Reordering also requires an explicit owner decision.
 
 ## Definition of done
 
