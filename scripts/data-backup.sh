@@ -42,11 +42,17 @@ resume_services() {
 
 INSTALLATION_ID=$(read_env COMPOSE_PROJECT_NAME)
 COURSE_SETTING=$(read_env COURSE_DATA_DIR)
+MAIL_SETTING=$(read_env MAIL_DATA_DIR)
 BACKUP_SETTING=$(read_env BACKUP_ROOT)
 COURSE_ROOT=$(resolve_from_root "${COURSE_SETTING:-./data/course_content}")
+MAIL_ROOT=$(resolve_from_root "${MAIL_SETTING:-./data/mail_attachments}")
 BACKUP_ROOT=$(resolve_from_root "${BACKUP_SETTING:-./backups}")
 [[ -d "$COURSE_ROOT" ]] || {
   printf 'Backup error: course storage is missing: %s\n' "$COURSE_ROOT" >&2
+  exit 1
+}
+[[ -d "$MAIL_ROOT" ]] || {
+  printf 'Backup error: mail attachment storage is missing: %s\n' "$MAIL_ROOT" >&2
   exit 1
 }
 [[ "$BACKUP_ROOT" != / && "$BACKUP_ROOT" != "$PROJECT_ROOT" ]] || {
@@ -81,6 +87,7 @@ fi
 
 DATABASE_DUMP="$INCOMPLETE_BUNDLE/database.dump"
 COURSE_ARCHIVE="$INCOMPLETE_BUNDLE/course-content.tar.gz"
+MAIL_ARCHIVE="$INCOMPLETE_BUNDLE/mail-attachments.tar.gz"
 "${COMPOSE[@]}" exec -T database sh -c \
   'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$DATABASE_DUMP"
 chmod 600 "$DATABASE_DUMP"
@@ -98,6 +105,14 @@ docker run --rm --read-only \
   -m app.maintenance.data_archive create-course --source /course-content \
   > "$COURSE_ARCHIVE"
 chmod 600 "$COURSE_ARCHIVE"
+
+docker run --rm --read-only \
+  -v "$PROJECT_ROOT/backend:/app:ro" \
+  -v "$MAIL_ROOT:/mail-attachments:ro" \
+  --entrypoint python "$BACKEND_IMAGE" \
+  -m app.maintenance.data_archive create-mail --source /mail-attachments \
+  > "$MAIL_ARCHIVE"
+chmod 600 "$MAIL_ARCHIVE"
 
 docker run --rm --read-only \
   -v "$PROJECT_ROOT/backend:/app:ro" \
@@ -120,3 +135,4 @@ docker run --rm --read-only \
 mv "$INCOMPLETE_BUNDLE" "$FINAL_BUNDLE"
 printf 'Verified coordinated backup: %s\n' "$FINAL_BUNDLE"
 printf 'Codex authentication was intentionally excluded; sign in again after a clean restore.\n'
+printf 'Renewable integration credentials were excluded; reconnect the mailbox after a clean restore.\n'

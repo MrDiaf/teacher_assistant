@@ -42,9 +42,13 @@ INSTALLATION_ID=$(read_env COMPOSE_PROJECT_NAME)
 BUNDLE=$(realpath "$BACKUP")
 
 COURSE_SETTING=$(read_env COURSE_DATA_DIR)
+MAIL_SETTING=$(read_env MAIL_DATA_DIR)
 COURSE_ROOT=$(resolve_from_root "${COURSE_SETTING:-./data/course_content}")
+MAIL_ROOT=$(resolve_from_root "${MAIL_SETTING:-./data/mail_attachments}")
 COURSE_PARENT=$(dirname "$COURSE_ROOT")
 COURSE_NAME=$(basename "$COURSE_ROOT")
+MAIL_PARENT=$(dirname "$MAIL_ROOT")
+MAIL_NAME=$(basename "$MAIL_ROOT")
 [[ "$COURSE_ROOT" != / && "$COURSE_ROOT" != "$PROJECT_ROOT" ]] || {
   printf 'Restore error: COURSE_DATA_DIR resolves to an unsafe directory.\n' >&2
   exit 1
@@ -54,6 +58,11 @@ COURSE_NAME=$(basename "$COURSE_ROOT")
   exit 1
 }
 mkdir -p "$COURSE_PARENT"
+[[ "$MAIL_ROOT" != / && "$MAIL_ROOT" != "$PROJECT_ROOT" && "$MAIL_PARENT" != / ]] || {
+  printf 'Restore error: MAIL_DATA_DIR resolves to an unsafe directory.\n' >&2
+  exit 1
+}
+mkdir -p "$MAIL_PARENT"
 
 BACKEND_IMAGE="$INSTALLATION_ID-backend:latest"
 if ! docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1; then
@@ -107,6 +116,20 @@ if ! docker run --rm \
   exit 1
 fi
 
+if ! docker run --rm \
+  -v "$PROJECT_ROOT/backend:/app:ro" \
+  -v "$BUNDLE:/bundle:ro" \
+  -v "$MAIL_PARENT:/mail-parent" \
+  --entrypoint python "$BACKEND_IMAGE" \
+  -m app.maintenance.data_archive restore-mail \
+  --archive /bundle/mail-attachments.tar.gz \
+  --parent /mail-parent \
+  --directory-name "$MAIL_NAME" \
+  --rollback-suffix "$RESTORE_STAMP"; then
+  printf 'Restore failed while replacing mail attachment files. Services remain stopped; rollback directories and the safety backup remain available.\n' >&2
+  exit 1
+fi
+
 "${COMPOSE[@]}" run --rm --entrypoint alembic backend upgrade head
 service_was_running backend && "${COMPOSE[@]}" start backend >/dev/null
 service_was_running frontend && "${COMPOSE[@]}" start frontend >/dev/null
@@ -115,3 +138,4 @@ if ! service_was_running database; then
 fi
 printf 'Restore completed and migrations are current. Verify Calendar, Courses, Assistant history, diagnostics, and uploaded-file hashes.\n'
 printf 'Codex authentication is installation-specific and was not restored; sign in again if needed.\n'
+printf 'Mailbox credentials were not restored; reconnect the dedicated mailbox in Settings.\n'

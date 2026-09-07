@@ -48,16 +48,15 @@ The currently implemented visible navigation is:
 - Dashboard
 - Calendar
 - Courses
+- Inbox
 - Study Plan
 - Assistant
 - Settings
 
-Calendar, Courses, and Assistant are implemented. Dashboard, Study Plan, and
-Settings may remain polished placeholders until the owner defines a milestone
-for them. M20 is planned to make Settings functional for a private inbound-mail
-connection and add Inbox as a separate module after Courses. M21 is planned to
-add Documents after Inbox. Do not show or claim any of those behaviors before
-its milestone is implemented.
+Calendar, Courses, Inbox, Assistant, and the mail-integration area of Settings
+are implemented. Dashboard and Study Plan may remain polished placeholders.
+M21 is planned to add Documents after Inbox. Do not show or claim Documents
+behavior before that milestone is implemented.
 
 Never add registration, multiple users, organizations, teams, roles, tenants,
 shared accounts, or public profiles.
@@ -177,7 +176,7 @@ source code or claim an improvement was implemented.
 
 ## External mail and Inbox safety
 
-Inbound mail is planned in M20. Mail connection clients, sync services,
+Inbound mail is implemented in M20. Mail connection clients, sync services,
 repositories, routes, schedulers, credential storage, attachment storage, and
 React views must remain separate from calendar/course/Assistant business logic.
 
@@ -298,7 +297,7 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M17 — Minimized notes, summary decluttering, and removable bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
 - [x] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
 - [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
-- [ ] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
+- [x] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
 - [ ] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
 - [ ] [M22 — Relative LaTeX file tree and source editor](milestones/m22-relative-latex-editor.md)
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
@@ -306,20 +305,20 @@ below. Update `handoff.md` with the new current state and exact next step.
 
 Current active milestone: **none**.
 
-Next planned milestone: **M20 — Forwarded-mail Inbox**.
+Next planned milestone: **M21 — Durable Documents foundation and project overview**.
 It must be explicitly selected before implementation begins.
 
-M1 through M19 and the post-M7 linked-batch milestone are complete. The
+M1 through M20 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
 response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M20 through M24 are planned and intentionally unchecked. Their required order
-is M20 forwarded-mail Inbox, M21 durable Documents foundation, M22 relative
-LaTeX editing, M23 isolated compilation, and M24 Codex error advice. Planning
-does not authorize implementation; the owner must select one milestone
-explicitly. Reordering also requires an explicit owner decision.
+M21 through M24 are planned and intentionally unchecked. Their required order
+is M21 durable Documents foundation, M22 relative LaTeX editing, M23 isolated
+compilation, and M24 Codex error advice. Planning does not authorize
+implementation; the owner must select one milestone explicitly. Reordering
+also requires an explicit owner decision.
 
 ## Definition of done
 

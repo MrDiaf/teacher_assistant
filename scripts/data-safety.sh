@@ -90,6 +90,17 @@ course_directory() {
   fi
 }
 
+mail_directory() {
+  local configured
+  configured=$(read_key "$ENV_FILE" MAIL_DATA_DIR)
+  configured=${configured:-./data/mail_attachments}
+  if [[ "$configured" = /* ]]; then
+    realpath -m "$configured"
+  else
+    realpath -m "$PROJECT_ROOT/$configured"
+  fi
+}
+
 backup_directory() {
   local configured
   configured=$(read_key "$ENV_FILE" BACKUP_ROOT)
@@ -135,6 +146,7 @@ write_state() {
     printf 'installation_id=%s\n' "$installation_id"
     printf 'database_volume=%s\n' "$(volume_name "$installation_id" database-data)"
     printf 'codex_auth_volume=%s\n' "$(volume_name "$installation_id" codex-auth-data)"
+    printf 'integration_credential_volume=%s\n' "$(volume_name "$installation_id" integration-credential-data)"
     printf 'initialized=%s\n' "$initialized"
   } > "$temporary"
   mv "$temporary" "$STATE_FILE"
@@ -183,7 +195,7 @@ list_candidates() {
 }
 
 preflight() {
-  local installation_id state_id initialized database_volume auth_volume course_root identity_source
+  local installation_id state_id initialized database_volume auth_volume integration_volume course_root mail_root identity_source
   installation_id=$(read_key "$ENV_FILE" COMPOSE_PROJECT_NAME)
   state_id=$(read_key "$STATE_FILE" installation_id)
   initialized=$(read_key "$STATE_FILE" initialized)
@@ -196,7 +208,9 @@ preflight() {
   fi
   database_volume=$(volume_name "$installation_id" database-data)
   auth_volume=$(volume_name "$installation_id" codex-auth-data)
+  integration_volume=$(volume_name "$installation_id" integration-credential-data)
   course_root=$(course_directory)
+  mail_root=$(mail_directory)
 
   printf 'Teacher Assistant data preflight (read-only)\n'
   printf '%-20s %s\n' 'Resolved identity:' "$installation_id"
@@ -205,10 +219,16 @@ preflight() {
   printf '%-20s %s\n' 'Initialized:' "${initialized:-not recorded}"
   print_volume_status 'Database volume' "$database_volume"
   print_volume_status 'Codex-auth volume' "$auth_volume"
+  print_volume_status 'Integration secrets' "$integration_volume"
   if [[ -d "$course_root" ]]; then
     printf '%-20s %s [reachable]\n' 'Course storage:' "$course_root"
   else
     printf '%-20s %s [missing]\n' 'Course storage:' "$course_root"
+  fi
+  if [[ -d "$mail_root" ]]; then
+    printf '%-20s %s [reachable]\n' 'Mail attachments:' "$mail_root"
+  else
+    printf '%-20s %s [missing]\n' 'Mail attachments:' "$mail_root"
   fi
   printf '%-20s %s\n' 'Backup root:' "$(backup_directory)"
   printf '%-20s %s\n' 'Browser UI state:' 'convenience-only local browser storage (planned M19)'
@@ -334,15 +354,17 @@ copy_volume() {
 adopt() {
   local source=${LEGACY_PROJECT:-}
   local target=${INSTALLATION_ID:-}
-  local source_db source_auth target_db target_auth rollback_dir rollback_root stamp source_containers
+  local source_db source_auth source_integration target_db target_auth target_integration rollback_dir rollback_root stamp source_containers
   [[ -n "$source" && -n "$target" ]] ||
     fail "Set both LEGACY_PROJECT and INSTALLATION_ID, for example: make data-adopt LEGACY_PROJECT=teacher_assistant INSTALLATION_ID=teacher_assistant"
   validate_id "$source"
   validate_id "$target"
   source_db=$(volume_name "$source" database-data)
   source_auth=$(volume_name "$source" codex-auth-data)
+  source_integration=$(volume_name "$source" integration-credential-data)
   target_db=$(volume_name "$target" database-data)
   target_auth=$(volume_name "$target" codex-auth-data)
+  target_integration=$(volume_name "$target" integration-credential-data)
   source_containers=$(docker ps -q --filter "label=com.docker.compose.project=$source")
   [[ -z "$source_containers" ]] ||
     fail "Stop the source installation before adoption. Run make down when it uses the current directory."
@@ -353,6 +375,9 @@ adopt() {
       fail "Both source and target database volumes contain data. Choose one explicitly; no merge or deletion was attempted."
     if volume_nonempty "$target_auth"; then
       fail "The target Codex-auth volume already contains data. Sign-in can be renewed; no credentials were overwritten or merged."
+    fi
+    if volume_nonempty "$target_integration"; then
+      fail "The target integration-credential volume already contains data. Reconnect instead; no credentials were overwritten or merged."
     fi
   fi
 
@@ -375,6 +400,9 @@ adopt() {
     if volume_nonempty "$source_auth"; then
       copy_volume "$source_auth" "$target_auth" "$target" codex-auth-data
     fi
+    if volume_nonempty "$source_integration"; then
+      copy_volume "$source_integration" "$target_integration" "$target" integration-credential-data
+    fi
   fi
 
   write_env_key COMPOSE_PROJECT_NAME "$target"
@@ -384,9 +412,11 @@ adopt() {
     printf 'source_project=%s\n' "$source"
     printf 'source_database_volume=%s\n' "$source_db"
     printf 'source_codex_auth_volume=%s\n' "$source_auth"
+    printf 'source_integration_credential_volume=%s\n' "$source_integration"
     printf 'target_project=%s\n' "$target"
     printf 'target_database_volume=%s\n' "$target_db"
     printf 'target_codex_auth_volume=%s\n' "$target_auth"
+    printf 'target_integration_credential_volume=%s\n' "$target_integration"
     printf 'previous_env_saved=%s\n' "$([[ -f "$rollback_dir/env.before" ]] && printf true || printf false)"
     printf 'previous_state_saved=%s\n' "$([[ -f "$rollback_dir/installation-state.before" ]] && printf true || printf false)"
     printf 'old_volumes_deleted=false\n'

@@ -21,10 +21,29 @@ class Settings(BaseSettings):
     assistant_proposal_ttl_minutes: int = Field(default=30, ge=5, le=1440)
     course_storage_root: Path = Path("/data/course_content")
     course_max_upload_mb: int = Field(default=25, ge=1, le=500)
+    integration_credential_root: Path = Path("/var/lib/teacher-assistant/integrations")
+    mail_storage_root: Path = Path("/data/mail_attachments")
+    mail_sync_interval_seconds: int = Field(default=300, ge=60, le=86400)
+    mail_timeout_seconds: int = Field(default=15, ge=5, le=60)
+    mail_max_message_mb: int = Field(default=15, ge=1, le=50)
+    mail_max_attachment_mb: int = Field(default=10, ge=1, le=25)
+    mail_max_total_storage_mb: int = Field(default=2048, ge=10, le=102400)
 
     @property
     def course_max_upload_bytes(self) -> int:
         return self.course_max_upload_mb * 1024 * 1024
+
+    @property
+    def mail_max_message_bytes(self) -> int:
+        return self.mail_max_message_mb * 1024 * 1024
+
+    @property
+    def mail_max_attachment_bytes(self) -> int:
+        return self.mail_max_attachment_mb * 1024 * 1024
+
+    @property
+    def mail_max_total_storage_bytes(self) -> int:
+        return self.mail_max_total_storage_mb * 1024 * 1024
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

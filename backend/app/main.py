@@ -18,6 +18,7 @@ from app.calendar.routes import router as calendar_router
 from app.calendar.subscription_routes import router as calendar_subscription_router
 from app.calendar.subscription_scheduler import subscription_scheduler
 from app.codex_runtime.adapter import get_codex_auth_manager
+from app.core.config import get_settings
 from app.core.errors import ApplicationError
 from app.course_calendars.routes import router as course_calendar_router
 from app.course_sources.routes import router as course_source_router
@@ -26,6 +27,11 @@ from app.database.session import session_factory
 from app.diagnostics.redaction import redact_text
 from app.diagnostics.routes import router as diagnostic_router
 from app.diagnostics.service import DiagnosticService
+from app.inbox.mail_storage import MailStorage
+from app.inbox.routes import router as inbox_router
+from app.inbox.scheduler import mail_scheduler
+from app.integrations.credentials import IntegrationCredentialStore
+from app.integrations.routes import router as integration_router
 from app.notes.prettify_routes import router as note_prettify_router
 from app.notes.routes import router as note_router
 from app.notes.summary_routes import router as note_summary_router
@@ -35,15 +41,24 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    await IntegrationCredentialStore(settings.integration_credential_root).ensure_root()
+    await MailStorage(
+        settings.mail_storage_root, settings.mail_max_total_storage_bytes
+    ).ensure_root()
     stop = asyncio.Event()
     task = asyncio.create_task(subscription_scheduler(stop))
+    mail_task = asyncio.create_task(mail_scheduler(stop))
     try:
         yield
     finally:
         stop.set()
         task.cancel()
+        mail_task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+        with suppress(asyncio.CancelledError):
+            await mail_task
         await assistant_execution_registry.shutdown()
         await get_codex_auth_manager().shutdown()
 
@@ -67,6 +82,8 @@ app.include_router(
 )
 app.include_router(assistant_router, prefix="/api/v1", tags=["assistant"])
 app.include_router(diagnostic_router, prefix="/api/v1", tags=["diagnostics"])
+app.include_router(integration_router, prefix="/api/v1", tags=["integrations"])
+app.include_router(inbox_router, prefix="/api/v1", tags=["inbox"])
 app.include_router(calendar_import_router, prefix="/api/v1", tags=["calendar-import"])
 app.include_router(
     calendar_subscription_router,
@@ -197,9 +214,7 @@ async def handle_http_error(
     error: StarletteHTTPException,
 ) -> JSONResponse:
     message = (
-        error.detail
-        if isinstance(error.detail, str)
-        else "The request could not be completed."
+        error.detail if isinstance(error.detail, str) else "The request could not be completed."
     )
     code = "route_not_found" if error.status_code == 404 else "http_error"
     report = await _record_safe_error(

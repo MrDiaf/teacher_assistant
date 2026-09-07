@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-03
+Updated: 2026-09-04
 
 ## Start here
 
@@ -24,27 +24,29 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `1d5a374 milestone 19 is complete`
-- M1 through M19 are complete.
+- Git `HEAD`: `f17f2c2 updated milestones`
+- M1 through M20 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M20 through M24 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains only the planning-document changes
-  that retire the Canvas roadmap and renumber the remaining milestones. No
-  M20–M24 application code or behavior was implemented. Preserve the work
-  because no commit was requested.
+- M21 through M24 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains the completed M20 implementation
+  and its documentation/status updates. Preserve it because no commit was
+  requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
-  `teacher_assistant_codex-auth-data`. The private `.env` and ignored
+  `teacher_assistant_codex-auth-data`, and
+  `teacher_assistant_integration-credential-data`. The private `.env` and ignored
   `.teacher-assistant-installation` marker were created during non-destructive
   same-namespace adoption.
 - Docker development services are running:
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`
   - PostgreSQL: healthy
-- Alembic is at `20260831_0018 (head)`.
+- Alembic is at `20260903_0020 (head)`. Revision `20260903_0019` is a no-op
+  compatibility marker for a retired, unshipped integration revision; any old
+  unused tables from that local revision were deliberately left intact.
 - `.openai/hosting.json` is absent. This is a self-hosted Docker application,
   not a Sites deployment.
 
@@ -71,10 +73,11 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
   calendars, and course-aware Assistant answers.
 - Navigation convenience state restores the active module, main/per-course
   Calendar view and anchor, and selected course/tab without caching API data.
-- Dashboard and Study Plan remain placeholder modules. Settings also remains a
-  placeholder until the planned M20 inbound-mail work is explicitly selected
-  and implemented; Inbox does not exist until M20, and Documents does not exist
-  until M21.
+- Inbox imports owner-forwarded mail from one dedicated TLS/read-only IMAP
+  mailbox with local search/read/archive/delete state and private attachments.
+  Settings manages that connection without returning its app password.
+- Dashboard and Study Plan remain placeholder modules. Documents does not exist
+  until M21 is explicitly selected and implemented.
 
 The permanent safety and architecture rules are in `AGENTS.md` and
 `instructions.md`. Do not duplicate or weaken them in a new milestone.
@@ -87,7 +90,7 @@ Canvas milestone files were removed. Forwarded-mail Inbox moved from M22 to M20
 and now owns the private credential-store setup it previously depended on.
 
 The approved Overleaf-inspired Documents/LaTeX roadmap moved forward by two
-positions and remains documentation only after completed M19 and planned M20:
+positions and remains documentation only after completed M20:
 
 - M21 adds durable UUID-based document projects, colored many-to-many tags,
   project search/actions, raw `.tex`/source-ZIP downloads, and coordinated
@@ -105,11 +108,50 @@ positions and remains documentation only after completed M19 and planned M20:
 
 The detailed scope, boundaries, checklists, acceptance criteria, and expected
 implementation areas are in `milestones/m21-durable-documents-foundation.md`
-through `milestones/m24-codex-latex-error-advice.md`. Those four milestones and
-M20 remain unchecked. No application source, migration, dependency, Compose,
-environment, README, or runtime behavior was changed by this planning update.
+through `milestones/m24-codex-latex-error-advice.md`. Those four milestones
+remain unchecked.
 
 ## Most recent completed work
+
+M20 forwarded-mail Inbox:
+
+- adds Inbox after Courses and turns Settings into a dedicated mailbox setup,
+  test, reconnect, disconnect, manual-check, and sanitized-health page;
+- stores one renewable IMAP app password behind an opaque reference in a
+  separate private Docker volume, never returns it, and preserves imported mail
+  when that credential is missing, corrupt, replaced, or removed;
+- connects only with verified implicit TLS or STARTTLS, validates public DNS
+  targets, opens IMAP read-only, and uses only UID search plus bounded
+  `BODY.PEEK` fetches without changing remote flags or messages;
+- serializes scheduled/manual checks, applies bounded backoff, tracks mailbox
+  identity plus UIDVALIDITY/UID, and preserves local messages during conservative
+  UIDVALIDITY reset reconciliation and connection/import failures;
+- parses bounded RFC/MIME content, prefers plain text, reduces HTML-only mail to
+  passive text, blocks active/remote content, and quarantines unsafe messages
+  without retaining their raw wire content;
+- stores bounded attachments at generated private paths, serves them only by
+  opaque ID as downloads, explains omissions, and audits/retries failed local
+  file cleanup after one-message confirmed deletion;
+- extends coordinated database/course/mail backup and restore while explicitly
+  excluding renewable IMAP credentials and requiring reconnect on a clean
+  restore;
+- includes local-fake backend, frontend, Playwright/accessibility, migration,
+  privacy, malformed-input, XSS, cleanup, and relocation/restore coverage.
+
+Important M20 implementation areas:
+
+```text
+backend/alembic/versions/20260903_00{19,20}_*.py
+backend/app/integrations/
+backend/app/inbox/
+backend/tests/{test_mail_inbox,test_data_archive}.py
+frontend/src/features/{inbox,settings}/
+frontend/src/{App,styles}.tsx
+compose*.yml
+scripts/{data-backup,data-restore,data-safety,check-data-safety,m14-relocation-drill}.sh
+README.md
+docs/data-durability.md
+```
 
 M19 frontend navigation and Assistant-draft persistence:
 
@@ -257,17 +299,17 @@ The latest implementation handoff recorded:
 
 ```text
 make test
-  Backend: 142 passed
-  Frontend: 65 passed
+  Backend: 156 passed
+  Frontend: 69 passed
 
 make e2e
-  Playwright/accessibility: 10 passed
+  Playwright/accessibility: 11 passed
 
 make lint: passed
 Frontend production build: passed
+make data-relocation-test: passed, including mail files/credential exclusion
 git diff --check: passed
-Alembic current: 20260831_0018 (head)
-Legacy completed bullets without IDs: 0
+Alembic current: 20260903_0020 (head)
 Backend health: passed
 Frontend HTTP check: passed
 ```
@@ -291,7 +333,7 @@ from Assistant or the optional configured API-key fallback.
   note save.
 - [x] M19 — Persist selected pages/views and per-conversation Assistant drafts
   in validated browser storage without caching authoritative backend data.
-- [ ] M20 — Add Inbox and ingest owner-forwarded email from a dedicated
+- [x] M20 — Add Inbox and ingest owner-forwarded email from a dedicated
   TLS/read-only IMAP mailbox, with private credential storage, safe MIME
   rendering, and private attachments.
 - [ ] M21 — Add durable private LaTeX projects, searchable/tagged overview,
@@ -309,7 +351,9 @@ advance them.
 
 ## Known limitations and cautions
 
-- M20–M24 are plans only and none of their application behavior exists yet.
+- M21–M24 are plans only and none of their application behavior exists yet.
+- A real mailbox-provider check was not run because no private owner credential
+  was provided; IMAP/TLS/authentication behavior is verified with local fakes.
 - M19 convenience state is browser-profile/origin specific. Clearing site data,
   using another browser/device, or private browsing removes preferences and
   unsent drafts but does not delete backend records. Cross-device sync and
@@ -319,8 +363,8 @@ advance them.
   package downloads, automatic Codex fixes, or additional compiler engines in
   M21–M24. The initial M23 compiler is pdfLaTeX through TeX Live/latexmk.
 - Teacher Assistant cannot create a receiving email address or forwarding rule.
-  M20 requires the owner to provision a dedicated IMAP mailbox and configure
-  forwarding with the external mail provider.
+  The owner must provision a dedicated IMAP mailbox, configure forwarding, and
+  enter its app password in Settings.
 - Read-only preflight found another populated legacy database-volume candidate
   on this Docker host. It was intentionally left untouched. Never merge or
   delete it implicitly; any later cleanup requires explicit owner verification.
@@ -341,21 +385,19 @@ advance them.
   `assistant_messages.role`, `assistant_proposals.status`,
   `calendars.source_type`, and `events.status`.
 - Automatic LMS course creation/import, assignments, grades, people, files,
-  submissions, Study Plan, outbound mail, and provider-specific mail OAuth remain
-  out of scope. M20 authorizes only the dedicated inbound-mail connection and
-  local Inbox scope defined in its milestone file.
+  submissions, Study Plan, outbound mail, remote mailbox mutation, and
+  provider-specific mail OAuth remain out of scope.
 
 ## Next step
 
-M19 is complete, and the M21–M24 Documents roadmap remains planning only. Stop
-before M20. The owner must explicitly select M20 before forwarded-mail Inbox
-implementation begins. Do not skip to M21 or reorder the roadmap without
-another explicit owner decision.
+M20 is complete, and the M21–M24 Documents roadmap remains planning only. Stop
+before M21. The owner should review/commit M20, then explicitly select M21 if
+desired. Do not begin Documents work or reorder the roadmap without another
+explicit owner decision.
 
 Recommended next prompt:
 
 ```text
-Read AGENTS.md, instructions.md, handoff.md, and
-milestones/m20-forwarded-mail-inbox.md. Implement M20 only
-and stop after its acceptance criteria are verified.
+Review the completed M20 forwarded-mail Inbox implementation and verification,
+then commit it if approved. Do not start M21.
 ```

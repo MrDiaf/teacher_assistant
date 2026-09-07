@@ -21,8 +21,11 @@ cleanup() {
   docker compose -p "$RESTORE_ID" -f "$PROJECT_ROOT/compose.yml" -f "$PROJECT_ROOT/compose.dev.yml" down -v --remove-orphans >/dev/null 2>&1 || true
   docker volume rm \
     "${LEGACY_ID}_database-data" "${LEGACY_ID}_codex-auth-data" \
+    "${LEGACY_ID}_integration-credential-data" \
     "${ADOPTED_ID}_database-data" "${ADOPTED_ID}_codex-auth-data" \
+    "${ADOPTED_ID}_integration-credential-data" \
     "${AMBIGUOUS_ID}_database-data" "${AMBIGUOUS_ID}_codex-auth-data" \
+    "${AMBIGUOUS_ID}_integration-credential-data" \
     >/dev/null 2>&1 || true
   case "$DRILL_ROOT" in
     "${TMPDIR:-/tmp}"/teacher-assistant-m14.*)
@@ -84,7 +87,8 @@ database_fingerprint() {
     assistant_messages assistant_proposal_actions assistant_proposals \
     calendars course_calendar_links course_source_text course_sources courses \
     diagnostic_audit_records diagnostic_errors events note_source_links \
-    note_summaries notes; do
+    note_summaries notes mail_addresses mail_attachments mail_cleanup_audits \
+    mail_integration_connections mail_messages mail_quarantines; do
     compose_in "$repository" exec -T database sh -c \
       "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atc \"select '$table=' || count(*) || ':' || coalesce(md5(string_agg(id::text, ',' order by id::text)), '') from $table\""
   done
@@ -103,6 +107,19 @@ auth_fingerprint() {
   local repository=$1
   compose_in "$repository" exec -T backend sha256sum \
     /var/lib/teacher-assistant/codex/m14-relocation-marker | awk '{print $1}'
+}
+
+mail_fingerprint() {
+  local repository=$1
+  compose_in "$repository" exec -T backend sha256sum \
+    /data/mail_attachments/55555555-5555-4555-8555-555555555555/66666666-6666-4666-8666-666666666666.bin \
+    | awk '{print $1}'
+}
+
+integration_credential_fingerprint() {
+  local repository=$1
+  compose_in "$repository" exec -T backend sha256sum \
+    /var/lib/teacher-assistant/integrations/m20-relocation-marker | awk '{print $1}'
 }
 
 assert_equal() {
@@ -129,6 +146,10 @@ test_legacy_adoption() {
     --label "com.docker.compose.project=$LEGACY_ID" \
     --label 'com.docker.compose.volume=codex-auth-data' \
     "${LEGACY_ID}_codex-auth-data" >/dev/null
+  docker volume create \
+    --label "com.docker.compose.project=$LEGACY_ID" \
+    --label 'com.docker.compose.volume=integration-credential-data' \
+    "${LEGACY_ID}_integration-credential-data" >/dev/null
   docker run --rm \
     -v "${LEGACY_ID}_database-data:/fixture" \
     --entrypoint sh postgres:16.4-alpine \
@@ -137,6 +158,10 @@ test_legacy_adoption() {
     -v "${LEGACY_ID}_codex-auth-data:/fixture" \
     --entrypoint sh postgres:16.4-alpine \
     -c 'printf "renewable-auth-fixture" > /fixture/marker' >/dev/null
+  docker run --rm \
+    -v "${LEGACY_ID}_integration-credential-data:/fixture" \
+    --entrypoint sh postgres:16.4-alpine \
+    -c 'printf "renewable-integration-fixture" > /fixture/marker' >/dev/null
 
   make -C "$repository" data-adopt \
     LEGACY_PROJECT="$LEGACY_ID" INSTALLATION_ID="$ADOPTED_ID" >/dev/null
@@ -148,6 +173,11 @@ test_legacy_adoption() {
   docker run --rm --read-only \
     -v "${LEGACY_ID}_codex-auth-data:/source:ro" \
     -v "${ADOPTED_ID}_codex-auth-data:/target:ro" \
+    --entrypoint sh postgres:16.4-alpine \
+    -c 'cmp /source/marker /target/marker'
+  docker run --rm --read-only \
+    -v "${LEGACY_ID}_integration-credential-data:/source:ro" \
+    -v "${ADOPTED_ID}_integration-credential-data:/target:ro" \
     --entrypoint sh postgres:16.4-alpine \
     -c 'cmp /source/marker /target/marker'
   grep -Fxq "COMPOSE_PROJECT_NAME=$ADOPTED_ID" "$repository/.env"
@@ -185,12 +215,19 @@ compose_in "$SOURCE_REPO" exec -T backend sh -c '
   mkdir -p "$path"
   printf "%s" "%PDF-1.4 M14 fixture upload" > "$path/original.pdf"
   chmod 600 "$path/original.pdf"
+  mail_path=/data/mail_attachments/55555555-5555-4555-8555-555555555555
+  mkdir -p "$mail_path"
+  printf "%s" "M20 private mail attachment fixture" > "$mail_path/66666666-6666-4666-8666-666666666666.bin"
+  chmod 600 "$mail_path/66666666-6666-4666-8666-666666666666.bin"
   printf "%s" "renewable-auth-volume-fixture" > /var/lib/teacher-assistant/codex/m14-relocation-marker
+  printf "%s" "renewable-mail-credential-fixture" > /var/lib/teacher-assistant/integrations/m20-relocation-marker
 '
 
 BASE_DATABASE=$(database_fingerprint "$SOURCE_REPO")
 BASE_FILE=$(file_fingerprint "$SOURCE_REPO")
 BASE_AUTH=$(auth_fingerprint "$SOURCE_REPO")
+BASE_MAIL=$(mail_fingerprint "$SOURCE_REPO")
+BASE_INTEGRATION_CREDENTIAL=$(integration_credential_fingerprint "$SOURCE_REPO")
 
 make -C "$SOURCE_REPO" migrate >/dev/null
 make -C "$SOURCE_REPO" dev >/dev/null
@@ -198,6 +235,8 @@ wait_for_backend "$SOURCE_REPO"
 assert_equal "$BASE_DATABASE" "$(database_fingerprint "$SOURCE_REPO")" 'Database IDs/counts after migrate/rebuild'
 assert_equal "$BASE_FILE" "$(file_fingerprint "$SOURCE_REPO")" 'Upload hash after migrate/rebuild'
 assert_equal "$BASE_AUTH" "$(auth_fingerprint "$SOURCE_REPO")" 'Auth-volume marker after migrate/rebuild'
+assert_equal "$BASE_MAIL" "$(mail_fingerprint "$SOURCE_REPO")" 'Mail attachment hash after migrate/rebuild'
+assert_equal "$BASE_INTEGRATION_CREDENTIAL" "$(integration_credential_fingerprint "$SOURCE_REPO")" 'Integration credential after migrate/rebuild'
 
 make -C "$SOURCE_REPO" down >/dev/null
 mv "$SOURCE_REPO" "$(dirname "$MOVED_REPO")/"
@@ -206,6 +245,8 @@ wait_for_backend "$MOVED_REPO"
 assert_equal "$BASE_DATABASE" "$(database_fingerprint "$MOVED_REPO")" 'Database IDs/counts after same-name move'
 assert_equal "$BASE_FILE" "$(file_fingerprint "$MOVED_REPO")" 'Upload hash after same-name move'
 assert_equal "$BASE_AUTH" "$(auth_fingerprint "$MOVED_REPO")" 'Auth-volume marker after same-name move'
+assert_equal "$BASE_MAIL" "$(mail_fingerprint "$MOVED_REPO")" 'Mail attachment hash after same-name move'
+assert_equal "$BASE_INTEGRATION_CREDENTIAL" "$(integration_credential_fingerprint "$MOVED_REPO")" 'Integration credential after same-name move'
 
 make -C "$MOVED_REPO" down >/dev/null
 mv "$MOVED_REPO" "$RENAMED_REPO"
@@ -214,6 +255,8 @@ wait_for_backend "$RENAMED_REPO"
 assert_equal "$BASE_DATABASE" "$(database_fingerprint "$RENAMED_REPO")" 'Database IDs/counts after rename'
 assert_equal "$BASE_FILE" "$(file_fingerprint "$RENAMED_REPO")" 'Upload hash after rename'
 assert_equal "$BASE_AUTH" "$(auth_fingerprint "$RENAMED_REPO")" 'Auth-volume marker after rename'
+assert_equal "$BASE_MAIL" "$(mail_fingerprint "$RENAMED_REPO")" 'Mail attachment hash after rename'
+assert_equal "$BASE_INTEGRATION_CREDENTIAL" "$(integration_credential_fingerprint "$RENAMED_REPO")" 'Integration credential after rename'
 
 make -C "$RENAMED_REPO" backup >/dev/null
 BUNDLE=$(find "$RENAMED_REPO/backups" -mindepth 1 -maxdepth 1 -type d -name "*-$SOURCE_ID" | sort | tail -n 1)
@@ -227,9 +270,15 @@ make -C "$RESTORE_REPO" restore BACKUP="$BUNDLE" CONFIRM_RESTORE="$RESTORE_ID" >
 wait_for_backend "$RESTORE_REPO"
 assert_equal "$BASE_DATABASE" "$(database_fingerprint "$RESTORE_REPO")" 'Database IDs/counts after clean restore'
 assert_equal "$BASE_FILE" "$(file_fingerprint "$RESTORE_REPO")" 'Upload hash after clean restore'
+assert_equal "$BASE_MAIL" "$(mail_fingerprint "$RESTORE_REPO")" 'Mail attachment hash after clean restore'
 if compose_in "$RESTORE_REPO" exec -T backend test -e \
   /var/lib/teacher-assistant/codex/m14-relocation-marker; then
   printf 'Codex-auth fixture was copied into a clean restore.\n' >&2
+  exit 1
+fi
+if compose_in "$RESTORE_REPO" exec -T backend test -e \
+  /var/lib/teacher-assistant/integrations/m20-relocation-marker; then
+  printf 'Integration credential fixture was copied into a clean restore.\n' >&2
   exit 1
 fi
 
@@ -237,6 +286,7 @@ SOURCE_DATABASE_VOLUME=$(compose_in "$RENAMED_REPO" config --format json | sed -
 RESTORE_DATABASE_VOLUME=$(compose_in "$RESTORE_REPO" config --format json | sed -n '/"database-data"/,/}/s/.*"name": "\([^"]*\)".*/\1/p' | head -n 1)
 [[ "$SOURCE_DATABASE_VOLUME" != "$RESTORE_DATABASE_VOLUME" ]]
 [[ "$(realpath "$RENAMED_REPO/data/course_content")" != "$(realpath "$RESTORE_REPO/data/course_content")" ]]
+[[ "$(realpath "$RENAMED_REPO/data/mail_attachments")" != "$(realpath "$RESTORE_REPO/data/mail_attachments")" ]]
 
 CORRUPT_BUNDLE="$RESTORE_REPO/corrupt-backup"
 cp -a "$BUNDLE" "$CORRUPT_BUNDLE"

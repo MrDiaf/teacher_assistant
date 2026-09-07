@@ -24,6 +24,8 @@ services:
       LOG_LEVEL: warning
       CODEX_AUTH_HOME: /tmp/teacher-assistant-e2e-codex
       COURSE_STORAGE_ROOT: /data/course_content
+      INTEGRATION_CREDENTIAL_ROOT: /data/integration_credentials
+      MAIL_STORAGE_ROOT: /data/mail_attachments
     depends_on:
       database:
         condition: service_healthy
@@ -38,6 +40,8 @@ services:
       retries: 30
     volumes:
       - e2e-course-content:/data/course_content
+      - e2e-integration-credentials:/data/integration_credentials
+      - e2e-mail-attachments:/data/mail_attachments
     restart: "no"
 
   frontend:
@@ -71,4 +75,6 @@ services:
 
 volumes:
   e2e-course-content:
+  e2e-integration-credentials:
+  e2e-mail-attachments:
   e2e-database-data:

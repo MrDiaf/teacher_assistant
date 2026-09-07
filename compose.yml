@@ -30,6 +30,13 @@ services:
       ASSISTANT_PROPOSAL_TTL_MINUTES: ${ASSISTANT_PROPOSAL_TTL_MINUTES:-30}
       COURSE_STORAGE_ROOT: ${COURSE_STORAGE_ROOT:-/data/course_content}
       COURSE_MAX_UPLOAD_MB: ${COURSE_MAX_UPLOAD_MB:-25}
+      INTEGRATION_CREDENTIAL_ROOT: ${INTEGRATION_CREDENTIAL_ROOT:-/var/lib/teacher-assistant/integrations}
+      MAIL_STORAGE_ROOT: ${MAIL_STORAGE_ROOT:-/data/mail_attachments}
+      MAIL_SYNC_INTERVAL_SECONDS: ${MAIL_SYNC_INTERVAL_SECONDS:-300}
+      MAIL_TIMEOUT_SECONDS: ${MAIL_TIMEOUT_SECONDS:-15}
+      MAIL_MAX_MESSAGE_MB: ${MAIL_MAX_MESSAGE_MB:-15}
+      MAIL_MAX_ATTACHMENT_MB: ${MAIL_MAX_ATTACHMENT_MB:-10}
+      MAIL_MAX_TOTAL_STORAGE_MB: ${MAIL_MAX_TOTAL_STORAGE_MB:-2048}
     depends_on:
       database:
         condition: service_healthy
@@ -37,7 +44,9 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
       - codex-auth-data:${CODEX_AUTH_HOME:-/var/lib/teacher-assistant/codex}
+      - integration-credential-data:${INTEGRATION_CREDENTIAL_ROOT:-/var/lib/teacher-assistant/integrations}
       - ${COURSE_DATA_DIR:-./data/course_content}:${COURSE_STORAGE_ROOT:-/data/course_content}
+      - ${MAIL_DATA_DIR:-./data/mail_attachments}:${MAIL_STORAGE_ROOT:-/data/mail_attachments}
     restart: unless-stopped
 
   frontend:
@@ -53,4 +62,5 @@ services:
 
 volumes:
   codex-auth-data:
+  integration-credential-data:
   database-data:

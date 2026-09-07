@@ -13,6 +13,7 @@ const MODULES: readonly ModuleId[] = [
   "dashboard",
   "calendar",
   "courses",
+  "inbox",
   "study-plan",
   "assistant",
   "settings",

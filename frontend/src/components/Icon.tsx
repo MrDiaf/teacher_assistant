@@ -10,6 +10,7 @@ export type IconName =
   | "courses"
   | "dashboard"
   | "file"
+  | "inbox"
   | "leaf"
   | "location"
   | "lock"
@@ -76,6 +77,12 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
       <>
         <path d="M6 2h8l4 4v16H6V2Z" />
         <path d="M14 2v5h5M9 12h6M9 16h6" />
+      </>
+    ),
+    inbox: (
+      <>
+        <path d="M4 4h16v16H4V4Z" />
+        <path d="M4 14h4l2 3h4l2-3h4M7 8h10M7 11h7" />
       </>
     ),
     leaf: (

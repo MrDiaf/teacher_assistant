@@ -12,9 +12,13 @@ services:
       DATABASE_URL: postgresql+asyncpg://teacher_assistant_test:teacher_assistant_test@database:5432/teacher_assistant_test
       LOG_LEVEL: warning
       TESTING: "true"
+      INTEGRATION_CREDENTIAL_ROOT: /data/test_integration_credentials
+      MAIL_STORAGE_ROOT: /data/test_mail_attachments
     ports: []
     volumes:
       - test-course-content:/data/course_content
+      - test-integration-credentials:/data/test_integration_credentials
+      - test-mail-attachments:/data/test_mail_attachments
     restart: "no"
 
   frontend:
@@ -23,4 +27,6 @@ services:
 
 volumes:
   test-course-content:
+  test-integration-credentials:
+  test-mail-attachments:
   test-database-data:

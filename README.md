@@ -1,7 +1,8 @@
 # Teacher Assistant
 
 Teacher Assistant is a single-owner, self-hosted workspace with a personal
-calendar, manual course organization, and a private Codex-powered assistant.
+calendar, manual course organization, a forwarded-mail Inbox, and a private
+Codex-powered assistant.
 Calendar and course features work without Codex. The Assistant is a general
 helper for explanations, writing, planning, study aids, and code snippets; it
 can also answer calendar questions, use relevant course notes with validated
@@ -28,7 +29,8 @@ On the first `make dev`, the `teacher-assistant-change-me` placeholder is
 replaced in the private `.env` with a unique installation identity. That
 identity is also recorded in the ignored `.teacher-assistant-installation`
 marker. Keep both hidden files when moving the installation: the stable
-identity reconnects PostgreSQL and Codex authentication after a rename.
+identity reconnects PostgreSQL, Codex authentication, and private integration
+credentials after a rename.
 
 Do not copy `.env.example` over an existing `.env`. An installation created
 before the stable identity was added must run `make data-preflight`, stop with
@@ -63,7 +65,7 @@ make test      # isolated backend and frontend tests
 make e2e       # isolated Playwright browser tests
 make lint      # Python, TypeScript, and formatting checks
 make data-preflight # read-only data-resolution report
-make backup    # coordinated PostgreSQL + course-file backup
+make backup    # coordinated PostgreSQL + course/mail-file backup
 ```
 
 Both test commands use separate temporary databases and remove their Docker
@@ -99,7 +101,7 @@ the last valid choice locally. Restart the backend after changing either value.
 
 This browser profile remembers a small set of owner-controlled navigation
 choices under the versioned `teacher-assistant.ui-state.v1` site-storage key:
-the active module; main and per-course Calendar view/anchor; selected course and
+the active module (including Inbox); main and per-course Calendar view/anchor; selected course and
 tab; selected Assistant conversation/sidebar; and unsent composer text per
 conversation, including a separate not-yet-created conversation draft. The
 schema accepts only known values, UUIDs, real `YYYY-MM-DD` dates, bounded text,
@@ -117,6 +119,44 @@ Clearing site data, using a private window, or opening another browser profile
 or device removes these navigation choices and unsent drafts. It does not
 delete any backend record. Note and summary expansion is intentionally not
 remembered, so Notes always remounts minimized.
+
+## Forwarded-mail Inbox
+
+Teacher Assistant receives only mail that the owner deliberately forwards to a
+separate, dedicated mailbox. First create that mailbox with an IMAP-capable mail
+provider, enable an app password when required, and add a forwarding rule in
+the school or personal account that receives the original mail. Provider menus
+differ; look for **Forwarding**, **Rules**, or **Filters** and forward only the
+messages you want copied into Teacher Assistant.
+
+Open **Settings → Mail inbox** and enter the provider's IMAP hostname, port,
+TLS mode, mailbox name, dedicated-mailbox username, and app password. The
+backend resolves only public targets, requires certificate-verified implicit
+TLS or STARTTLS, authenticates, and opens the mailbox read-only. Use **Test
+connection** or **Check mail**; otherwise the backend polls at
+`MAIL_SYNC_INTERVAL_SECONDS` (five minutes by default) with bounded backoff.
+
+Teacher Assistant does not create an address, configure DNS/MX records or
+forwarding, send or reply to mail, manage contacts, or modify the remote
+mailbox. It never sets Seen, moves, archives, deletes, or expunges remote mail.
+Inbox read/unread, archive, and single-message deletion are local states. Local
+deletion requires confirmation and removes only that stored item and its local
+attachment files.
+
+Mail is labeled **Mail** and forwarded body content is explicitly unverified;
+quoted text is never treated as a verified original sender. Plain text is
+preferred. HTML-only bodies are sanitized on ingestion and displayed as
+passive text, so scripts, forms, SVG, iframes, tracking pixels, remote images,
+and active embeds cannot load. Attachments are bounded, stored under generated
+IDs, and offered only as downloads with private/no-store and `nosniff`
+headers. Mail never becomes Course material, Calendar data, or Assistant/Codex
+context automatically.
+
+The renewable app password is stored only in the private
+`integration-credential-data` volume with strict permissions. It is never
+returned by the API, written to browser storage, included in diagnostics or
+Codex workspaces, or placed in coordinated backups. A missing or corrupt secret
+shows **Reconnect required** while already imported mail remains available.
 
 ## Calendar-change safety
 
@@ -293,6 +333,15 @@ original binary or text file is stored only under `data/course_content`. Server
 paths are not returned to the browser. `data/` is ignored by Git and must remain
 private.
 
+Private Inbox attachments are stored separately at `MAIL_DATA_DIR` (default
+`./data/mail_attachments`) and mounted at `MAIL_STORAGE_ROOT`. Paths are built
+only from database UUIDs; sender filenames are display/download metadata, not
+filesystem paths. `MAIL_MAX_MESSAGE_MB`, `MAIL_MAX_ATTACHMENT_MB`, and
+`MAIL_MAX_TOTAL_STORAGE_MB` bound ingestion and storage. PostgreSQL stores the
+normalized headers/body, UID identity, local read/archive state, omitted-file
+explanations, and quarantine/cleanup audit records. Raw wire messages are not
+retained after accepted content is persisted.
+
 PDF viewing does not create a public or reusable share URL. The backend accepts
 only a validated source UUID, rebuilds the expected immutable storage path,
 and verifies the PDF signature, byte size, and SHA-256 content hash before
@@ -323,8 +372,9 @@ check at any time:
 make data-preflight
 ```
 
-It reports the resolved identity, PostgreSQL and Codex-auth volume names,
-course storage, backup root, reachability, and other Compose database-volume
+It reports the resolved identity, PostgreSQL, Codex-auth, and
+integration-secret volume names, course and mail storage, backup root,
+reachability, and other Compose database-volume
 candidates without creating, copying, or deleting a missing volume.
 
 ### Coordinated backup
@@ -336,19 +386,22 @@ make backup
 The command briefly stops frontend/backend write paths, keeps PostgreSQL
 available for `pg_dump`, and restores only services that were previously
 running. It writes a unique directory under `BACKUP_ROOT` (default
-`./backups`) containing `database.dump`, `course-content.tar.gz`, and
-`manifest.json`. The manifest records the installation ID, UTC timestamp, byte
+`./backups`) containing `database.dump`, `course-content.tar.gz`,
+`mail-attachments.tar.gz`, and `manifest.json`. The manifest records the
+installation ID, UTC timestamp, byte
 counts, and SHA-256 checksums. The command lists the PostgreSQL custom dump,
-fully validates the safe course archive, verifies checksums, applies private
+fully validates both private-file archives, verifies checksums, applies private
 permissions, and only then reports success. No prior backup is overwritten.
 
 The bundle contains private calendars/subscriptions, courses and original
-uploads, notes/summaries, Assistant history/proposals/citations, and diagnostics
-and audits. `backups/` is ignored by Git. Copy complete bundle directories only
+uploads, notes/summaries, Inbox metadata/body and attachments, Assistant
+history/proposals/citations, diagnostics, and audits. `backups/` is ignored by
+Git. Copy complete bundle directories only
 to encrypted, access-controlled storage.
 
-ChatGPT credentials are intentionally excluded. Reauthenticate after a clean
-restore instead of copying renewable tokens.
+ChatGPT and mailbox credentials are intentionally excluded. Reauthenticate and
+reconnect the mailbox after a clean restore instead of copying renewable
+tokens or app passwords.
 
 ### Restore
 
@@ -363,19 +416,22 @@ make restore \
   CONFIRM_RESTORE=target-installation
 ```
 
-The previous course directory is retained as
-`course_content.before-restore-<timestamp>`; the pre-restore bundle is the
+The previous course and mail directories are retained as
+`course_content.before-restore-<timestamp>` and
+`mail_attachments.before-restore-<timestamp>`; the pre-restore bundle is the
 database rollback. Migrations run before services resume. Verify Courses,
-Calendar/subscriptions, Assistant history/citations, diagnostics, and upload
-hashes. Sign in to ChatGPT again if needed. A corrupt, mismatched, or unsafe
-bundle fails before the active database or course tree is changed.
+Calendar/subscriptions, Inbox/attachments, Assistant history/citations,
+diagnostics, and upload hashes. Sign in to ChatGPT and reconnect the mailbox
+again if needed. A corrupt, mismatched, or unsafe bundle fails before the
+active database or private file trees are changed.
 
 ## Safe error explanations
 
 Handled API failures return a public error code and message plus opaque
 `error_id` and `request_id` values. The persisted report contains only
 allowlisted operation metadata, validation fields, relevant content type/size,
-safe constraints, and a sanitized exception type. Passwords, tokens, cookies,
+safe constraints, and a sanitized exception type. Passwords, mail bodies,
+tokens, cookies,
 authorization headers, request bodies, credentials, environment variables,
 source paths, and unrelated files are redacted or never collected.
 
@@ -432,3 +488,5 @@ sanitized error report. Prettify and diagnostic workspaces never contain
 calendars or course files. Tools, network access, repository access, source
 editing, and host filesystem access are disabled; each workspace is deleted
 immediately after the job.
+Mail headers, bodies, attachments, IMAP health responses, and mailbox
+credentials are never added to runtime Codex workspaces in this milestone.

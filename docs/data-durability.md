@@ -7,6 +7,7 @@ Compose derives these persistent volume names from it:
 ```text
 <installation-id>_database-data
 <installation-id>_codex-auth-data
+<installation-id>_integration-credential-data
 ```
 
 The ID does not depend on the repository directory after initialization. A
@@ -26,12 +27,17 @@ Authoritative or private installation data:
 - private configuration in `.env`, including the stable Compose project name;
 - renewable ChatGPT/Codex credentials in
   `<installation-id>_codex-auth-data`;
+- private Inbox attachment files at host `MAIL_DATA_DIR` (default
+  `./data/mail_attachments`), mounted at `MAIL_STORAGE_ROOT`;
+- renewable IMAP app-password material in the separate
+  `<installation-id>_integration-credential-data` volume;
 - coordinated backups below `BACKUP_ROOT` (default `./backups`);
 - `.teacher-assistant-installation`, a non-secret local guard recording which
   database volume has already been initialized.
 
-Browser-only state planned for M19 is convenience state, not authoritative
-application data. It will not replace PostgreSQL or require server backup.
+Browser-only navigation and Assistant-draft state is convenience state, not
+authoritative application data. It does not replace PostgreSQL or require
+server backup. Mail passwords and mail content are never browser-persisted.
 
 Disposable data includes runtime Codex workspaces, Python/Node caches,
 `node_modules`, frontend build output, images/containers, the development
@@ -51,7 +57,8 @@ make data-preflight
 ```
 
 It reports the resolved installation ID and identity source; exact database and
-Codex-auth volume names and reachability; host course-storage and backup paths;
+Codex-auth and integration-secret volume names and reachability; host
+course/mail-storage and backup paths;
 recorded initialization state; and other Compose `database-data` candidates.
 The check does not create a missing volume.
 
@@ -84,8 +91,9 @@ make data-init INSTALLATION_ID=teacher-assistant-study
 make dev
 ```
 
-Use a distinct ID, repository directory, `COURSE_DATA_DIR`, ports, and backup
-root per clone. Different IDs resolve different database, Codex-auth, network,
+Use a distinct ID, repository directory, `COURSE_DATA_DIR`, `MAIL_DATA_DIR`,
+ports, and backup root per clone. Different IDs resolve different database,
+Codex-auth, integration-secret, network,
 container, image, and disposable development volumes. Default relative course
 and backup paths are isolated by clone.
 
@@ -111,12 +119,12 @@ Do not change volume names by hand and do not overwrite the existing `.env`.
 
    To change to another unique ID, set `INSTALLATION_ID` accordingly. The
    command requires stopped source containers, verifies the PostgreSQL source,
-   refuses a populated target, copies database and renewable-auth volumes, and
+   refuses a populated target, copies database and renewable-secret volumes, and
    compares content digests.
 
 3. Run `make data-preflight`, then `make dev`. Verify Calendar/ICS
-   subscriptions, Courses/notes/summaries/uploads, Assistant history/proposals,
-   diagnostics, and ChatGPT sign-in state.
+   subscriptions, Courses/notes/summaries/uploads, Inbox/attachments,
+   Assistant history/proposals, diagnostics, ChatGPT sign-in, and mailbox state.
 
 Rollback metadata is saved privately below
 `backups/migrations/<timestamp>-<source>-to-<target>/`. Existing source volumes
@@ -141,7 +149,8 @@ Moving a running installation is not supported.
 1. Run `make data-preflight` and `make backup`.
 2. Run `make down`; it removes containers/network, never owner volumes.
 3. Move the complete project directory with `mv`. Include hidden `.env` and
-   `.teacher-assistant-installation`, ignored `data/`, and ignored `backups/`.
+   `.teacher-assistant-installation`, ignored `data/` (course and mail files),
+   and ignored `backups/`.
    Copying only Git-tracked files is not a data move.
 4. In the new directory, run `make data-preflight`.
 5. Run `make dev`, then `make migrate` when an update includes migrations.
@@ -162,22 +171,25 @@ make backup
 ```
 
 The command pauses backend/frontend writes, dumps PostgreSQL in custom format,
-archives the matching course tree, and writes a unique UTC-stamped bundle:
+archives the matching course and mail-attachment trees, and writes a unique
+UTC-stamped bundle:
 
 ```text
 backups/<UTC timestamp>-<installation-id>/
 ├── database.dump
 ├── course-content.tar.gz
+├── mail-attachments.tar.gz
 └── manifest.json
 ```
 
 The manifest contains SHA-256 hashes and byte counts. Success is reported only
-after `pg_restore` lists the dump and the course archive passes checksum,
-entry-type, path, and full-read validation. Directories use `0700`; files use
+after `pg_restore` lists the dump and both archives pass checksum, entry-type,
+path, and full-read validation. Directories use `0700`; files use
 `0600`. Previously running services resume.
 
-Codex authentication is excluded. It is renewable and should be recreated with
-**Sign in with ChatGPT** instead of copied into an archive.
+Codex authentication and IMAP credentials are excluded. They are renewable and
+should be recreated with **Sign in with ChatGPT** and **Settings → Mail inbox**
+instead of copied into an archive.
 
 ## Clean restore and rollback
 
@@ -192,10 +204,12 @@ make restore \
 
 Before changing the target, restore validates the complete bundle and creates a
 new coordinated safety backup. It stops writes, recreates and loads the target
-database with `--exit-on-error`, safely extracts course files, runs migrations,
+database with `--exit-on-error`, safely extracts course and mail attachment
+files, runs migrations,
 and resumes previously running services. The prior course directory remains as
-`course_content.before-restore-<UTC timestamp>`. Keep it and the pre-restore
-bundle until verification.
+`course_content.before-restore-<UTC timestamp>` and the prior mail tree remains
+as `mail_attachments.before-restore-<UTC timestamp>`. Keep them and the
+pre-restore bundle until verification.
 
 A missing component, size/checksum mismatch, unreadable PostgreSQL dump,
 duplicate/traversal archive path, symlink, device file, or unsupported manifest
@@ -204,9 +218,9 @@ disk error interrupts restore, services remain stopped and the printed safety
 backup plus course rollback directory provide recovery.
 
 After restore, verify database record IDs/counts, source hashes, Calendar and
-subscriptions, Courses and summaries, Assistant history/proposals, diagnostics,
-and Alembic head. Sign in to ChatGPT again when the target auth volume has no
-renewable session.
+subscriptions, Courses and summaries, Inbox bodies/attachments, Assistant
+history/proposals, diagnostics, and Alembic head. Sign in to ChatGPT and
+reconnect the mailbox when the target renewable-secret volumes are empty.
 
 ## Verification command
 

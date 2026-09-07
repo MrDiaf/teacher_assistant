@@ -27,6 +27,9 @@ async def clean_database() -> AsyncIterator[None]:
         await connection.execute(
             text(
                 "TRUNCATE TABLE diagnostic_audit_records, diagnostic_errors, "
+                "mail_cleanup_audits, mail_quarantines, mail_attachments, "
+                "mail_addresses, mail_messages, mail_sync_cursors, "
+                "mail_integration_connections, "
                 "assistant_context_audits, note_summaries, assistant_proposal_actions, "
                 "assistant_proposals, assistant_jobs, assistant_messages, "
                 "assistant_conversations, note_source_links, notes, "
@@ -44,10 +47,26 @@ async def clean_database() -> AsyncIterator[None]:
         mode=0o700,
         exist_ok=True,
     )
+    private_roots = [
+        settings.integration_credential_root.resolve(),
+        settings.mail_storage_root.resolve(),
+    ]
+    for private_root in private_roots:
+        if private_root in {Path("/"), Path.home().resolve()}:
+            raise RuntimeError("Refusing to clear an unsafe private storage root.")
+        await asyncio.to_thread(shutil.rmtree, private_root, True)
+        await asyncio.to_thread(
+            private_root.mkdir,
+            parents=True,
+            mode=0o700,
+            exist_ok=True,
+        )
     try:
         yield
     finally:
         await asyncio.to_thread(shutil.rmtree, storage_root, True)
+        for private_root in private_roots:
+            await asyncio.to_thread(shutil.rmtree, private_root, True)
 
 
 @pytest_asyncio.fixture

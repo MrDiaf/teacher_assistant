@@ -1,6 +1,6 @@
 # M20 — Forwarded-mail Inbox
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -135,27 +135,27 @@ password, or provider OAuth registration.
 
 ## Completed checklist
 
-- [ ] Define integration connection, credential-reference, mail message,
+- [x] Define integration connection, credential-reference, mail message,
   recipient/header, attachment, sync cursor, quarantine/failure, and local state
   schemas.
-- [ ] Add the private integration credential root and Docker volume with atomic
+- [x] Add the private integration credential root and Docker volume with atomic
   secret read/write/delete behavior and strict permissions.
-- [ ] Add the private mail-storage root and coordinated backup/restore support.
-- [ ] Add TLS-only, read-only IMAP connection testing and credential lifecycle.
-- [ ] Make Settings a real page with connect, test, reconnect, disconnect, and
+- [x] Add the private mail-storage root and coordinated backup/restore support.
+- [x] Add TLS-only, read-only IMAP connection testing and credential lifecycle.
+- [x] Make Settings a real page with connect, test, reconnect, disconnect, and
   sanitized mailbox-health states.
-- [ ] Add UIDVALIDITY/UID cursoring, serialized polling, retries, and manual
+- [x] Add UIDVALIDITY/UID cursoring, serialized polling, retries, and manual
   checking.
-- [ ] Add bounded RFC/MIME parsing and conservative deduplication.
-- [ ] Add safe plain-text/HTML body rendering with all remote resources blocked.
-- [ ] Add bounded attachment storage and safe ID-based downloads.
-- [ ] Add Inbox navigation and accessible list/detail/search/read/archive states.
-- [ ] Add explicit one-message local deletion with recoverable file cleanup.
-- [ ] Keep remote mutation, outbound email, auto-course/calendar import, and
+- [x] Add bounded RFC/MIME parsing and conservative deduplication.
+- [x] Add safe plain-text/HTML body rendering with all remote resources blocked.
+- [x] Add bounded attachment storage and safe ID-based downloads.
+- [x] Add Inbox navigation and accessible list/detail/search/read/archive states.
+- [x] Add explicit one-message local deletion with recoverable file cleanup.
+- [x] Keep remote mutation, outbound email, auto-course/calendar import, and
   automatic Codex context out of scope.
-- [ ] Add IMAP, TLS, cursor-reset, MIME bomb, XSS, tracking-pixel, malformed mail,
+- [x] Add IMAP, TLS, cursor-reset, MIME bomb, XSS, tracking-pixel, malformed mail,
   duplicate, privacy, storage, accessibility, and E2E tests using local fakes.
-- [ ] Update Docker, `.env.example`, backup/restore, forwarding setup, storage,
+- [x] Update Docker, `.env.example`, backup/restore, forwarding setup, storage,
   reconnect, and privacy documentation.
 
 ## Acceptance criteria

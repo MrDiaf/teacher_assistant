@@ -11,11 +11,13 @@ import uuid
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 DATABASE_FILE = "database.dump"
 COURSE_ARCHIVE_FILE = "course-content.tar.gz"
+MAIL_ARCHIVE_FILE = "mail-attachments.tar.gz"
 MANIFEST_FILE = "manifest.json"
 COURSE_ARCHIVE_ROOT = "course_content"
+MAIL_ARCHIVE_ROOT = "mail_attachments"
 BUFFER_SIZE = 1024 * 1024
 
 
@@ -31,36 +33,44 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _safe_source_paths(source: Path) -> list[Path]:
+def _safe_source_paths(source: Path, label: str) -> list[Path]:
     paths = [source]
     for path in sorted(source.rglob("*"), key=lambda item: item.as_posix()):
         if path.is_symlink():
             raise ArchiveValidationError(
-                f"Course storage contains a symbolic link: {path.relative_to(source)}"
+                f"{label} contains a symbolic link: {path.relative_to(source)}"
             )
         if not (path.is_dir() or path.is_file()):
             raise ArchiveValidationError(
-                f"Course storage contains an unsupported file type: {path.relative_to(source)}"
+                f"{label} contains an unsupported file type: {path.relative_to(source)}"
             )
         paths.append(path)
     return paths
 
 
-def create_course_archive(source: Path, output: BinaryIO) -> None:
+def create_storage_archive(source: Path, output: BinaryIO, archive_root: str) -> None:
     source = source.resolve()
     if not source.is_dir():
-        raise ArchiveValidationError(f"Course storage is not a directory: {source}")
-    paths = _safe_source_paths(source)
+        raise ArchiveValidationError(f"Private storage is not a directory: {source}")
+    paths = _safe_source_paths(source, "Private storage")
     with tarfile.open(fileobj=output, mode="w|gz", format=tarfile.PAX_FORMAT) as archive:
         for path in paths:
             relative = path.relative_to(source)
-            archive_name = PurePosixPath(COURSE_ARCHIVE_ROOT)
+            archive_name = PurePosixPath(archive_root)
             if relative.parts:
                 archive_name /= PurePosixPath(*relative.parts)
             archive.add(path, arcname=archive_name.as_posix(), recursive=False)
 
 
-def _validated_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
+def create_course_archive(source: Path, output: BinaryIO) -> None:
+    create_storage_archive(source, output, COURSE_ARCHIVE_ROOT)
+
+
+def create_mail_archive(source: Path, output: BinaryIO) -> None:
+    create_storage_archive(source, output, MAIL_ARCHIVE_ROOT)
+
+
+def _validated_members(archive: tarfile.TarFile, archive_root: str) -> list[tarfile.TarInfo]:
     members = archive.getmembers()
     if not members:
         raise ArchiveValidationError("Course archive is empty.")
@@ -69,27 +79,25 @@ def _validated_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
         path = PurePosixPath(member.name)
         if path.is_absolute() or ".." in path.parts:
             raise ArchiveValidationError(f"Unsafe course archive path: {member.name}")
-        if not path.parts or path.parts[0] != COURSE_ARCHIVE_ROOT:
+        if not path.parts or path.parts[0] != archive_root:
             raise ArchiveValidationError(
-                f"Course archive entry is outside {COURSE_ARCHIVE_ROOT}: {member.name}"
+                f"Private archive entry is outside {archive_root}: {member.name}"
             )
         normalized = path.as_posix().rstrip("/")
         if normalized in seen:
             raise ArchiveValidationError(f"Duplicate course archive path: {member.name}")
         seen.add(normalized)
         if not (member.isdir() or member.isfile()):
-            raise ArchiveValidationError(
-                f"Unsupported course archive entry type: {member.name}"
-            )
-    if COURSE_ARCHIVE_ROOT not in seen:
-        raise ArchiveValidationError("Course archive root is missing.")
+            raise ArchiveValidationError(f"Unsupported course archive entry type: {member.name}")
+    if archive_root not in seen:
+        raise ArchiveValidationError("Private archive root is missing.")
     return members
 
 
-def verify_course_archive(path: Path) -> int:
+def verify_storage_archive(path: Path, archive_root: str) -> int:
     try:
         with tarfile.open(path, mode="r:gz") as archive:
-            members = _validated_members(archive)
+            members = _validated_members(archive, archive_root)
             for member in members:
                 if not member.isfile():
                     continue
@@ -105,12 +113,24 @@ def verify_course_archive(path: Path) -> int:
     return sum(member.isfile() for member in members)
 
 
+def verify_course_archive(path: Path) -> int:
+    return verify_storage_archive(path, COURSE_ARCHIVE_ROOT)
+
+
+def verify_mail_archive(path: Path) -> int:
+    return verify_storage_archive(path, MAIL_ARCHIVE_ROOT)
+
+
 def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[str, object]:
     database = bundle / DATABASE_FILE
     courses = bundle / COURSE_ARCHIVE_FILE
-    if not database.is_file() or not courses.is_file():
-        raise ArchiveValidationError("The database dump and course archive are both required.")
+    mail = bundle / MAIL_ARCHIVE_FILE
+    if not database.is_file() or not courses.is_file() or not mail.is_file():
+        raise ArchiveValidationError(
+            "The database dump, course archive, and mail attachment archive are required."
+        )
     file_count = verify_course_archive(courses)
+    mail_file_count = verify_mail_archive(mail)
     return {
         "format_version": FORMAT_VERSION,
         "created_at": created_at,
@@ -127,6 +147,17 @@ def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[
             "file_count": file_count,
             "bytes": courses.stat().st_size,
             "sha256": sha256_file(courses),
+        },
+        "mail_files": {
+            "file": MAIL_ARCHIVE_FILE,
+            "root": MAIL_ARCHIVE_ROOT,
+            "file_count": mail_file_count,
+            "bytes": mail.stat().st_size,
+            "sha256": sha256_file(mail),
+        },
+        "integration_credentials": {
+            "included": False,
+            "recovery": "Reconnect the dedicated mailbox after a clean restore.",
         },
         "codex_auth": {
             "included": False,
@@ -173,27 +204,42 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     codex_auth = manifest.get("codex_auth")
     if not isinstance(codex_auth, dict) or codex_auth.get("included") is not False:
         raise ArchiveValidationError("Backup manifest must exclude Codex authentication.")
+    integration_credentials = manifest.get("integration_credentials")
+    if (
+        not isinstance(integration_credentials, dict)
+        or integration_credentials.get("included") is not False
+    ):
+        raise ArchiveValidationError("Backup manifest must exclude integration credentials.")
     database = _manifest_component(bundle, manifest, "database", DATABASE_FILE)
     courses = _manifest_component(bundle, manifest, "course_files", COURSE_ARCHIVE_FILE)
+    mail = _manifest_component(bundle, manifest, "mail_files", MAIL_ARCHIVE_FILE)
     file_count = verify_course_archive(courses)
     course_component = manifest["course_files"]
     assert isinstance(course_component, dict)
     if course_component.get("file_count") != file_count:
         raise ArchiveValidationError("Course archive file count does not match the manifest.")
+    mail_file_count = verify_mail_archive(mail)
+    mail_component = manifest["mail_files"]
+    assert isinstance(mail_component, dict)
+    if mail_component.get("file_count") != mail_file_count:
+        raise ArchiveValidationError("Mail archive file count does not match the manifest.")
     return {
         "installation_id": installation_id,
         "created_at": manifest.get("created_at"),
         "database": database.name,
         "course_archive": courses.name,
         "course_file_count": file_count,
+        "mail_archive": mail.name,
+        "mail_file_count": mail_file_count,
     }
 
 
-def restore_course_archive(
+def restore_storage_archive(
     archive_path: Path,
     parent: Path,
     directory_name: str,
     rollback_suffix: str,
+    archive_root: str,
 ) -> Path | None:
     if not directory_name or directory_name in {".", ".."} or "/" in directory_name:
         raise ArchiveValidationError("Course storage directory name is unsafe.")
@@ -208,9 +254,9 @@ def restore_course_archive(
     staging.mkdir(mode=0o700)
     try:
         with tarfile.open(archive_path, mode="r:gz") as archive:
-            members = _validated_members(archive)
+            members = _validated_members(archive, archive_root)
             for member in members:
-                relative = PurePosixPath(member.name).relative_to(COURSE_ARCHIVE_ROOT)
+                relative = PurePosixPath(member.name).relative_to(archive_root)
                 destination = staging.joinpath(*relative.parts)
                 if member.isdir():
                     destination.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -240,6 +286,22 @@ def restore_course_archive(
             shutil.rmtree(staging)
 
 
+def restore_course_archive(
+    archive_path: Path, parent: Path, directory_name: str, rollback_suffix: str
+) -> Path | None:
+    return restore_storage_archive(
+        archive_path, parent, directory_name, rollback_suffix, COURSE_ARCHIVE_ROOT
+    )
+
+
+def restore_mail_archive(
+    archive_path: Path, parent: Path, directory_name: str, rollback_suffix: str
+) -> Path | None:
+    return restore_storage_archive(
+        archive_path, parent, directory_name, rollback_suffix, MAIL_ARCHIVE_ROOT
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Teacher Assistant backup archive helper")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -247,6 +309,10 @@ def _parser() -> argparse.ArgumentParser:
     create = subparsers.add_parser("create-course")
     create.add_argument("--source", type=Path, required=True)
     create.add_argument("--output", type=Path)
+
+    create_mail = subparsers.add_parser("create-mail")
+    create_mail.add_argument("--source", type=Path, required=True)
+    create_mail.add_argument("--output", type=Path)
 
     manifest = subparsers.add_parser("create-manifest")
     manifest.add_argument("--bundle", type=Path, required=True)
@@ -261,6 +327,11 @@ def _parser() -> argparse.ArgumentParser:
     restore.add_argument("--parent", type=Path, required=True)
     restore.add_argument("--directory-name", required=True)
     restore.add_argument("--rollback-suffix", required=True)
+    restore_mail = subparsers.add_parser("restore-mail")
+    restore_mail.add_argument("--archive", type=Path, required=True)
+    restore_mail.add_argument("--parent", type=Path, required=True)
+    restore_mail.add_argument("--directory-name", required=True)
+    restore_mail.add_argument("--rollback-suffix", required=True)
     return parser
 
 
@@ -273,6 +344,12 @@ def main() -> int:
             else:
                 with args.output.open("xb") as output:
                     create_course_archive(args.source, output)
+        elif args.command == "create-mail":
+            if args.output is None:
+                create_mail_archive(args.source, sys.stdout.buffer)
+            else:
+                with args.output.open("xb") as output:
+                    create_mail_archive(args.source, output)
         elif args.command == "create-manifest":
             manifest = build_manifest(args.bundle, args.installation_id, args.created_at)
             json.dump(manifest, sys.stdout, indent=2, sort_keys=True)
@@ -282,6 +359,14 @@ def main() -> int:
             sys.stdout.write("\n")
         elif args.command == "restore-course":
             previous = restore_course_archive(
+                args.archive,
+                args.parent,
+                args.directory_name,
+                args.rollback_suffix,
+            )
+            print(previous or "none")
+        elif args.command == "restore-mail":
+            previous = restore_mail_archive(
                 args.archive,
                 args.parent,
                 args.directory_name,

@@ -22,22 +22,25 @@ product scope currently includes:
 1. Calendar
 2. Calendar Assistant powered by Codex
 3. Courses, course materials, notes, summaries, and course-linked calendars
+4. Forwarded-mail Inbox and its dedicated mailbox settings
 
 The currently implemented visible application navigation should contain:
 
 - Dashboard
 - Calendar
 - Courses
+- Inbox
 - Study Plan
 - Assistant
 - Settings
 
-The approved future milestone sequence adds Inbox after Courses in M20 and
-Documents after Inbox in M21. Do not show either module before its milestone is
-explicitly selected, implemented, and verified.
+The approved future milestone sequence adds Documents after Inbox in M21. Do
+not show Documents before its milestone is explicitly selected, implemented,
+and verified.
 
-Calendar, Courses, and Assistant have real functionality. Dashboard, Study
-Plan, and Settings may display a polished placeholder page.
+Calendar, Courses, Inbox, Assistant, and the mail-integration area of Settings
+have real functionality. Dashboard and Study Plan may display a polished
+placeholder page.
 
 Do not add a new module or product phase unless the owner explicitly defines
 or selects a milestone for it. Preserve the completed Course functionality;

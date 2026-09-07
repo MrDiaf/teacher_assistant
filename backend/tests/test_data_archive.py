@@ -11,9 +11,12 @@ from app.maintenance.data_archive import (
     ArchiveValidationError,
     build_manifest,
     create_course_archive,
+    create_mail_archive,
     restore_course_archive,
+    restore_mail_archive,
     verify_bundle,
     verify_course_archive,
+    verify_mail_archive,
 )
 
 
@@ -28,6 +31,13 @@ def create_bundle(tmp_path: Path) -> tuple[Path, Path]:
     archive = bundle / "course-content.tar.gz"
     with archive.open("wb") as output:
         create_course_archive(source, output)
+    mail_source = tmp_path / "mail-source"
+    mail_attachment = mail_source / "message-id" / "attachment-id.bin"
+    mail_attachment.parent.mkdir(parents=True)
+    mail_attachment.write_bytes(b"private-mail-attachment")
+    mail_archive = bundle / "mail-attachments.tar.gz"
+    with mail_archive.open("wb") as output:
+        create_mail_archive(mail_source, output)
     manifest = build_manifest(bundle, "fixture-installation", "20260831T120000Z")
     (bundle / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     return bundle, upload
@@ -40,6 +50,8 @@ def test_bundle_manifest_verifies_database_and_course_checksums(tmp_path: Path) 
 
     assert verified["installation_id"] == "fixture-installation"
     assert verified["course_file_count"] == 1
+    assert verified["mail_file_count"] == 1
+    assert verified["mail_archive"] == "mail-attachments.tar.gz"
 
 
 def test_bundle_verification_rejects_corrupt_component(tmp_path: Path) -> None:
@@ -63,6 +75,22 @@ def test_course_archive_rejects_path_traversal(tmp_path: Path) -> None:
 
     with pytest.raises(ArchiveValidationError, match="Unsafe"):
         verify_course_archive(archive_path)
+
+
+def test_mail_archive_round_trip_and_rejects_path_traversal(tmp_path: Path) -> None:
+    source = tmp_path / "mail"
+    stored = source / "message" / "attachment.bin"
+    stored.parent.mkdir(parents=True)
+    stored.write_bytes(b"mail bytes")
+    archive_path = tmp_path / "mail.tar.gz"
+    with archive_path.open("wb") as output:
+        create_mail_archive(source, output)
+    assert verify_mail_archive(archive_path) == 1
+
+    parent = tmp_path / "restore"
+    parent.mkdir()
+    restore_mail_archive(archive_path, parent, "mail", "fixture")
+    assert (parent / "mail" / "message" / "attachment.bin").read_bytes() == b"mail bytes"
 
 
 def test_restore_keeps_previous_course_tree_as_rollback(tmp_path: Path) -> None:
