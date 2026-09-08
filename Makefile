@@ -2,9 +2,29 @@ COMPOSE := docker compose -f compose.yml -f compose.dev.yml
 TEST_COMPOSE := docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml
 E2E_COMPOSE := docker compose -p teacher-assistant-e2e -f compose.e2e.yml
 
-.PHONY: dev down restart logs test e2e lint format migrate backup restore \
+.PHONY: dev down restart logs test e2e lint format migrate backup restore check-boundaries \
 	data-preflight data-init data-adopt data-guard data-record-started \
 	data-safety-test data-relocation-test
+
+check-boundaries:
+	$(COMPOSE) run --build --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint python backend /workspace/scripts/check-backend-boundaries.py --repo /workspace
+	$(COMPOSE) run --build --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint node frontend /workspace/scripts/check-frontend-boundaries.mjs --repo /workspace
+	@set -e; \
+	if $(COMPOSE) run --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint python backend /workspace/scripts/check-backend-boundaries.py \
+		--repo /workspace --source-root architecture/fixtures/backend \
+		--allow-stale-exceptions >/dev/null 2>&1; then \
+		echo "Backend invalid boundary fixture was not rejected."; exit 1; \
+	else echo "Backend invalid boundary fixture rejected."; fi
+	@set -e; \
+	if $(COMPOSE) run --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint node frontend /workspace/scripts/check-frontend-boundaries.mjs \
+		--repo /workspace --source-root architecture/fixtures/frontend/src \
+		--allow-stale-exceptions >/dev/null 2>&1; then \
+		echo "Frontend invalid boundary fixture was not rejected."; exit 1; \
+	else echo "Frontend invalid boundary fixture rejected."; fi
 
 data-preflight:
 	@./scripts/data-safety.sh preflight
@@ -34,7 +54,7 @@ restart: data-guard
 logs:
 	$(COMPOSE) logs -f
 
-test:
+test: check-boundaries
 	@set -e; \
 	trap '$(TEST_COMPOSE) down -v --remove-orphans' EXIT; \
 	$(TEST_COMPOSE) run --build --rm backend pytest -q; \

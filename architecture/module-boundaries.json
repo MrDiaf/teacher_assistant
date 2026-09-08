@@ -1,0 +1,484 @@
+{
+  "version": 1,
+  "owners": [
+    "platform",
+    "calendar",
+    "courses",
+    "assistant",
+    "inbox",
+    "documents"
+  ],
+  "declared_dependencies": {
+    "platform": [],
+    "calendar": ["platform"],
+    "courses": ["calendar", "platform"],
+    "assistant": ["calendar", "courses", "platform"],
+    "inbox": ["platform"],
+    "documents": ["platform"]
+  },
+  "backend": {
+    "path_owners": [
+      { "prefix": "app.calendar", "owner": "calendar" },
+      { "prefix": "app.course_calendars", "owner": "courses" },
+      { "prefix": "app.course_sources", "owner": "courses" },
+      { "prefix": "app.courses", "owner": "courses" },
+      { "prefix": "app.notes", "owner": "courses" },
+      { "prefix": "app.assistant", "owner": "assistant" },
+      { "prefix": "app.inbox", "owner": "inbox" },
+      { "prefix": "app.integrations", "owner": "inbox" },
+      { "prefix": "app.documents", "owner": "documents" },
+      { "prefix": "app.ai", "owner": "platform" },
+      { "prefix": "app.codex_runtime", "owner": "platform" },
+      { "prefix": "app.core", "owner": "platform" },
+      { "prefix": "app.database", "owner": "platform" },
+      { "prefix": "app.diagnostics", "owner": "platform" },
+      { "prefix": "app.maintenance", "owner": "platform" },
+      { "prefix": "app.main", "owner": "platform" },
+      { "prefix": "app", "owner": "platform" }
+    ],
+    "allowed_platform_imports": ["app.core", "app.database"],
+    "legacy_exceptions": [
+      {
+        "importer": "backend/app/assistant/course_context.py",
+        "imported": "app.course_sources.models",
+        "remove_in": "M21E"
+      },
+      {
+        "importer": "backend/app/assistant/course_context.py",
+        "imported": "app.courses.models",
+        "remove_in": "M21E"
+      },
+      {
+        "importer": "backend/app/assistant/course_context.py",
+        "imported": "app.diagnostics.redaction",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/course_context.py",
+        "imported": "app.notes.models",
+        "remove_in": "M21E"
+      },
+      {
+        "importer": "backend/app/assistant/models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/assistant/proposal_service.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/proposal_service.py",
+        "imported": "app.calendar.repository",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/proposal_service.py",
+        "imported": "app.calendar.schemas",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/proposal_service.py",
+        "imported": "app.calendar.service",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/proposals.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/proposals.py",
+        "imported": "app.calendar.schemas",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/routes.py",
+        "imported": "app.ai.service",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/routes.py",
+        "imported": "app.codex_runtime.adapter",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/routes.py",
+        "imported": "app.diagnostics.schemas",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/routes.py",
+        "imported": "app.diagnostics.service",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.ai.service",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.calendar.repository",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.codex_runtime.adapter",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.codex_runtime.workspace",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.course_calendars.repository",
+        "remove_in": "M21E"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.diagnostics.redaction",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/service.py",
+        "imported": "app.diagnostics.service",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/assistant/validation.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/validation.py",
+        "imported": "app.calendar.repository",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/assistant/validation.py",
+        "imported": "app.calendar.service",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_calendars/models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_calendars/repository.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_calendars/routes.py",
+        "imported": "app.calendar.schemas",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_calendars/service.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_calendars/service.py",
+        "imported": "app.calendar.repository",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_calendars/service.py",
+        "imported": "app.calendar.service",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "backend/app/course_sources/models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/courses/models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/inbox/models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/integrations/models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.assistant.execution",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.assistant.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.calendar.import_routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.calendar.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.calendar.subscription_routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.calendar.subscription_scheduler",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.course_calendars.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.course_sources.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.courses.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.documents.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.documents.storage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.inbox.mail_storage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.inbox.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.inbox.scheduler",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.integrations.credentials",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.integrations.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.notes.prettify_routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.notes.routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/main.py",
+        "imported": "app.notes.summary_routes",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/notes/prettify_routes.py",
+        "imported": "app.codex_runtime.adapter",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/prettify_service.py",
+        "imported": "app.ai.service",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/prettify_service.py",
+        "imported": "app.codex_runtime.adapter",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/prettify_service.py",
+        "imported": "app.codex_runtime.workspace",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/summary_models.py",
+        "imported": "app.calendar.models",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "backend/app/notes/summary_routes.py",
+        "imported": "app.codex_runtime.adapter",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/summary_service.py",
+        "imported": "app.ai.service",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/summary_service.py",
+        "imported": "app.codex_runtime.adapter",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "backend/app/notes/summary_service.py",
+        "imported": "app.codex_runtime.workspace",
+        "remove_in": "M21F"
+      }
+    ]
+  },
+  "frontend": {
+    "path_owners": [
+      { "prefix": "features/calendar", "owner": "calendar" },
+      { "prefix": "features/courses", "owner": "courses" },
+      { "prefix": "features/assistant", "owner": "assistant" },
+      { "prefix": "features/inbox", "owner": "inbox" },
+      { "prefix": "features/documents", "owner": "documents" },
+      { "prefix": "features/ai", "owner": "platform" },
+      { "prefix": "features/settings", "owner": "platform" },
+      { "prefix": "components", "owner": "platform" },
+      { "prefix": "hooks", "owner": "platform" },
+      { "prefix": "persistence", "owner": "platform" },
+      { "prefix": "test", "owner": "platform" },
+      { "prefix": "styles", "owner": "platform" },
+      { "prefix": "App", "owner": "platform" },
+      { "prefix": "main", "owner": "platform" }
+    ],
+    "allowed_platform_paths": ["components", "hooks", "persistence"],
+    "legacy_exceptions": [
+      {
+        "importer": "frontend/src/App.tsx",
+        "imported": "features/assistant/AssistantPage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/App.tsx",
+        "imported": "features/calendar/CalendarPage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/App.tsx",
+        "imported": "features/courses/CoursesPage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/App.tsx",
+        "imported": "features/documents/DocumentsPage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/App.tsx",
+        "imported": "features/inbox/InboxPage",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/features/assistant/AssistantPage.tsx",
+        "imported": "features/ai/AiModelSelector",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/assistant/AssistantPage.tsx",
+        "imported": "features/ai/useAiModelSelection",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/assistant/api.ts",
+        "imported": "features/calendar/api",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/features/courses/CourseCalendar.tsx",
+        "imported": "features/calendar/CalendarPage",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "frontend/src/features/courses/CourseCalendar.tsx",
+        "imported": "features/calendar/api",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "frontend/src/features/courses/CourseCalendar.tsx",
+        "imported": "features/calendar/types",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "frontend/src/features/courses/CourseMaterials.tsx",
+        "imported": "features/assistant/ErrorAssistantAction",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/courses/CourseNotes.tsx",
+        "imported": "features/ai/AiModelSelector",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/courses/CourseNotes.tsx",
+        "imported": "features/ai/useAiModelSelection",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/courses/NoteDialog.tsx",
+        "imported": "features/ai/AiModelSelector",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/courses/NoteDialog.tsx",
+        "imported": "features/ai/useAiModelSelection",
+        "remove_in": "M21F"
+      },
+      {
+        "importer": "frontend/src/features/courses/api.ts",
+        "imported": "features/calendar/types",
+        "remove_in": "M21D"
+      },
+      {
+        "importer": "frontend/src/features/settings/SettingsPage.tsx",
+        "imported": "features/inbox/api",
+        "remove_in": "M21G"
+      },
+      {
+        "importer": "frontend/src/features/settings/SettingsPage.tsx",
+        "imported": "features/inbox/types",
+        "remove_in": "M21G"
+      },
+      {
+        "importer": "frontend/src/persistence/uiState.ts",
+        "imported": "features/calendar/types",
+        "remove_in": "M21B"
+      },
+      {
+        "importer": "frontend/src/persistence/uiState.ts",
+        "imported": "features/courses/types",
+        "remove_in": "M21B"
+      }
+    ]
+  }
+}

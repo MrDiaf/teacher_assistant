@@ -14,9 +14,9 @@ this order:
 3. `handoff.md` — current repository state, recent work, and known limitations.
 4. The selected file under `milestones/` — the only implementation scope for
    that session.
-5. Once M21A creates the module documentation index, read the selected owner's
-   README/handoff and only the public contracts needed from its dependencies.
-   The index identifies actual paths; do not require documents not yet created.
+5. Read `docs/modules/README.md`, the selected owner's README/handoff, and only
+   the public contracts needed from its dependencies. The index identifies the
+   actual paths and records which boundaries are implemented versus planned.
 6. Inspect the relevant implementation and tests before deciding what is
    missing.
 
@@ -32,7 +32,7 @@ changing this reading order or losing current implementation instructions.
   verification results, and immediate cautions.
 - A milestone file owns that milestone's scope, checklist, acceptance criteria,
   dependencies, and milestone-specific safety requirements.
-- M21A introduces a module documentation index plus module README/handoff pairs.
+- `docs/modules/README.md` indexes module README/handoff pairs created by M21A.
   Each README owns scope, interfaces, paths, and working commands; each local
   handoff owns current work and verification. Root handoff links local state
   and retains shared cautions instead of repeating every module's history.
@@ -362,7 +362,7 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
 - [x] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
 - [x] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
-- [ ] [M21A - Module ownership, contracts, and refactoring baseline](milestones/m21a-module-ownership-and-baseline.md)
+- [x] [M21A - Module ownership, contracts, and refactoring baseline](milestones/m21a-module-ownership-and-baseline.md)
 - [ ] [M21B - Application composition and shared platform boundaries](milestones/m21b-application-composition.md)
 - [ ] [M21C - Documents module and isolated development pilot](milestones/m21c-documents-module-pilot.md)
 - [ ] [M21D - Calendar ownership and public service contract](milestones/m21d-calendar-module-boundary.md)
@@ -377,7 +377,7 @@ below. Update `handoff.md` with the new current state and exact next step.
 
 Current active milestone: **none**.
 
-Next planned milestone: **M21A - Module ownership, contracts, and refactoring baseline**.
+Next planned milestone: **M21B - Application composition and shared platform boundaries**.
 It must be explicitly selected before implementation begins.
 
 M1 through M21 and the post-M7 linked-batch milestone are complete. The
@@ -386,8 +386,8 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M21A-M21I are planned and intentionally unchecked. Their required order is
-ownership/baseline, composition, Documents pilot, Calendar, Courses, Assistant
+M21A is complete. M21B-M21I remain planned and intentionally unchecked. Their
+required order is composition, Documents pilot, Calendar, Courses, Assistant
 and AI platform, Inbox/Settings, module controls, and final verification.
 These suffix IDs insert the refactoring without renumbering completed work or
 the existing feature specifications.

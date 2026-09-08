@@ -1,6 +1,6 @@
 # M21A - Module ownership, contracts, and refactoring baseline
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -60,14 +60,14 @@ failures honestly rather than weakening assertions to obtain a clean baseline.
 
 ## Ordered checklist
 
-- [ ] Map ownership, dependencies, data, public contracts, and transaction rules.
-- [ ] Create concise module documentation and reduce duplicated root history.
-- [ ] Add automated frontend/backend import-boundary checks using established
+- [x] Map ownership, dependencies, data, public contracts, and transaction rules.
+- [x] Create concise module documentation and reduce duplicated root history.
+- [x] Add automated frontend/backend import-boundary checks using established
   tooling; record exact existing violations with an owning M21B-M21G removal
   milestone. Reject new violations and new dependency cycles without broad ignores.
-- [ ] Verify the checks reject a deliberately invalid import in a test fixture.
-- [ ] Record the functional and timing baseline with isolated synthetic data.
-- [ ] Update the status index and handoff with verified results and next step.
+- [x] Verify the checks reject a deliberately invalid import in a test fixture.
+- [x] Record the functional and timing baseline with isolated synthetic data.
+- [x] Update the status index and handoff with verified results and next step.
 
 ## Acceptance criteria
 

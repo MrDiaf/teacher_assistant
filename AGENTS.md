@@ -92,9 +92,9 @@ Before making changes:
 7. Preserve completed functionality.
 8. State which milestone or subtask you will implement.
 
-When M21A creates the module documentation index, follow its ownership map:
-read the selected module's README/handoff and the public contracts of relevant
-dependencies. Do not read or duplicate every module's history for local work.
+Use `docs/modules/README.md` as the ownership map. Read the selected module's
+README/handoff and the public contracts of relevant dependencies. Do not read
+or duplicate every module's history for local work.
 
 If no milestone is active, do not infer one from old specifications, known
 limitations, or future-looking notes. Wait for the owner to define or select

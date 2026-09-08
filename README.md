@@ -11,15 +11,17 @@ Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Development roadmap
 
-M1-M21 are implemented. The owner has inserted nine modular refactoring
-milestones, M21A-M21I, before the remaining LaTeX editor/compiler/advice work in
-M22-M24. The refactoring plans cover ownership and public contracts, application
-composition, a Documents pilot, the other existing modules, Settings module
-controls, and focused Docker testing with final recovery verification.
+M1-M21 and M21A are implemented. Eight remaining modular refactoring
+milestones, M21B-M21I, precede the LaTeX editor/compiler/advice work in
+M22-M24. The refactoring sequence covers ownership and public contracts,
+application composition, a Documents pilot, the other existing modules,
+Settings module controls, and focused Docker testing with final recovery
+verification.
 
-See the [authoritative milestone index](instructions.md#milestone-status) and
-[next planned milestone M21A](milestones/m21a-module-ownership-and-baseline.md).
-Implementation requires explicit milestone selection. Module switches,
+See the [authoritative milestone index](instructions.md#milestone-status), the
+[module ownership index](docs/modules/README.md), and the next planned milestone
+[M21B](milestones/m21b-application-composition.md). Implementation requires
+explicit milestone selection. Module switches,
 module-specific Docker commands, and the isolated module host are planned,
 not available features yet.
 
@@ -75,7 +77,8 @@ make down      # stop
 make restart   # restart containers
 make logs      # follow application logs
 make migrate   # apply database migrations
-make test      # isolated backend and frontend tests
+make check-boundaries # reject new cross-module imports and dependency cycles
+make test      # boundaries plus isolated backend and frontend tests
 make e2e       # isolated Playwright browser tests
 make lint      # Python, TypeScript, and formatting checks
 make data-preflight # read-only data-resolution report
