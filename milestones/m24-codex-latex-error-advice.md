@@ -10,6 +10,8 @@ sanitized compilation context and never edits a document, executes a compiler,
 or claims that a fix was applied.
 
 M23 must be complete first. Planning this milestone does not make it active.
+M23/M22 retain the prerequisite M21A-M21I refactoring gate. Reuse the shared AI
+platform independently of whether the Assistant navigation module is enabled.
 
 ## Owner workflow
 
@@ -179,6 +181,11 @@ the suggestion.
 
 ## Expected implementation areas
 
+Resolve these starting-point paths through the completed module ownership map.
+Use Documents public registration, its own styles/tests, and the shared AI
+contract; do not reintroduce direct shell wiring or dependency on Assistant
+internals. Disabled Documents cannot admit advice jobs or expose its context.
+
 ```text
 backend/app/documents/advice_schemas.py
 backend/app/documents/advice_service.py
@@ -186,7 +193,7 @@ backend/app/documents/advice_routes.py
 backend/app/documents/compilation_repository.py
 backend/app/codex_runtime/workspace.py
 backend/app/codex_runtime/workspace_template/LATEX_ADVICE_AGENT.md
-backend/app/main.py
+Documents public module entry established during M21B-M21C
 backend/app/core/errors.py
 backend/tests/test_document_compile_advice.py
 backend/tests/test_codex_runtime.py
@@ -195,7 +202,7 @@ frontend/src/features/documents/DocumentEditor.tsx
 frontend/src/features/documents/api.ts
 frontend/src/features/documents/types.ts
 frontend/src/features/documents/*.test.tsx
-frontend/src/styles.css
+Documents-owned stylesheet established in M21C
 e2e/tests/
 README.md
 backend/app/codex_runtime/README.md

@@ -9,7 +9,9 @@ relative file tree and an established LaTeX-aware code editor. Source files are
 saved to the project's durable `source/` folder. This milestone still does not
 compile LaTeX or produce a PDF.
 
-M21 must be complete first. Planning this milestone does not make it active.
+M21 and the inserted M21A-M21I refactoring sequence must be complete first;
+see [M21I](m21i-modular-verification-and-cutover.md). Planning this milestone
+does not make it active.
 
 ## Owner workflow
 
@@ -154,6 +156,11 @@ must still exclude build artifacts and internal metadata.
 
 ## Expected implementation areas
 
+Resolve these starting-point paths through the module ownership index produced
+by M21A-M21I. Extend Documents public entries and its own styles/tests; do not
+restore direct shell wiring, foreign internals, or global feature CSS. Preserve
+module-state enforcement and focused/full verification introduced by refactoring.
+
 ```text
 backend/app/documents/file_schemas.py
 backend/app/documents/file_service.py
@@ -167,7 +174,7 @@ frontend/src/features/documents/LatexSourceEditor.tsx
 frontend/src/features/documents/api.ts
 frontend/src/features/documents/types.ts
 frontend/src/features/documents/*.test.tsx
-frontend/src/styles.css
+Documents-owned stylesheet established in M21C
 e2e/tests/
 README.md
 handoff.md

@@ -23,6 +23,7 @@ product scope currently includes:
 2. Calendar Assistant powered by Codex
 3. Courses, course materials, notes, summaries, and course-linked calendars
 4. Forwarded-mail Inbox and its dedicated mailbox settings
+5. Durable private Documents projects and source downloads
 
 The currently implemented visible application navigation should contain:
 
@@ -30,17 +31,18 @@ The currently implemented visible application navigation should contain:
 - Calendar
 - Courses
 - Inbox
+- Documents
 - Study Plan
 - Assistant
 - Settings
 
-The approved future milestone sequence adds Documents after Inbox in M21. Do
-not show Documents before its milestone is explicitly selected, implemented,
-and verified.
+M21 added Documents after Inbox. Its editor, compiler, and Codex advice remain
+planned in M22-M24. The owner has inserted refactoring milestones M21A-M21I
+before that feature work; their plans do not activate implementation.
 
-Calendar, Courses, Inbox, Assistant, and the mail-integration area of Settings
-have real functionality. Dashboard and Study Plan may display a polished
-placeholder page.
+Calendar, Courses, Inbox, Documents, Assistant, and the mail-integration area
+of Settings have real functionality. Dashboard and Study Plan may display a
+polished placeholder page.
 
 Do not add a new module or product phase unless the owner explicitly defines
 or selects a milestone for it. Preserve the completed Course functionality;
@@ -89,6 +91,10 @@ Before making changes:
 6. Inspect the existing implementation and tests.
 7. Preserve completed functionality.
 8. State which milestone or subtask you will implement.
+
+When M21A creates the module documentation index, follow its ownership map:
+read the selected module's README/handoff and the public contracts of relevant
+dependencies. Do not read or duplicate every module's history for local work.
 
 If no milestone is active, do not infer one from old specifications, known
 limitations, or future-looking notes. Wait for the owner to define or select
@@ -208,7 +214,11 @@ Do not require Python or Node.js to be installed directly on the host.
 
 # 7. Architecture
 
-Use a modular architecture.
+Use a modular architecture. The approved M21A-M21I target is a modular monolith:
+one repository, React shell, FastAPI application, and PostgreSQL installation,
+with module-owned code/data/styles/tests and enforced public interfaces.
+The staged boundaries and dependency rules are in `instructions.md` and the
+selected refactoring milestone. Do not replace this with a service per page.
 
 Keep these areas separate:
 
@@ -416,9 +426,9 @@ A typo or unclear request must never result in broad deletion.
 
 # 13. Documents and LaTeX Safety
 
-M21 through M24 are approved planning scope for a future private Documents
-module. Planning does not activate those milestones, and no Documents behavior
-may be claimed before its selected milestone is implemented and tested.
+M21's Documents foundation is implemented. M22-M24 plan its editor, compiler,
+and advice after the M21A-M21I refactoring sequence. Planning does not activate
+those milestones; claim new behavior only after implementation and testing.
 
 Document source files and generated PDFs are private owner data. Store source
 under a configurable host-backed document root, keep it out of Git, include it

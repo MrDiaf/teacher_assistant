@@ -24,27 +24,30 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `adea7a8 done with m20`
+- Git `HEAD` observed for this planning session: `e62717e m21 is done`.
 - M1 through M21 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M22 through M24 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains the completed M21 implementation
-  and its documentation/status updates. Preserve it because no commit was
-  requested.
+- M21A-M21I are newly planned refactoring milestones before M22-M24. No
+  implementation milestone is active; the next planned milestone is M21A.
+- M21 is committed. The worktree was clean at the start of this planning
+  session, which changes documentation only. No implementation or commit was
+  requested; recheck Git instead of treating this snapshot as live status.
 - The installation now has stable identity `teacher_assistant`, resolving to
   `teacher_assistant_database-data` and
   `teacher_assistant_codex-auth-data`, and
   `teacher_assistant_integration-credential-data`. The private `.env` and ignored
   `.teacher-assistant-installation` marker were created during non-destructive
   same-namespace adoption.
-- Docker development services are running:
+- The last implementation verification reported running Docker services
+  (not rechecked during this documentation-only planning session):
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`
   - PostgreSQL: healthy
-- Alembic is at `20260908_0021 (head)`. Revision `20260903_0019` is a no-op
+- The last verified Alembic revision is `20260908_0021 (head)`.
+  Revision `20260903_0019` is a no-op
   compatibility marker for a retired, unshipped integration revision; any old
   unused tables from that local revision were deliberately left intact.
 - `.openai/hosting.json` is absent. This is a self-hosted Docker application,
@@ -86,32 +89,37 @@ The permanent safety and architecture rules are in `AGENTS.md` and
 
 ## Most recent planning update
 
-The owner retired the unimplemented Canvas connection and announcement roadmap
-because the required external resources are unavailable. The former M20 and M21
-Canvas milestone files were removed. Forwarded-mail Inbox moved from M22 to M20
-and now owns the private credential-store setup it previously depended on.
+The owner requested a whole-project modular refactoring roadmap before further
+feature development. Nine plans, M21A-M21I, are inserted after completed M21
+and before M22-M24. Suffix IDs preserve existing milestone names and references.
+All nine implementation checklists remain unchecked and none is active.
 
-The approved Overleaf-inspired Documents/LaTeX roadmap moved forward by two
-positions. M21 is complete; M22 through M24 remain planning only:
+The target is one modular monolith with explicit ownership/public interfaces,
+module-owned styles/tests/documentation, shared application assembly, and one
+reusable module development/test host. Keep Docker-first development and
+coordinated database/filesystem durability. A separate production application
+per sidebar page, plugin downloads, code uninstall, and module-data purge are
+not approved scope. The later M23 compiler remains a separately isolated worker.
 
-- M21 added durable UUID-based document projects, colored many-to-many tags,
-  project search/actions, raw `.tex`/source-ZIP downloads, and coordinated
-  preflight/backup/restore before creating private document data.
-- M22 adds a CodeMirror-based root-relative LaTeX file tree and source editor,
-  bounded verified assets, server-backed autosave, stale-write protection, and
-  a selected main `.tex` file.
-- M23 adds pdfLaTeX through a pinned TeX Live/latexmk toolchain in a separate
-  offline non-root compiler worker, disposable source snapshots, resource and
-  process limits, a per-project 10–600-second timeout with a hard ceiling,
-  revision-aware logs, validated PDF preview, and overview downloads.
-- M24 adds read-only Codex advice for failed/timed-out compilations using only
-  bounded sanitized logs and relevant source excerpts. Codex cannot edit,
-  compile, install, delete, or claim a fix was applied.
+M21H specifically plans Settings enable/disable controls for bundled features,
+with dependency effects, backend/job enforcement, preserved data, and shared AI
+available independently of Assistant UI state. These controls are not built yet.
 
-The detailed scope, boundaries, checklists, acceptance criteria, and expected
-implementation areas are in `milestones/m21-durable-documents-foundation.md`
-through `milestones/m24-codex-latex-error-advice.md`. M21 is checked complete;
-M22 through M24 remain unchecked.
+The authoritative sequence and detailed plan links are in
+[instructions.md](instructions.md#milestone-status). M21A creates the ownership
+map, local README/handoff pairs, and measured baseline; later module milestones
+update their own documentation and remove recorded boundary violations. Until
+that migration is verified, keep using the current reading workflow and do not
+claim that focused Docker commands or module isolation already exist.
+
+The earlier Canvas integration roadmap remains retired. Inbox is completed M20;
+the Documents foundation is completed M21. M22-M24 keep their feature scope and
+now depend on completion of the inserted refactoring sequence.
+
+Planning verification checked 61 local Markdown links with no missing targets,
+the ordered M21A-M21I dependencies and unchecked checklists, and
+`git diff --check`. No application tests or runtime operations were run in this
+documentation-only session; the M21 results below remain historical evidence.
 
 ## Most recent completed work
 
@@ -362,38 +370,28 @@ from Assistant or the optional configured API-key fallback.
 
 ## Planned milestone sequence
 
-- [x] M14 — PostgreSQL, uploads, configuration, and Docker volumes are safe
-  across supported `mv`, rebuild, migration, backup, and restore workflows.
-- [x] M15 — Stream uploaded PDFs safely by source ID, show them inside Teacher
-  Assistant, and allow a separate browser window/tab.
-- [x] M16 — Add a lightweight Markdown-aware note editor where syntax markers
-  remain visible while their content is styled, plus safe Markdown rendering.
-- [x] M17 — Start every note and nested summary minimized on each Notes-page
-  visit, allow independent expansion, and persistently remove individual
-  generated bullets without touching source notes or slides.
-- [x] M18 — Add a Codex Prettify suggestion workflow with isolated context,
-  strict validation, before/after preview, explicit acceptance, and no automatic
-  note save.
-- [x] M19 — Persist selected pages/views and per-conversation Assistant drafts
-  in validated browser storage without caching authoritative backend data.
-- [x] M20 — Add Inbox and ingest owner-forwarded email from a dedicated
-  TLS/read-only IMAP mailbox, with private credential storage, safe MIME
-  rendering, and private attachments.
-- [x] M21 — Add durable private LaTeX projects, searchable/tagged overview,
-  source downloads, and coordinated document backup/restore.
-- [ ] M22 — Add the root-relative multi-file LaTeX tree and CodeMirror source
-  editor with safe assets, autosave, and stale-write protection.
-- [ ] M23 — Add isolated TeX Live/latexmk compilation, adjustable timeouts,
-  bounded logs, validated PDF preview, and overview PDF downloads.
-- [ ] M24 — Add bounded read-only Codex advice for failed and timed-out LaTeX
-  compilations without automatic source changes.
+M1-M21 and the post-M7 batch work are complete. The status checklist is owned
+by [instructions.md](instructions.md#milestone-status); this is a reading guide:
 
-The full scope, boundaries, checklist, acceptance criteria, and expected files
-are in the corresponding milestone files. Do not combine or automatically
-advance them.
+1. M21A: ownership/contracts, local documentation, and measured baseline.
+2. M21B: application composition and shared platform interfaces.
+3. M21C: Documents pilot and initial isolated Docker/module host workflow.
+4. M21D: Calendar ownership and public service contract.
+5. M21E: Courses ownership, content contracts, and Calendar integration.
+6. M21F: Assistant, shared AI runtime, and diagnostics boundaries.
+7. M21G: Inbox ownership and contributed Settings panels.
+8. M21H: data-preserving module controls and lifecycle enforcement.
+9. M21I: final focused/full verification, Docker workflow, and recovery checks.
+10. M22-M24: LaTeX editor, isolated compilation, then read-only Codex advice.
+
+Each milestone requires explicit selection and verified completion. Do not
+combine the whole refactor into one session or start feature work before M21I.
 
 ## Known limitations and cautions
 
+- M21A-M21I are plans only. Public module boundaries, scoped development/test
+  commands, module-local handoffs, and Settings module controls are not yet
+  implemented. Existing feature folders alone do not provide that isolation.
 - M22–M24 remain plans only. Documents has no multi-file editor, compilation,
   PDF preview, or Codex compilation advice yet.
 - A real mailbox-provider check was not run because no private owner credential
@@ -434,13 +432,16 @@ advance them.
 
 ## Next step
 
-M21 is complete. The owner should review/commit the M21 work, then explicitly
-select M22 if desired. Do not begin the editor, compiler, or Codex advice work
-without another explicit owner decision.
+M21 is complete and committed. Review the new documentation-only refactoring
+roadmap, then explicitly select M21A. The first implementation subtask is its
+ownership/dependency/data/contract inventory. Do not start M21B or the M22
+editor automatically. The current planning request does not select a milestone
+for implementation and does not authorize a commit.
 
 Recommended next prompt:
 
 ```text
-Review the completed M21 durable Documents foundation and verification, then
-commit it if approved. Do not start M22.
+Select M21A and implement its first incomplete subtask: map module ownership,
+dependencies, data, public contracts, and transaction rules. Preserve existing
+behavior and private data. Do not start M21B or M22, and do not commit.
 ```

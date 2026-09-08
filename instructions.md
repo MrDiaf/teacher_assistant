@@ -14,7 +14,10 @@ this order:
 3. `handoff.md` — current repository state, recent work, and known limitations.
 4. The selected file under `milestones/` — the only implementation scope for
    that session.
-5. Inspect the relevant implementation and tests before deciding what is
+5. Once M21A creates the module documentation index, read the selected owner's
+   README/handoff and only the public contracts needed from its dependencies.
+   The index identifies actual paths; do not require documents not yet created.
+6. Inspect the relevant implementation and tests before deciding what is
    missing.
 
 The active documentation set is self-contained. It does not depend on retired
@@ -29,6 +32,10 @@ changing this reading order or losing current implementation instructions.
   verification results, and immediate cautions.
 - A milestone file owns that milestone's scope, checklist, acceptance criteria,
   dependencies, and milestone-specific safety requirements.
+- M21A introduces a module documentation index plus module README/handoff pairs.
+  Each README owns scope, interfaces, paths, and working commands; each local
+  handoff owns current work and verification. Root handoff links local state
+  and retains shared cautions instead of repeating every module's history.
 
 Do not place a transient worktree snapshot in this file. Do not place global
 product policy only in a milestone file.
@@ -115,6 +122,58 @@ React frontend
 
 Reuse the existing database session, migrations, API error conventions, Codex
 adapter, workspace builder, job states, frontend patterns, and test fixtures.
+
+### Approved modular refactoring target
+
+The owner selected a refactoring roadmap before further feature development.
+M21A-M21I incrementally establish the following target; planning does not imply
+these boundaries, module switches, or focused commands are implemented yet.
+
+- Keep one repository, React application shell, FastAPI application, and
+  PostgreSQL installation. Separate deployment is reserved for a justified
+  isolation requirement such as the planned M23 compiler worker.
+- Calendar, Courses, Assistant, Inbox, and Documents own their feature code,
+  styles, business data, storage behavior, and tests. Courses includes notes,
+  materials, summaries/prettify, and course-calendar associations. Inbox owns
+  mail connections and its Settings contribution. Dashboard/Study Plan remain
+  shell-owned placeholders, not new services or features.
+- A small platform owns composition/navigation, the Settings host, shared UI
+  primitives, configuration, database sessions, migration/backup coordination,
+  shared AI runtime, and sanitized diagnostics. Business logic does not migrate
+  into a catch-all shared service or global registry.
+- Use explicit typed public interfaces and declared acyclic dependencies.
+  Feature code may not import another owner's internal components, repositories,
+  ORM entities, or query its tables directly. Public contracts return bounded
+  data and errors, not raw sessions, SQL, credentials, or physical server paths.
+  Permission checks remain within the authoritative owning service.
+- Keep foreign-key protection and centrally ordered migrations. Document an
+  application transaction coordinator where operations must be atomic across
+  owners; modularity must not introduce partial commits or remove data integrity.
+  Preserve existing APIs, IDs, migration history, storage identities, backup
+  formats, private data, and supported UI behavior through each transition.
+- Assemble bundled modules through a small code-owned registration contract.
+  The shared development/test host uses the same module and shell entries as
+  production. Reuse Docker images and common Compose configuration; profiles
+  select services, while application configuration selects modules. No host
+  Python/Node requirement, copied mock website, or arbitrary plugin loader.
+- M21H adds owner-controlled enable/disable for bundled features, with backend
+  route/service/job enforcement and explicit dependency effects. Disabling
+  retains all data, drafts, and credentials and leaves migration/backup/recovery
+  available. Uninstall, data purge, package downloads, and Docker control through
+  Settings remain out of scope. Shared AI is independent of Assistant UI state.
+- Test boundaries, modules, provider/consumer contracts, real integrations, and
+  the assembled application separately. Focused checks never substitute for
+  affected-consumer checks or required final regression/recovery verification.
+  Isolate test databases/storage and measure build/setup and execution costs.
+
+M21A inventories existing violations with exact removal milestones; each later
+milestone removes its allowances. Do not silently broaden that inventory to
+permit new coupling. M21I requires no remaining legacy boundary exceptions.
+Module boundaries govern maintainability, not process security isolation;
+runtime Codex and the future compiler retain their separate enforced sandboxes.
+Refactoring proceeds one verified milestone/subtask at a time, with the
+Documents pilot before the other feature migrations. It does not authorize a
+whole-project rewrite in one session or implementation of M22-M24 features.
 
 ## Calendar protection
 
@@ -205,7 +264,8 @@ remain out of scope.
 ## Documents and LaTeX safety
 
 M21 establishes the private Documents module after the M20 Inbox milestone;
-M22 through M24 plan its editor, compiler, and read-only advice workflows.
+M22 through M24 plan its editor, compiler, and read-only advice workflows after
+the M21A-M21I refactoring sequence is complete.
 Document metadata belongs in PostgreSQL, while source files and
 verified generated PDFs live beneath a configurable host-backed document root.
 They are private owner data and must participate in preflight, coordinated
@@ -302,13 +362,22 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
 - [x] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
 - [x] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
+- [ ] [M21A - Module ownership, contracts, and refactoring baseline](milestones/m21a-module-ownership-and-baseline.md)
+- [ ] [M21B - Application composition and shared platform boundaries](milestones/m21b-application-composition.md)
+- [ ] [M21C - Documents module and isolated development pilot](milestones/m21c-documents-module-pilot.md)
+- [ ] [M21D - Calendar ownership and public service contract](milestones/m21d-calendar-module-boundary.md)
+- [ ] [M21E - Courses ownership and Calendar integration](milestones/m21e-courses-module-boundary.md)
+- [ ] [M21F - Assistant boundary, shared AI runtime, and diagnostics](milestones/m21f-assistant-and-ai-platform.md)
+- [ ] [M21G - Inbox ownership and contributed Settings panels](milestones/m21g-inbox-and-settings-boundary.md)
+- [ ] [M21H - Module controls and data-preserving lifecycle](milestones/m21h-module-controls-and-lifecycle.md)
+- [ ] [M21I - Modular verification, Docker workflow, and refactoring completion](milestones/m21i-modular-verification-and-cutover.md)
 - [ ] [M22 — Relative LaTeX file tree and source editor](milestones/m22-relative-latex-editor.md)
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
 - [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
 Current active milestone: **none**.
 
-Next planned milestone: **M22 — Relative LaTeX file tree and source editor**.
+Next planned milestone: **M21A - Module ownership, contracts, and refactoring baseline**.
 It must be explicitly selected before implementation begins.
 
 M1 through M21 and the post-M7 linked-batch milestone are complete. The
@@ -317,10 +386,17 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M22 through M24 are planned and intentionally unchecked. Their required order
-is M22 relative LaTeX editing, M23 isolated compilation, and M24 Codex error
-advice. Planning does not authorize implementation; the owner must select one
-milestone explicitly. Reordering also requires an explicit owner decision.
+M21A-M21I are planned and intentionally unchecked. Their required order is
+ownership/baseline, composition, Documents pilot, Calendar, Courses, Assistant
+and AI platform, Inbox/Settings, module controls, and final verification.
+These suffix IDs insert the refactoring without renumbering completed work or
+the existing feature specifications.
+
+M22-M24 remain planned and unchecked after M21I: relative LaTeX editing,
+isolated compilation, then Codex error advice. Complete the refactoring before
+starting this feature work. Planning does not authorize implementation; the
+owner must select one milestone explicitly. Reordering requires an explicit
+owner decision.
 
 ## Definition of done
 

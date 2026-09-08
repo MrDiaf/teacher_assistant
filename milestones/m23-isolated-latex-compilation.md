@@ -10,6 +10,8 @@ from either the editor or project overview. Compilation runs in a separately
 isolated worker and has a per-project owner-adjustable timeout.
 
 M22 must be complete first. Planning this milestone does not make it active.
+M22 includes the prerequisite M21A-M21I refactoring gate. The compiler remains
+a separately isolated worker within the approved modular-monolith architecture.
 
 ## Compiler decision
 
@@ -181,6 +183,12 @@ before streaming. Never expose compiler auxiliary files or a physical path.
 
 ## Expected implementation areas
 
+Resolve these starting-point paths through the completed module ownership map.
+Register Documents compiler lifecycle/capabilities through public entries, use
+module-owned styles/tests, and preserve enable/disable and coordinated recovery
+behavior. The worker's Compose configuration reuses root conventions without
+giving the application or browser access to Docker management.
+
 ```text
 latex_compiler/Dockerfile
 latex_compiler/worker.py or an equivalent non-shell worker entrypoint
@@ -200,7 +208,7 @@ frontend/src/features/documents/DocumentPdfPreview.tsx
 frontend/src/features/documents/CompileControls.tsx
 frontend/src/features/documents/api.ts
 frontend/src/features/documents/types.ts
-frontend/src/styles.css
+Documents-owned stylesheet established in M21C
 frontend tests and e2e/tests/
 compose.yml, compose.dev.yml, and isolated test Compose files
 Makefile

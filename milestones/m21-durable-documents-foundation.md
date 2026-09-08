@@ -195,4 +195,6 @@ handoff.md
 ```
 
 Do not begin M22 until this milestone's durability and recovery acceptance
-criteria are verified.
+criteria are verified and the subsequently inserted M21A-M21I refactoring
+sequence is complete. The next planned work is
+[M21A](m21a-module-ownership-and-baseline.md); M21 itself remains complete.

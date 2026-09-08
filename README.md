@@ -9,6 +9,20 @@ can also answer calendar questions, use relevant course notes with validated
 citations, explain sanitized application errors, and propose calendar changes.
 Every mutation is revalidated by the backend and waits for owner confirmation.
 
+## Development roadmap
+
+M1-M21 are implemented. The owner has inserted nine modular refactoring
+milestones, M21A-M21I, before the remaining LaTeX editor/compiler/advice work in
+M22-M24. The refactoring plans cover ownership and public contracts, application
+composition, a Documents pilot, the other existing modules, Settings module
+controls, and focused Docker testing with final recovery verification.
+
+See the [authoritative milestone index](instructions.md#milestone-status) and
+[next planned milestone M21A](milestones/m21a-module-ownership-and-baseline.md).
+Implementation requires explicit milestone selection. Module switches,
+module-specific Docker commands, and the isolated module host are planned,
+not available features yet.
+
 ## Requirements
 
 - Docker with Docker Compose
