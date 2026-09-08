@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     mail_max_message_mb: int = Field(default=15, ge=1, le=50)
     mail_max_attachment_mb: int = Field(default=10, ge=1, le=25)
     mail_max_total_storage_mb: int = Field(default=2048, ge=10, le=102400)
+    document_storage_root: Path = Path("/data/document_projects")
+    document_max_source_mb: int = Field(default=100, ge=1, le=1024)
 
     @property
     def course_max_upload_bytes(self) -> int:
@@ -44,6 +46,10 @@ class Settings(BaseSettings):
     @property
     def mail_max_total_storage_bytes(self) -> int:
         return self.mail_max_total_storage_mb * 1024 * 1024
+
+    @property
+    def document_max_source_bytes(self) -> int:
+        return self.document_max_source_mb * 1024 * 1024
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

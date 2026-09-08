@@ -1,6 +1,6 @@
 # M21 — Durable Documents foundation and project overview
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -127,22 +127,22 @@ silently attach another clone's document directory or delete legacy data.
 
 ## Milestone checklist
 
-- [ ] Add the Documents module to the application shell without changing the
+- [x] Add the Documents module to the application shell without changing the
   existing module design.
-- [ ] Extend the versioned M19 module preference to accept Documents safely.
-- [ ] Add document-project and tag models, migration, schemas, repository, and
+- [x] Extend the versioned M19 module preference to accept Documents safely.
+- [x] Add document-project and tag models, migration, schemas, repository, and
   service boundaries.
-- [ ] Add private UUID-based source storage with atomic creation and deletion.
-- [ ] Add the project overview, search, tag filters, and accessible project
+- [x] Add private UUID-based source storage with atomic creation and deletion.
+- [x] Add the project overview, search, tag filters, and accessible project
   actions.
-- [ ] Add safe `main.tex` and complete-source ZIP downloads.
-- [ ] Add explicit project-deletion confirmation and exact-directory
+- [x] Add safe `main.tex` and complete-source ZIP downloads.
+- [x] Add explicit project-deletion confirmation and exact-directory
   quarantine behavior.
-- [ ] Add document storage to preflight, backup, restore, relocation, and
+- [x] Add document storage to preflight, backup, restore, relocation, and
   multi-clone isolation.
-- [ ] Add backend, frontend, storage, archive, accessibility, and end-to-end
+- [x] Add backend, frontend, storage, archive, accessibility, and end-to-end
   tests.
-- [ ] Update `.env.example`, Compose configuration, `README.md`, data-durability
+- [x] Update `.env.example`, Compose configuration, `README.md`, data-durability
   documentation, and `handoff.md` only for behavior actually implemented.
 
 ## Acceptance criteria

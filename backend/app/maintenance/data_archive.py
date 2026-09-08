@@ -5,24 +5,31 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import sys
 import tarfile
 import uuid
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 DATABASE_FILE = "database.dump"
 COURSE_ARCHIVE_FILE = "course-content.tar.gz"
 MAIL_ARCHIVE_FILE = "mail-attachments.tar.gz"
+DOCUMENT_ARCHIVE_FILE = "document-projects.tar.gz"
 MANIFEST_FILE = "manifest.json"
 COURSE_ARCHIVE_ROOT = "course_content"
 MAIL_ARCHIVE_ROOT = "mail_attachments"
+DOCUMENT_ARCHIVE_ROOT = "document_projects"
 BUFFER_SIZE = 1024 * 1024
+MAX_ARCHIVE_MEMBERS = 100_000
+MAX_ARCHIVE_BYTES = 100 * 1024 * 1024 * 1024
+MAX_DOCUMENT_ARCHIVE_MEMBERS = MAX_ARCHIVE_MEMBERS
+MAX_DOCUMENT_ARCHIVE_BYTES = MAX_ARCHIVE_BYTES
 
 
 class ArchiveValidationError(ValueError):
-    """Raised when a backup bundle or course archive is unsafe or inconsistent."""
+    """Raised when a backup bundle or private archive is unsafe or inconsistent."""
 
 
 def sha256_file(path: Path) -> str:
@@ -40,9 +47,14 @@ def _safe_source_paths(source: Path, label: str) -> list[Path]:
             raise ArchiveValidationError(
                 f"{label} contains a symbolic link: {path.relative_to(source)}"
             )
-        if not (path.is_dir() or path.is_file()):
+        info = path.lstat()
+        if not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
             raise ArchiveValidationError(
                 f"{label} contains an unsupported file type: {path.relative_to(source)}"
+            )
+        if stat.S_ISREG(info.st_mode) and info.st_nlink != 1:
+            raise ArchiveValidationError(
+                f"{label} contains a hard-linked file: {path.relative_to(source)}"
             )
         paths.append(path)
     return paths
@@ -70,25 +82,39 @@ def create_mail_archive(source: Path, output: BinaryIO) -> None:
     create_storage_archive(source, output, MAIL_ARCHIVE_ROOT)
 
 
-def _validated_members(archive: tarfile.TarFile, archive_root: str) -> list[tarfile.TarInfo]:
+def create_document_archive(source: Path, output: BinaryIO) -> None:
+    create_storage_archive(source, output, DOCUMENT_ARCHIVE_ROOT)
+
+
+def _validated_members(
+    archive: tarfile.TarFile,
+    archive_root: str,
+    *,
+    max_members: int = MAX_ARCHIVE_MEMBERS,
+    max_bytes: int = MAX_ARCHIVE_BYTES,
+) -> list[tarfile.TarInfo]:
     members = archive.getmembers()
     if not members:
-        raise ArchiveValidationError("Course archive is empty.")
+        raise ArchiveValidationError("Private storage archive is empty.")
+    if len(members) > max_members:
+        raise ArchiveValidationError("Private storage archive contains too many entries.")
+    if sum(member.size for member in members if member.isfile()) > max_bytes:
+        raise ArchiveValidationError("Private storage archive expands beyond the safe limit.")
     seen: set[str] = set()
     for member in members:
         path = PurePosixPath(member.name)
         if path.is_absolute() or ".." in path.parts:
-            raise ArchiveValidationError(f"Unsafe course archive path: {member.name}")
+            raise ArchiveValidationError(f"Unsafe private archive path: {member.name}")
         if not path.parts or path.parts[0] != archive_root:
             raise ArchiveValidationError(
                 f"Private archive entry is outside {archive_root}: {member.name}"
             )
-        normalized = path.as_posix().rstrip("/")
+        normalized = path.as_posix().rstrip("/").casefold()
         if normalized in seen:
-            raise ArchiveValidationError(f"Duplicate course archive path: {member.name}")
+            raise ArchiveValidationError(f"Duplicate private archive path: {member.name}")
         seen.add(normalized)
         if not (member.isdir() or member.isfile()):
-            raise ArchiveValidationError(f"Unsupported course archive entry type: {member.name}")
+            raise ArchiveValidationError(f"Unsupported private archive entry type: {member.name}")
     if archive_root not in seen:
         raise ArchiveValidationError("Private archive root is missing.")
     return members
@@ -104,7 +130,7 @@ def verify_storage_archive(path: Path, archive_root: str) -> int:
                 extracted = archive.extractfile(member)
                 if extracted is None:
                     raise ArchiveValidationError(
-                        f"Could not read course archive entry: {member.name}"
+                        f"Could not read private archive entry: {member.name}"
                     )
                 while extracted.read(BUFFER_SIZE):
                     pass
@@ -121,16 +147,41 @@ def verify_mail_archive(path: Path) -> int:
     return verify_storage_archive(path, MAIL_ARCHIVE_ROOT)
 
 
+def verify_document_archive(path: Path) -> int:
+    try:
+        with tarfile.open(path, mode="r:gz") as archive:
+            members = _validated_members(
+                archive,
+                DOCUMENT_ARCHIVE_ROOT,
+                max_members=MAX_DOCUMENT_ARCHIVE_MEMBERS,
+                max_bytes=MAX_DOCUMENT_ARCHIVE_BYTES,
+            )
+            for member in members:
+                if member.isfile():
+                    extracted = archive.extractfile(member)
+                    if extracted is None:
+                        raise ArchiveValidationError(
+                            f"Could not read document archive entry: {member.name}"
+                        )
+                    while extracted.read(BUFFER_SIZE):
+                        pass
+    except (tarfile.TarError, EOFError, OSError) as exc:
+        raise ArchiveValidationError(f"Document archive cannot be read: {exc}") from exc
+    return sum(member.isfile() for member in members)
+
+
 def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[str, object]:
     database = bundle / DATABASE_FILE
     courses = bundle / COURSE_ARCHIVE_FILE
     mail = bundle / MAIL_ARCHIVE_FILE
-    if not database.is_file() or not courses.is_file() or not mail.is_file():
+    documents = bundle / DOCUMENT_ARCHIVE_FILE
+    if not all(item.is_file() for item in (database, courses, mail, documents)):
         raise ArchiveValidationError(
-            "The database dump, course archive, and mail attachment archive are required."
+            "The database dump and all private storage archives are required."
         )
     file_count = verify_course_archive(courses)
     mail_file_count = verify_mail_archive(mail)
+    document_file_count = verify_document_archive(documents)
     return {
         "format_version": FORMAT_VERSION,
         "created_at": created_at,
@@ -154,6 +205,13 @@ def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[
             "file_count": mail_file_count,
             "bytes": mail.stat().st_size,
             "sha256": sha256_file(mail),
+        },
+        "document_files": {
+            "file": DOCUMENT_ARCHIVE_FILE,
+            "root": DOCUMENT_ARCHIVE_ROOT,
+            "file_count": document_file_count,
+            "bytes": documents.stat().st_size,
+            "sha256": sha256_file(documents),
         },
         "integration_credentials": {
             "included": False,
@@ -196,8 +254,9 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise ArchiveValidationError(f"Backup manifest cannot be read: {exc}") from exc
-    if not isinstance(manifest, dict) or manifest.get("format_version") != FORMAT_VERSION:
+    if not isinstance(manifest, dict) or manifest.get("format_version") not in {2, FORMAT_VERSION}:
         raise ArchiveValidationError("Backup manifest format is unsupported.")
+    format_version = manifest["format_version"]
     installation_id = manifest.get("installation_id")
     if not isinstance(installation_id, str) or not installation_id:
         raise ArchiveValidationError("Backup manifest installation ID is invalid.")
@@ -213,6 +272,11 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     database = _manifest_component(bundle, manifest, "database", DATABASE_FILE)
     courses = _manifest_component(bundle, manifest, "course_files", COURSE_ARCHIVE_FILE)
     mail = _manifest_component(bundle, manifest, "mail_files", MAIL_ARCHIVE_FILE)
+    documents = (
+        _manifest_component(bundle, manifest, "document_files", DOCUMENT_ARCHIVE_FILE)
+        if format_version >= 3
+        else None
+    )
     file_count = verify_course_archive(courses)
     course_component = manifest["course_files"]
     assert isinstance(course_component, dict)
@@ -223,7 +287,15 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     assert isinstance(mail_component, dict)
     if mail_component.get("file_count") != mail_file_count:
         raise ArchiveValidationError("Mail archive file count does not match the manifest.")
+    document_file_count = 0
+    if documents is not None:
+        document_file_count = verify_document_archive(documents)
+        document_component = manifest["document_files"]
+        assert isinstance(document_component, dict)
+        if document_component.get("file_count") != document_file_count:
+            raise ArchiveValidationError("Document archive file count does not match the manifest.")
     return {
+        "format_version": format_version,
         "installation_id": installation_id,
         "created_at": manifest.get("created_at"),
         "database": database.name,
@@ -231,6 +303,8 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
         "course_file_count": file_count,
         "mail_archive": mail.name,
         "mail_file_count": mail_file_count,
+        "document_archive": documents.name if documents is not None else None,
+        "document_file_count": document_file_count,
     }
 
 
@@ -240,21 +314,25 @@ def restore_storage_archive(
     directory_name: str,
     rollback_suffix: str,
     archive_root: str,
+    max_members: int = MAX_ARCHIVE_MEMBERS,
+    max_bytes: int = MAX_ARCHIVE_BYTES,
 ) -> Path | None:
     if not directory_name or directory_name in {".", ".."} or "/" in directory_name:
-        raise ArchiveValidationError("Course storage directory name is unsafe.")
+        raise ArchiveValidationError("Private storage directory name is unsafe.")
     parent = parent.resolve()
     if not parent.is_dir():
-        raise ArchiveValidationError(f"Course storage parent is missing: {parent}")
+        raise ArchiveValidationError(f"Private storage parent is missing: {parent}")
     target = parent / directory_name
     rollback = parent / f"{directory_name}.before-restore-{rollback_suffix}"
     staging = parent / f".{directory_name}.restore-{uuid.uuid4().hex}"
     if rollback.exists():
-        raise ArchiveValidationError(f"Course rollback directory already exists: {rollback}")
+        raise ArchiveValidationError(f"Private rollback directory already exists: {rollback}")
     staging.mkdir(mode=0o700)
     try:
         with tarfile.open(archive_path, mode="r:gz") as archive:
-            members = _validated_members(archive, archive_root)
+            members = _validated_members(
+                archive, archive_root, max_members=max_members, max_bytes=max_bytes
+            )
             for member in members:
                 relative = PurePosixPath(member.name).relative_to(archive_root)
                 destination = staging.joinpath(*relative.parts)
@@ -265,12 +343,41 @@ def restore_storage_archive(
                 source = archive.extractfile(member)
                 if source is None:
                     raise ArchiveValidationError(
-                        f"Could not read course archive entry: {member.name}"
+                        f"Could not read private archive entry: {member.name}"
                     )
                 with destination.open("xb") as output:
                     shutil.copyfileobj(source, output, length=BUFFER_SIZE)
                 destination.chmod(0o600)
         previous: Path | None = None
+        if target.exists():
+            os.replace(target, rollback)
+            previous = rollback
+        try:
+            os.replace(staging, target)
+        except Exception:
+            if previous is not None and not target.exists():
+                os.replace(previous, target)
+            raise
+        return previous
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
+
+
+def restore_empty_storage(parent: Path, directory_name: str, rollback_suffix: str) -> Path | None:
+    if not directory_name or directory_name in {".", ".."} or "/" in directory_name:
+        raise ArchiveValidationError("Private storage directory name is unsafe.")
+    parent = parent.resolve()
+    if not parent.is_dir():
+        raise ArchiveValidationError(f"Private storage parent is missing: {parent}")
+    target = parent / directory_name
+    rollback = parent / f"{directory_name}.before-restore-{rollback_suffix}"
+    staging = parent / f".{directory_name}.restore-{uuid.uuid4().hex}"
+    if rollback.exists():
+        raise ArchiveValidationError(f"Private rollback directory already exists: {rollback}")
+    staging.mkdir(mode=0o700)
+    previous: Path | None = None
+    try:
         if target.exists():
             os.replace(target, rollback)
             previous = rollback
@@ -302,6 +409,20 @@ def restore_mail_archive(
     )
 
 
+def restore_document_archive(
+    archive_path: Path, parent: Path, directory_name: str, rollback_suffix: str
+) -> Path | None:
+    return restore_storage_archive(
+        archive_path,
+        parent,
+        directory_name,
+        rollback_suffix,
+        DOCUMENT_ARCHIVE_ROOT,
+        MAX_DOCUMENT_ARCHIVE_MEMBERS,
+        MAX_DOCUMENT_ARCHIVE_BYTES,
+    )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Teacher Assistant backup archive helper")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -313,6 +434,10 @@ def _parser() -> argparse.ArgumentParser:
     create_mail = subparsers.add_parser("create-mail")
     create_mail.add_argument("--source", type=Path, required=True)
     create_mail.add_argument("--output", type=Path)
+
+    create_documents = subparsers.add_parser("create-documents")
+    create_documents.add_argument("--source", type=Path, required=True)
+    create_documents.add_argument("--output", type=Path)
 
     manifest = subparsers.add_parser("create-manifest")
     manifest.add_argument("--bundle", type=Path, required=True)
@@ -332,6 +457,15 @@ def _parser() -> argparse.ArgumentParser:
     restore_mail.add_argument("--parent", type=Path, required=True)
     restore_mail.add_argument("--directory-name", required=True)
     restore_mail.add_argument("--rollback-suffix", required=True)
+    restore_documents = subparsers.add_parser("restore-documents")
+    restore_documents.add_argument("--archive", type=Path, required=True)
+    restore_documents.add_argument("--parent", type=Path, required=True)
+    restore_documents.add_argument("--directory-name", required=True)
+    restore_documents.add_argument("--rollback-suffix", required=True)
+    restore_empty_documents = subparsers.add_parser("restore-empty-documents")
+    restore_empty_documents.add_argument("--parent", type=Path, required=True)
+    restore_empty_documents.add_argument("--directory-name", required=True)
+    restore_empty_documents.add_argument("--rollback-suffix", required=True)
     return parser
 
 
@@ -350,6 +484,12 @@ def main() -> int:
             else:
                 with args.output.open("xb") as output:
                     create_mail_archive(args.source, output)
+        elif args.command == "create-documents":
+            if args.output is None:
+                create_document_archive(args.source, sys.stdout.buffer)
+            else:
+                with args.output.open("xb") as output:
+                    create_document_archive(args.source, output)
         elif args.command == "create-manifest":
             manifest = build_manifest(args.bundle, args.installation_id, args.created_at)
             json.dump(manifest, sys.stdout, indent=2, sort_keys=True)
@@ -368,6 +508,21 @@ def main() -> int:
         elif args.command == "restore-mail":
             previous = restore_mail_archive(
                 args.archive,
+                args.parent,
+                args.directory_name,
+                args.rollback_suffix,
+            )
+            print(previous or "none")
+        elif args.command == "restore-documents":
+            previous = restore_document_archive(
+                args.archive,
+                args.parent,
+                args.directory_name,
+                args.rollback_suffix,
+            )
+            print(previous or "none")
+        elif args.command == "restore-empty-documents":
+            previous = restore_empty_storage(
                 args.parent,
                 args.directory_name,
                 args.rollback_suffix,

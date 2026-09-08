@@ -43,9 +43,11 @@ resume_services() {
 INSTALLATION_ID=$(read_env COMPOSE_PROJECT_NAME)
 COURSE_SETTING=$(read_env COURSE_DATA_DIR)
 MAIL_SETTING=$(read_env MAIL_DATA_DIR)
+DOCUMENT_SETTING=$(read_env DOCUMENT_DATA_DIR)
 BACKUP_SETTING=$(read_env BACKUP_ROOT)
 COURSE_ROOT=$(resolve_from_root "${COURSE_SETTING:-./data/course_content}")
 MAIL_ROOT=$(resolve_from_root "${MAIL_SETTING:-./data/mail_attachments}")
+DOCUMENT_ROOT=$(resolve_from_root "${DOCUMENT_SETTING:-./data/document_projects}")
 BACKUP_ROOT=$(resolve_from_root "${BACKUP_SETTING:-./backups}")
 [[ -d "$COURSE_ROOT" ]] || {
   printf 'Backup error: course storage is missing: %s\n' "$COURSE_ROOT" >&2
@@ -53,6 +55,10 @@ BACKUP_ROOT=$(resolve_from_root "${BACKUP_SETTING:-./backups}")
 }
 [[ -d "$MAIL_ROOT" ]] || {
   printf 'Backup error: mail attachment storage is missing: %s\n' "$MAIL_ROOT" >&2
+  exit 1
+}
+[[ -d "$DOCUMENT_ROOT" ]] || {
+  printf 'Backup error: document storage is missing: %s\n' "$DOCUMENT_ROOT" >&2
   exit 1
 }
 [[ "$BACKUP_ROOT" != / && "$BACKUP_ROOT" != "$PROJECT_ROOT" ]] || {
@@ -88,6 +94,7 @@ fi
 DATABASE_DUMP="$INCOMPLETE_BUNDLE/database.dump"
 COURSE_ARCHIVE="$INCOMPLETE_BUNDLE/course-content.tar.gz"
 MAIL_ARCHIVE="$INCOMPLETE_BUNDLE/mail-attachments.tar.gz"
+DOCUMENT_ARCHIVE="$INCOMPLETE_BUNDLE/document-projects.tar.gz"
 "${COMPOSE[@]}" exec -T database sh -c \
   'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$DATABASE_DUMP"
 chmod 600 "$DATABASE_DUMP"
@@ -113,6 +120,14 @@ docker run --rm --read-only \
   -m app.maintenance.data_archive create-mail --source /mail-attachments \
   > "$MAIL_ARCHIVE"
 chmod 600 "$MAIL_ARCHIVE"
+
+docker run --rm --read-only \
+  -v "$PROJECT_ROOT/backend:/app:ro" \
+  -v "$DOCUMENT_ROOT:/document-projects:ro" \
+  --entrypoint python "$BACKEND_IMAGE" \
+  -m app.maintenance.data_archive create-documents --source /document-projects \
+  > "$DOCUMENT_ARCHIVE"
+chmod 600 "$DOCUMENT_ARCHIVE"
 
 docker run --rm --read-only \
   -v "$PROJECT_ROOT/backend:/app:ro" \

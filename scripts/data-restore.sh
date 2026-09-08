@@ -36,19 +36,23 @@ INSTALLATION_ID=$(read_env COMPOSE_PROJECT_NAME)
   exit 1
 }
 [[ "${CONFIRM_RESTORE:-}" == "$INSTALLATION_ID" ]] || {
-  printf 'Restore error: this replaces the active database and course files. Re-run with CONFIRM_RESTORE=%s.\n' "$INSTALLATION_ID" >&2
+  printf 'Restore error: this replaces the active database and private file stores. Re-run with CONFIRM_RESTORE=%s.\n' "$INSTALLATION_ID" >&2
   exit 1
 }
 BUNDLE=$(realpath "$BACKUP")
 
 COURSE_SETTING=$(read_env COURSE_DATA_DIR)
 MAIL_SETTING=$(read_env MAIL_DATA_DIR)
+DOCUMENT_SETTING=$(read_env DOCUMENT_DATA_DIR)
 COURSE_ROOT=$(resolve_from_root "${COURSE_SETTING:-./data/course_content}")
 MAIL_ROOT=$(resolve_from_root "${MAIL_SETTING:-./data/mail_attachments}")
+DOCUMENT_ROOT=$(resolve_from_root "${DOCUMENT_SETTING:-./data/document_projects}")
 COURSE_PARENT=$(dirname "$COURSE_ROOT")
 COURSE_NAME=$(basename "$COURSE_ROOT")
 MAIL_PARENT=$(dirname "$MAIL_ROOT")
 MAIL_NAME=$(basename "$MAIL_ROOT")
+DOCUMENT_PARENT=$(dirname "$DOCUMENT_ROOT")
+DOCUMENT_NAME=$(basename "$DOCUMENT_ROOT")
 [[ "$COURSE_ROOT" != / && "$COURSE_ROOT" != "$PROJECT_ROOT" ]] || {
   printf 'Restore error: COURSE_DATA_DIR resolves to an unsafe directory.\n' >&2
   exit 1
@@ -63,6 +67,11 @@ mkdir -p "$COURSE_PARENT"
   exit 1
 }
 mkdir -p "$MAIL_PARENT"
+[[ "$DOCUMENT_ROOT" != / && "$DOCUMENT_ROOT" != "$PROJECT_ROOT" && "$DOCUMENT_PARENT" != / ]] || {
+  printf 'Restore error: DOCUMENT_DATA_DIR resolves to an unsafe directory.\n' >&2
+  exit 1
+}
+mkdir -p "$DOCUMENT_PARENT"
 
 BACKEND_IMAGE="$INSTALLATION_ID-backend:latest"
 if ! docker image inspect "$BACKEND_IMAGE" >/dev/null 2>&1; then
@@ -116,6 +125,23 @@ if ! docker run --rm \
   exit 1
 fi
 
+DOCUMENT_RESTORE_COMMAND=(restore-documents --archive /bundle/document-projects.tar.gz)
+if grep -Fq '"document_archive": null' <<< "$VERIFIED"; then
+  DOCUMENT_RESTORE_COMMAND=(restore-empty-documents)
+fi
+if ! docker run --rm \
+  -v "$PROJECT_ROOT/backend:/app:ro" \
+  -v "$BUNDLE:/bundle:ro" \
+  -v "$DOCUMENT_PARENT:/document-parent" \
+  --entrypoint python "$BACKEND_IMAGE" \
+  -m app.maintenance.data_archive "${DOCUMENT_RESTORE_COMMAND[@]}" \
+  --parent /document-parent \
+  --directory-name "$DOCUMENT_NAME" \
+  --rollback-suffix "$RESTORE_STAMP"; then
+  printf 'Restore failed while replacing document source files. Services remain stopped; rollback directories and the safety backup remain available.\n' >&2
+  exit 1
+fi
+
 if ! docker run --rm \
   -v "$PROJECT_ROOT/backend:/app:ro" \
   -v "$BUNDLE:/bundle:ro" \
@@ -136,6 +162,6 @@ service_was_running frontend && "${COMPOSE[@]}" start frontend >/dev/null
 if ! service_was_running database; then
   "${COMPOSE[@]}" stop database >/dev/null
 fi
-printf 'Restore completed and migrations are current. Verify Calendar, Courses, Assistant history, diagnostics, and uploaded-file hashes.\n'
+printf 'Restore completed and migrations are current. Verify Calendar, Courses, Documents, Assistant history, diagnostics, and private-file hashes.\n'
 printf 'Codex authentication is installation-specific and was not restored; sign in again if needed.\n'
 printf 'Mailbox credentials were not restored; reconnect the dedicated mailbox in Settings.\n'

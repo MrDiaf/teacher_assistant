@@ -13,6 +13,7 @@ from app.course_sources import models as course_source_models  # noqa: F401
 from app.courses import models as course_models  # noqa: F401
 from app.database.base import Base
 from app.diagnostics import models as diagnostic_models  # noqa: F401
+from app.documents import models as document_models  # noqa: F401
 from app.inbox import models as inbox_models  # noqa: F401
 from app.integrations import models as integration_models  # noqa: F401
 from app.notes import models as note_models  # noqa: F401

@@ -37,6 +37,8 @@ services:
       MAIL_MAX_MESSAGE_MB: ${MAIL_MAX_MESSAGE_MB:-15}
       MAIL_MAX_ATTACHMENT_MB: ${MAIL_MAX_ATTACHMENT_MB:-10}
       MAIL_MAX_TOTAL_STORAGE_MB: ${MAIL_MAX_TOTAL_STORAGE_MB:-2048}
+      DOCUMENT_STORAGE_ROOT: ${DOCUMENT_STORAGE_ROOT:-/data/document_projects}
+      DOCUMENT_MAX_SOURCE_MB: ${DOCUMENT_MAX_SOURCE_MB:-100}
     depends_on:
       database:
         condition: service_healthy
@@ -47,6 +49,7 @@ services:
       - integration-credential-data:${INTEGRATION_CREDENTIAL_ROOT:-/var/lib/teacher-assistant/integrations}
       - ${COURSE_DATA_DIR:-./data/course_content}:${COURSE_STORAGE_ROOT:-/data/course_content}
       - ${MAIL_DATA_DIR:-./data/mail_attachments}:${MAIL_STORAGE_ROOT:-/data/mail_attachments}
+      - ${DOCUMENT_DATA_DIR:-./data/document_projects}:${DOCUMENT_STORAGE_ROOT:-/data/document_projects}
     restart: unless-stopped
 
   frontend:

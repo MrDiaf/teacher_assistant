@@ -6,13 +6,14 @@ import { AssistantPage } from "./features/assistant/AssistantPage";
 import { CalendarPage } from "./features/calendar/CalendarPage";
 import { CoursesPage } from "./features/courses/CoursesPage";
 import { InboxPage } from "./features/inbox/InboxPage";
+import { DocumentsPage } from "./features/documents/DocumentsPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { getActiveModule, setActiveModule } from "./persistence/uiState";
 
 const PLACEHOLDER_COPY: Record<
   Exclude<
     ModuleId,
-    "calendar" | "assistant" | "courses" | "inbox" | "settings"
+    "calendar" | "assistant" | "courses" | "inbox" | "documents" | "settings"
   >,
   [string, string]
 > = {
@@ -31,7 +32,7 @@ function PlaceholderPage({
 }: {
   module: Exclude<
     ModuleId,
-    "calendar" | "assistant" | "courses" | "inbox" | "settings"
+    "calendar" | "assistant" | "courses" | "inbox" | "documents" | "settings"
   >;
 }) {
   const [title, copy] = PLACEHOLDER_COPY[module];
@@ -62,12 +63,14 @@ export default function App() {
       {activeModule === "calendar" && <CalendarPage />}
       {activeModule === "courses" && <CoursesPage />}
       {activeModule === "inbox" && <InboxPage />}
+      {activeModule === "documents" && <DocumentsPage />}
       {activeModule === "assistant" && <AssistantPage />}
       {activeModule === "settings" && <SettingsPage />}
       {activeModule !== "calendar" &&
         activeModule !== "courses" &&
         activeModule !== "assistant" &&
         activeModule !== "inbox" &&
+        activeModule !== "documents" &&
         activeModule !== "settings" && (
           <PlaceholderPage module={activeModule} />
         )}

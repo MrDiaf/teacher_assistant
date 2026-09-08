@@ -179,3 +179,16 @@ INSERT INTO assistant_context_audits (
     '[{"source_id":"44444444-4444-4444-8444-444444444444","slides":[1]}]'::jsonb,
     false, now()
 );
+
+INSERT INTO document_projects (id, title) VALUES (
+    '15151515-1515-4515-8515-151515151515', 'M21 durable document fixture'
+);
+
+INSERT INTO document_tags (id, name, name_normalized, color) VALUES (
+    '16161616-1616-4616-8616-161616161616', 'Fixture', 'fixture', '#29584c'
+);
+
+INSERT INTO document_project_tags (project_id, tag_id) VALUES (
+    '15151515-1515-4515-8515-151515151515',
+    '16161616-1616-4616-8616-161616161616'
+);

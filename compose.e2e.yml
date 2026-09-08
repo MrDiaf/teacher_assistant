@@ -26,6 +26,7 @@ services:
       COURSE_STORAGE_ROOT: /data/course_content
       INTEGRATION_CREDENTIAL_ROOT: /data/integration_credentials
       MAIL_STORAGE_ROOT: /data/mail_attachments
+      DOCUMENT_STORAGE_ROOT: /data/document_projects
     depends_on:
       database:
         condition: service_healthy
@@ -42,6 +43,7 @@ services:
       - e2e-course-content:/data/course_content
       - e2e-integration-credentials:/data/integration_credentials
       - e2e-mail-attachments:/data/mail_attachments
+      - e2e-document-projects:/data/document_projects
     restart: "no"
 
   frontend:
@@ -77,4 +79,5 @@ volumes:
   e2e-course-content:
   e2e-integration-credentials:
   e2e-mail-attachments:
+  e2e-document-projects:
   e2e-database-data:

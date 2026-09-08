@@ -73,6 +73,15 @@ describe("uiState persistence", () => {
     expect(stored.version).toBe(1);
   });
 
+  it("accepts Documents as a supported module preference", () => {
+    setActiveModule("documents");
+
+    expect(getActiveModule()).toBe("documents");
+    expect(window.localStorage.getItem(UI_STATE_STORAGE_KEY)).toContain(
+      '"activeModule":"documents"',
+    );
+  });
+
   it("rejects corrupt, incompatible, and manually injected private data", () => {
     window.localStorage.setItem(UI_STATE_STORAGE_KEY, "not-json");
     expect(getActiveModule()).toBe("calendar");

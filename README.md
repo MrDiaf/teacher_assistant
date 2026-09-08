@@ -1,8 +1,8 @@
 # Teacher Assistant
 
 Teacher Assistant is a single-owner, self-hosted workspace with a personal
-calendar, manual course organization, a forwarded-mail Inbox, and a private
-Codex-powered assistant.
+calendar, manual course organization, a forwarded-mail Inbox, durable private
+LaTeX document projects, and a private Codex-powered assistant.
 Calendar and course features work without Codex. The Assistant is a general
 helper for explanations, writing, planning, study aids, and code snippets; it
 can also answer calendar questions, use relevant course notes with validated
@@ -65,7 +65,7 @@ make test      # isolated backend and frontend tests
 make e2e       # isolated Playwright browser tests
 make lint      # Python, TypeScript, and formatting checks
 make data-preflight # read-only data-resolution report
-make backup    # coordinated PostgreSQL + course/mail-file backup
+make backup    # coordinated PostgreSQL + course/mail/document-file backup
 ```
 
 Both test commands use separate temporary databases and remove their Docker
@@ -101,7 +101,8 @@ the last valid choice locally. Restart the backend after changing either value.
 
 This browser profile remembers a small set of owner-controlled navigation
 choices under the versioned `teacher-assistant.ui-state.v1` site-storage key:
-the active module (including Inbox); main and per-course Calendar view/anchor; selected course and
+the active module (including Inbox and Documents); main and per-course Calendar
+view/anchor; selected course and
 tab; selected Assistant conversation/sidebar; and unsent composer text per
 conversation, including a separate not-yet-created conversation draft. The
 schema accepts only known values, UUIDs, real `YYYY-MM-DD` dates, bounded text,
@@ -157,6 +158,28 @@ The renewable app password is stored only in the private
 returned by the API, written to browser storage, included in diagnostics or
 Codex workspaces, or placed in coordinated backups. A missing or corrupt secret
 shows **Reconnect required** while already imported mail remains available.
+
+## Private document projects
+
+Open **Documents** to create private LaTeX projects. Project titles may repeat;
+an immutable UUID identifies each source directory. The overview supports
+case-insensitive title search, composable colored-tag filters, multiple tags per
+project, rename, source downloads, and explicitly confirmed deletion. Deleting
+a tag removes only its project associations. Tag names are trimmed and unique
+under Unicode case-folded comparison, so capitalization variants cannot create
+duplicate tags.
+
+Each new project starts with a valid `main.tex` beneath
+`DOCUMENT_DATA_DIR` (default `./data/document_projects`). PostgreSQL contains
+only metadata and associations; physical host paths are never returned by the
+API. `DOCUMENT_MAX_SOURCE_MB` bounds a project's generated source download.
+The `.tex` endpoint returns only `main.tex`, while Source ZIP contains only the
+validated root-relative source tree—never build files, logs, database metadata,
+credentials, or another project.
+
+M21 is an overview and recovery foundation. Multi-file editing, compilation,
+PDF preview, and Codex compilation advice are not part of this milestone. Stop
+application writes before manually inspecting or copying raw source folders.
 
 ## Calendar-change safety
 
@@ -373,7 +396,7 @@ make data-preflight
 ```
 
 It reports the resolved identity, PostgreSQL, Codex-auth, and
-integration-secret volume names, course and mail storage, backup root,
+integration-secret volume names, course, mail, and document storage, backup root,
 reachability, and other Compose database-volume
 candidates without creating, copying, or deleting a missing volume.
 
@@ -387,14 +410,15 @@ The command briefly stops frontend/backend write paths, keeps PostgreSQL
 available for `pg_dump`, and restores only services that were previously
 running. It writes a unique directory under `BACKUP_ROOT` (default
 `./backups`) containing `database.dump`, `course-content.tar.gz`,
-`mail-attachments.tar.gz`, and `manifest.json`. The manifest records the
-installation ID, UTC timestamp, byte
+`mail-attachments.tar.gz`, `document-projects.tar.gz`, and `manifest.json`.
+The manifest records the installation ID, UTC timestamp, byte
 counts, and SHA-256 checksums. The command lists the PostgreSQL custom dump,
-fully validates both private-file archives, verifies checksums, applies private
+fully validates all private-file archives, verifies checksums, applies private
 permissions, and only then reports success. No prior backup is overwritten.
 
 The bundle contains private calendars/subscriptions, courses and original
-uploads, notes/summaries, Inbox metadata/body and attachments, Assistant
+uploads, notes/summaries, Inbox metadata/body and attachments, document
+projects/tags/source, Assistant
 history/proposals/citations, diagnostics, and audits. `backups/` is ignored by
 Git. Copy complete bundle directories only
 to encrypted, access-controlled storage.
@@ -416,14 +440,19 @@ make restore \
   CONFIRM_RESTORE=target-installation
 ```
 
-The previous course and mail directories are retained as
+The previous course, mail, and document directories are retained as
 `course_content.before-restore-<timestamp>` and
-`mail_attachments.before-restore-<timestamp>`; the pre-restore bundle is the
+`mail_attachments.before-restore-<timestamp>`, and
+`document_projects.before-restore-<timestamp>`; the pre-restore bundle is the
 database rollback. Migrations run before services resume. Verify Courses,
-Calendar/subscriptions, Inbox/attachments, Assistant history/citations,
+Calendar/subscriptions, Inbox/attachments, Documents/source hashes, Assistant history/citations,
 diagnostics, and upload hashes. Sign in to ChatGPT and reconnect the mailbox
 again if needed. A corrupt, mismatched, or unsafe bundle fails before the
 active database or private file trees are changed.
+
+Backups created by M20 before Documents existed remain restorable. Their
+format-2 manifests create an empty document root while retaining any previous
+target document directory as a rollback path.
 
 ## Safe error explanations
 

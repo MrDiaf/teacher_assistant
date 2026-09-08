@@ -101,6 +101,17 @@ mail_directory() {
   fi
 }
 
+document_directory() {
+  local configured
+  configured=$(read_key "$ENV_FILE" DOCUMENT_DATA_DIR)
+  configured=${configured:-./data/document_projects}
+  if [[ "$configured" = /* ]]; then
+    realpath -m "$configured"
+  else
+    realpath -m "$PROJECT_ROOT/$configured"
+  fi
+}
+
 backup_directory() {
   local configured
   configured=$(read_key "$ENV_FILE" BACKUP_ROOT)
@@ -195,7 +206,7 @@ list_candidates() {
 }
 
 preflight() {
-  local installation_id state_id initialized database_volume auth_volume integration_volume course_root mail_root identity_source
+  local installation_id state_id initialized database_volume auth_volume integration_volume course_root mail_root document_root identity_source
   installation_id=$(read_key "$ENV_FILE" COMPOSE_PROJECT_NAME)
   state_id=$(read_key "$STATE_FILE" installation_id)
   initialized=$(read_key "$STATE_FILE" initialized)
@@ -211,6 +222,7 @@ preflight() {
   integration_volume=$(volume_name "$installation_id" integration-credential-data)
   course_root=$(course_directory)
   mail_root=$(mail_directory)
+  document_root=$(document_directory)
 
   printf 'Teacher Assistant data preflight (read-only)\n'
   printf '%-20s %s\n' 'Resolved identity:' "$installation_id"
@@ -230,8 +242,13 @@ preflight() {
   else
     printf '%-20s %s [missing]\n' 'Mail attachments:' "$mail_root"
   fi
+  if [[ -d "$document_root" ]]; then
+    printf '%-20s %s [reachable]\n' 'Document storage:' "$document_root"
+  else
+    printf '%-20s %s [missing]\n' 'Document storage:' "$document_root"
+  fi
   printf '%-20s %s\n' 'Backup root:' "$(backup_directory)"
-  printf '%-20s %s\n' 'Browser UI state:' 'convenience-only local browser storage (planned M19)'
+  printf '%-20s %s\n' 'Browser UI state:' 'validated convenience-only local browser storage'
   printf '%-20s %s\n' 'Disposable data:' 'runtime workspaces, caches, build output, node_modules, test/E2E volumes'
   list_candidates
 
@@ -251,10 +268,11 @@ preflight() {
 
 init_installation() {
   local requested=${INSTALLATION_ID:-}
-  local current legacy database_volume course_root
+  local current legacy database_volume course_root document_root
   current=$(read_key "$ENV_FILE" COMPOSE_PROJECT_NAME)
   legacy=$(legacy_directory_project)
   course_root=$(course_directory)
+  document_root=$(document_directory)
 
   if [[ -f "$STATE_FILE" ]]; then
     fail "This repository already has an installation marker. Run make data-preflight."
@@ -273,6 +291,9 @@ init_installation() {
   if [[ -d "$course_root" ]] && find "$course_root" -mindepth 1 -print -quit | grep -q .; then
     fail "Course storage already contains files; use data-adopt instead of initializing."
   fi
+  if [[ -d "$document_root" ]] && find "$document_root" -mindepth 1 -print -quit | grep -q .; then
+    fail "Document storage already contains files; use data-adopt instead of initializing."
+  fi
   if [[ -n "$current" && "$current" != "$PLACEHOLDER_ID" ]]; then
     fail ".env already has an explicit identity. Use data-preflight or data-adopt."
   fi
@@ -282,7 +303,7 @@ init_installation() {
 }
 
 prepare() {
-  local installation_id state_id initialized database_volume legacy course_root
+  local installation_id state_id initialized database_volume legacy course_root document_root
   [[ -f "$ENV_FILE" ]] || fail ".env is missing. For a new installation, run: cp .env.example .env && make dev. For existing data, run make data-preflight."
   installation_id=$(read_key "$ENV_FILE" COMPOSE_PROJECT_NAME)
   if [[ -z "$installation_id" ]]; then
@@ -304,6 +325,10 @@ prepare() {
     course_root=$(course_directory)
     if [[ -d "$course_root" ]] && find "$course_root" -mindepth 1 -print -quit | grep -q .; then
       fail "Course storage contains data but no installation marker. Refusing to create a fresh database; run data-preflight and adopt or recover the matching namespace."
+    fi
+    document_root=$(document_directory)
+    if [[ -d "$document_root" ]] && find "$document_root" -mindepth 1 -print -quit | grep -q .; then
+      fail "Document storage contains data but no installation marker. Refusing to create a fresh database; recover the matching namespace."
     fi
     write_state "$installation_id" 0
     state_id=$installation_id

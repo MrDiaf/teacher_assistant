@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-04
+Updated: 2026-09-08
 
 ## Start here
 
@@ -24,14 +24,14 @@ owner explicitly asks.
 
 ## Current state
 
-- Git `HEAD`: `f17f2c2 updated milestones`
-- M1 through M20 are complete.
+- Git `HEAD`: `adea7a8 done with m20`
+- M1 through M21 are complete.
 - The post-M7 linked Assistant proposal-batch milestone is complete.
 - The post-M13 Assistant diagnostics, general-helper routing, bounded automatic
   correction, working-state display, cancellation, and false course-note
   matching refinements are complete and committed in `a14781d`.
-- M21 through M24 are planned, but no implementation milestone is active.
-- The current uncommitted worktree contains the completed M20 implementation
+- M22 through M24 are planned, but no implementation milestone is active.
+- The current uncommitted worktree contains the completed M21 implementation
   and its documentation/status updates. Preserve it because no commit was
   requested.
 - The installation now has stable identity `teacher_assistant`, resolving to
@@ -44,7 +44,7 @@ owner explicitly asks.
   - frontend: `http://localhost:5173`
   - backend: `http://localhost:8000`
   - PostgreSQL: healthy
-- Alembic is at `20260903_0020 (head)`. Revision `20260903_0019` is a no-op
+- Alembic is at `20260908_0021 (head)`. Revision `20260903_0019` is a no-op
   compatibility marker for a retired, unshipped integration revision; any old
   unused tables from that local revision were deliberately left intact.
 - `.openai/hosting.json` is absent. This is a self-hosted Docker application,
@@ -76,8 +76,10 @@ docker compose -f compose.yml -f compose.dev.yml exec -T backend alembic current
 - Inbox imports owner-forwarded mail from one dedicated TLS/read-only IMAP
   mailbox with local search/read/archive/delete state and private attachments.
   Settings manages that connection without returning its app password.
-- Dashboard and Study Plan remain placeholder modules. Documents does not exist
-  until M21 is explicitly selected and implemented.
+- Documents manages private UUID-based LaTeX projects, colored many-to-many
+  tags, title search and filtering, safe source downloads, and confirmed
+  deletion backed by coordinated PostgreSQL/filesystem recovery.
+- Dashboard and Study Plan remain placeholder modules.
 
 The permanent safety and architecture rules are in `AGENTS.md` and
 `instructions.md`. Do not duplicate or weaken them in a new milestone.
@@ -90,9 +92,9 @@ Canvas milestone files were removed. Forwarded-mail Inbox moved from M22 to M20
 and now owns the private credential-store setup it previously depended on.
 
 The approved Overleaf-inspired Documents/LaTeX roadmap moved forward by two
-positions and remains documentation only after completed M20:
+positions. M21 is complete; M22 through M24 remain planning only:
 
-- M21 adds durable UUID-based document projects, colored many-to-many tags,
+- M21 added durable UUID-based document projects, colored many-to-many tags,
   project search/actions, raw `.tex`/source-ZIP downloads, and coordinated
   preflight/backup/restore before creating private document data.
 - M22 adds a CodeMirror-based root-relative LaTeX file tree and source editor,
@@ -108,10 +110,48 @@ positions and remains documentation only after completed M20:
 
 The detailed scope, boundaries, checklists, acceptance criteria, and expected
 implementation areas are in `milestones/m21-durable-documents-foundation.md`
-through `milestones/m24-codex-latex-error-advice.md`. Those four milestones
-remain unchecked.
+through `milestones/m24-codex-latex-error-advice.md`. M21 is checked complete;
+M22 through M24 remain unchecked.
 
 ## Most recent completed work
+
+M21 durable Documents foundation and project overview:
+
+- adds Documents after Inbox while preserving the existing responsive shell
+  and extends the validated M19 module preference;
+- creates PostgreSQL document-project and colored-tag metadata with UUID
+  project identity, case-normalized unique tag names, and many-to-many
+  associations without owner or tenant columns;
+- creates each project's valid `main.tex` beneath a private UUID-derived source
+  tree using restrictive permissions, atomic replacement, and coordinated
+  database/filesystem rollback;
+- rejects missing or mismatched trees, symlinks, hard links, special files,
+  unsafe IDs, excessive source size/count, and source ZIP traversal or duplicate
+  names without exposing physical server paths;
+- supports project create/search/read/rename/tag/open/delete workflows, explicit
+  project-named deletion confirmation, private/no-store `main.tex`, and
+  deterministic source-only ZIP downloads;
+- quarantines only the exact project UUID directory before database deletion,
+  restores it on transaction failure, and purges it only after commit;
+- includes document source and metadata in preflight, coordinated backup,
+  checksummed manifests, clean restore, rollback, relocation, corruption, and
+  clone-isolation coverage while retaining format-2 M20 backup compatibility;
+- deliberately excludes the multi-file editor, compilation, PDF preview, and
+  Codex compilation advice reserved for M22 through M24.
+
+Important M21 implementation areas:
+
+```text
+backend/alembic/versions/20260908_0021_durable_documents_foundation.py
+backend/app/documents/
+backend/tests/{test_documents,test_data_archive}.py
+frontend/src/features/documents/
+frontend/src/{App,styles}.tsx
+compose*.yml
+scripts/{data-backup,data-restore,data-safety,check-data-safety,m14-relocation-drill}.sh
+README.md
+docs/data-durability.md
+```
 
 M20 forwarded-mail Inbox:
 
@@ -295,24 +335,27 @@ README.md
 
 ## Last full verification recorded
 
-The latest implementation handoff recorded:
+The completed M21 verification recorded:
 
 ```text
 make test
-  Backend: 156 passed
-  Frontend: 69 passed
+  Backend: 167 passed
+  Frontend: 72 passed
 
 make e2e
-  Playwright/accessibility: 11 passed
+  Playwright/accessibility: 12 passed
 
 make lint: passed
 Frontend production build: passed
-make data-relocation-test: passed, including mail files/credential exclusion
+make data-relocation-test: passed, including exact document source hashes
 git diff --check: passed
-Alembic current: 20260903_0020 (head)
+Alembic current: 20260908_0021 (head)
 Backend health: passed
 Frontend HTTP check: passed
 ```
+
+`alembic check` reports only the known pre-existing retired integration tables
+and four enum/VARCHAR length differences; it reports no Documents schema drift.
 
 Ordinary tests mock Codex. Real Codex features require private ChatGPT sign-in
 from Assistant or the optional configured API-key fallback.
@@ -336,7 +379,7 @@ from Assistant or the optional configured API-key fallback.
 - [x] M20 — Add Inbox and ingest owner-forwarded email from a dedicated
   TLS/read-only IMAP mailbox, with private credential storage, safe MIME
   rendering, and private attachments.
-- [ ] M21 — Add durable private LaTeX projects, searchable/tagged overview,
+- [x] M21 — Add durable private LaTeX projects, searchable/tagged overview,
   source downloads, and coordinated document backup/restore.
 - [ ] M22 — Add the root-relative multi-file LaTeX tree and CodeMirror source
   editor with safe assets, autosave, and stale-write protection.
@@ -351,7 +394,8 @@ advance them.
 
 ## Known limitations and cautions
 
-- M21–M24 are plans only and none of their application behavior exists yet.
+- M22–M24 remain plans only. Documents has no multi-file editor, compilation,
+  PDF preview, or Codex compilation advice yet.
 - A real mailbox-provider check was not run because no private owner credential
   was provided; IMAP/TLS/authentication behavior is verified with local fakes.
 - M19 convenience state is browser-profile/origin specific. Clearing site data,
@@ -390,14 +434,13 @@ advance them.
 
 ## Next step
 
-M20 is complete, and the M21–M24 Documents roadmap remains planning only. Stop
-before M21. The owner should review/commit M20, then explicitly select M21 if
-desired. Do not begin Documents work or reorder the roadmap without another
-explicit owner decision.
+M21 is complete. The owner should review/commit the M21 work, then explicitly
+select M22 if desired. Do not begin the editor, compiler, or Codex advice work
+without another explicit owner decision.
 
 Recommended next prompt:
 
 ```text
-Review the completed M20 forwarded-mail Inbox implementation and verification,
-then commit it if approved. Do not start M21.
+Review the completed M21 durable Documents foundation and verification, then
+commit it if approved. Do not start M22.
 ```

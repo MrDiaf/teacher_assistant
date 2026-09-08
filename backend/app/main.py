@@ -27,6 +27,8 @@ from app.database.session import session_factory
 from app.diagnostics.redaction import redact_text
 from app.diagnostics.routes import router as diagnostic_router
 from app.diagnostics.service import DiagnosticService
+from app.documents.routes import router as document_router
+from app.documents.storage import DocumentStorage
 from app.inbox.mail_storage import MailStorage
 from app.inbox.routes import router as inbox_router
 from app.inbox.scheduler import mail_scheduler
@@ -45,6 +47,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     await IntegrationCredentialStore(settings.integration_credential_root).ensure_root()
     await MailStorage(
         settings.mail_storage_root, settings.mail_max_total_storage_bytes
+    ).ensure_root()
+    await DocumentStorage(
+        settings.document_storage_root, settings.document_max_source_bytes
     ).ensure_root()
     stop = asyncio.Event()
     task = asyncio.create_task(subscription_scheduler(stop))
@@ -84,6 +89,7 @@ app.include_router(assistant_router, prefix="/api/v1", tags=["assistant"])
 app.include_router(diagnostic_router, prefix="/api/v1", tags=["diagnostics"])
 app.include_router(integration_router, prefix="/api/v1", tags=["integrations"])
 app.include_router(inbox_router, prefix="/api/v1", tags=["inbox"])
+app.include_router(document_router, prefix="/api/v1", tags=["documents"])
 app.include_router(calendar_import_router, prefix="/api/v1", tags=["calendar-import"])
 app.include_router(
     calendar_subscription_router,

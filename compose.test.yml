@@ -14,11 +14,13 @@ services:
       TESTING: "true"
       INTEGRATION_CREDENTIAL_ROOT: /data/test_integration_credentials
       MAIL_STORAGE_ROOT: /data/test_mail_attachments
+      DOCUMENT_STORAGE_ROOT: /data/test_document_projects
     ports: []
     volumes:
       - test-course-content:/data/course_content
       - test-integration-credentials:/data/test_integration_credentials
       - test-mail-attachments:/data/test_mail_attachments
+      - test-document-projects:/data/test_document_projects
     restart: "no"
 
   frontend:
@@ -29,4 +31,5 @@ volumes:
   test-course-content:
   test-integration-credentials:
   test-mail-attachments:
+  test-document-projects:
   test-database-data:

@@ -27,6 +27,7 @@ async def clean_database() -> AsyncIterator[None]:
         await connection.execute(
             text(
                 "TRUNCATE TABLE diagnostic_audit_records, diagnostic_errors, "
+                "document_project_tags, document_tags, document_projects, "
                 "mail_cleanup_audits, mail_quarantines, mail_attachments, "
                 "mail_addresses, mail_messages, mail_sync_cursors, "
                 "mail_integration_connections, "
@@ -50,6 +51,7 @@ async def clean_database() -> AsyncIterator[None]:
     private_roots = [
         settings.integration_credential_root.resolve(),
         settings.mail_storage_root.resolve(),
+        settings.document_storage_root.resolve(),
     ]
     for private_root in private_roots:
         if private_root in {Path("/"), Path.home().resolve()}:

@@ -49,14 +49,16 @@ The currently implemented visible navigation is:
 - Calendar
 - Courses
 - Inbox
+- Documents
 - Study Plan
 - Assistant
 - Settings
 
-Calendar, Courses, Inbox, Assistant, and the mail-integration area of Settings
-are implemented. Dashboard and Study Plan may remain polished placeholders.
-M21 is planned to add Documents after Inbox. Do not show or claim Documents
-behavior before that milestone is implemented.
+Calendar, Courses, Inbox, Documents, Assistant, and the mail-integration area
+of Settings are implemented. Dashboard and Study Plan may remain polished
+placeholders. Documents currently provides the M21 project overview and
+durable source foundation; editing, compilation, preview, and Codex advice
+remain later milestones.
 
 Never add registration, multiple users, organizations, teams, roles, tenants,
 shared accounts, or public profiles.
@@ -202,7 +204,8 @@ remain out of scope.
 
 ## Documents and LaTeX safety
 
-M21 through M24 plan a private Documents module after the M20 Inbox milestone.
+M21 establishes the private Documents module after the M20 Inbox milestone;
+M22 through M24 plan its editor, compiler, and read-only advice workflows.
 Document metadata belongs in PostgreSQL, while source files and
 verified generated PDFs live beneath a configurable host-backed document root.
 They are private owner data and must participate in preflight, coordinated
@@ -298,27 +301,26 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
 - [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
 - [x] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
-- [ ] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
+- [x] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
 - [ ] [M22 — Relative LaTeX file tree and source editor](milestones/m22-relative-latex-editor.md)
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
 - [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
 Current active milestone: **none**.
 
-Next planned milestone: **M21 — Durable Documents foundation and project overview**.
+Next planned milestone: **M22 — Relative LaTeX file tree and source editor**.
 It must be explicitly selected before implementation begins.
 
-M1 through M20 and the post-M7 linked-batch milestone are complete. The
+M1 through M21 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
 response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M21 through M24 are planned and intentionally unchecked. Their required order
-is M21 durable Documents foundation, M22 relative LaTeX editing, M23 isolated
-compilation, and M24 Codex error advice. Planning does not authorize
-implementation; the owner must select one milestone explicitly. Reordering
-also requires an explicit owner decision.
+M22 through M24 are planned and intentionally unchecked. Their required order
+is M22 relative LaTeX editing, M23 isolated compilation, and M24 Codex error
+advice. Planning does not authorize implementation; the owner must select one
+milestone explicitly. Reordering also requires an explicit owner decision.
 
 ## Definition of done
 

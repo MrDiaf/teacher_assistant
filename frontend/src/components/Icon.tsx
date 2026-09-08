@@ -9,6 +9,7 @@ export type IconName =
   | "clock"
   | "courses"
   | "dashboard"
+  | "download"
   | "file"
   | "inbox"
   | "leaf"
@@ -71,6 +72,12 @@ export function Icon({ name, size = 20, ...props }: IconProps) {
         <rect x="14" y="3" width="7" height="7" rx="1" />
         <rect x="3" y="14" width="7" height="7" rx="1" />
         <rect x="14" y="14" width="7" height="7" rx="1" />
+      </>
+    ),
+    download: (
+      <>
+        <path d="M12 3v13M7 11l5 5 5-5" />
+        <path d="M5 21h14" />
       </>
     ),
     file: (

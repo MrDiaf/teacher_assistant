@@ -7,6 +7,7 @@ export type ModuleId =
   | "calendar"
   | "courses"
   | "inbox"
+  | "documents"
   | "study-plan"
   | "assistant"
   | "settings";
@@ -22,6 +23,7 @@ const NAVIGATION: NavigationItem[] = [
   { id: "calendar", label: "Calendar", icon: "calendar" },
   { id: "courses", label: "Courses", icon: "courses" },
   { id: "inbox", label: "Inbox", icon: "inbox" },
+  { id: "documents", label: "Documents", icon: "file" },
   { id: "study-plan", label: "Study Plan", icon: "checklist" },
   { id: "assistant", label: "Assistant", icon: "assistant" },
   { id: "settings", label: "Settings", icon: "settings" },

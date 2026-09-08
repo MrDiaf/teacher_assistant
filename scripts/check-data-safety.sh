@@ -20,12 +20,14 @@ fi
 
 config_a=$(
   cd "$PROJECT_ROOT"
-  COMPOSE_PROJECT_NAME=m14-fixture-a COURSE_DATA_DIR=./data/m14-a MAIL_DATA_DIR=./data/m20-a \
+  COMPOSE_PROJECT_NAME=m14-fixture-a COURSE_DATA_DIR=./data/m14-a \
+    MAIL_DATA_DIR=./data/m20-a DOCUMENT_DATA_DIR=./data/m21-a \
     docker compose -f compose.yml -f compose.dev.yml config --format json
 )
 config_b=$(
   cd "$PROJECT_ROOT"
-  COMPOSE_PROJECT_NAME=m14-fixture-b COURSE_DATA_DIR=./data/m14-b MAIL_DATA_DIR=./data/m20-b \
+  COMPOSE_PROJECT_NAME=m14-fixture-b COURSE_DATA_DIR=./data/m14-b \
+    MAIL_DATA_DIR=./data/m20-b DOCUMENT_DATA_DIR=./data/m21-b \
     docker compose -f compose.yml -f compose.dev.yml config --format json
 )
 
@@ -39,6 +41,8 @@ grep -Fq 'm14-fixture-a_integration-credential-data' <<< "$config_a"
 grep -Fq 'm14-fixture-b_integration-credential-data' <<< "$config_b"
 grep -Fq '/data/m20-a' <<< "$config_a"
 grep -Fq '/data/m20-b' <<< "$config_b"
+grep -Fq '/data/m21-a' <<< "$config_a"
+grep -Fq '/data/m21-b' <<< "$config_b"
 if grep -Fq 'm14-fixture-b_database-data' <<< "$config_a" ||
   grep -Fq 'm14-fixture-a_database-data' <<< "$config_b"; then
   printf 'Different installation IDs resolved to shared database storage.\n' >&2

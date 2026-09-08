@@ -22,6 +22,7 @@ Authoritative or private installation data:
   subscriptions, courses, material metadata and extracted text, notes and slide
   links, summaries, Assistant conversations/jobs/proposals/citations/context
   audits, diagnostic records/audits, and migration state;
+- document-project and colored-tag metadata and associations in PostgreSQL;
 - original Literature and Slides files at host `COURSE_DATA_DIR` (default
   `./data/course_content`), mounted at `COURSE_STORAGE_ROOT` in the backend;
 - private configuration in `.env`, including the stable Compose project name;
@@ -31,6 +32,8 @@ Authoritative or private installation data:
   `./data/mail_attachments`), mounted at `MAIL_STORAGE_ROOT`;
 - renewable IMAP app-password material in the separate
   `<installation-id>_integration-credential-data` volume;
+- private document source trees at host `DOCUMENT_DATA_DIR` (default
+  `./data/document_projects`), mounted at `DOCUMENT_STORAGE_ROOT`;
 - coordinated backups below `BACKUP_ROOT` (default `./backups`);
 - `.teacher-assistant-installation`, a non-secret local guard recording which
   database volume has already been initialized.
@@ -48,6 +51,11 @@ The Git ignore rules cover `.env`, the installation marker, `data/`,
 `backups/`, runtime directories, caches, and logs. Never add private data to
 Git.
 
+The application is the only live writer for course, mail, and document storage.
+Stop backend/frontend writes before copying or inspecting raw document source
+folders on the host. Manual host access is a recovery procedure, not a second
+editing interface.
+
 ## Read-only preflight
 
 Run before an update, migration, move, backup, or restore:
@@ -58,7 +66,7 @@ make data-preflight
 
 It reports the resolved installation ID and identity source; exact database and
 Codex-auth and integration-secret volume names and reachability; host
-course/mail-storage and backup paths;
+course/mail/document-storage and backup paths;
 recorded initialization state; and other Compose `database-data` candidates.
 The check does not create a missing volume.
 
@@ -92,10 +100,10 @@ make dev
 ```
 
 Use a distinct ID, repository directory, `COURSE_DATA_DIR`, `MAIL_DATA_DIR`,
-ports, and backup root per clone. Different IDs resolve different database,
+`DOCUMENT_DATA_DIR`, ports, and backup root per clone. Different IDs resolve different database,
 Codex-auth, integration-secret, network,
-container, image, and disposable development volumes. Default relative course
-and backup paths are isolated by clone.
+container, image, and disposable development volumes. Default relative course,
+mail, document, and backup paths are isolated by clone.
 
 ## Adopt an existing pre-M14 installation
 
@@ -149,7 +157,7 @@ Moving a running installation is not supported.
 1. Run `make data-preflight` and `make backup`.
 2. Run `make down`; it removes containers/network, never owner volumes.
 3. Move the complete project directory with `mv`. Include hidden `.env` and
-   `.teacher-assistant-installation`, ignored `data/` (course and mail files),
+   `.teacher-assistant-installation`, ignored `data/` (course, mail, and document files),
    and ignored `backups/`.
    Copying only Git-tracked files is not a data move.
 4. In the new directory, run `make data-preflight`.
@@ -158,7 +166,8 @@ Moving a running installation is not supported.
 
 These steps support a same-final-name parent move and a final-directory rename.
 They also support ordinary source updates and rebuilds: builds do not overwrite
-`.env`, named volumes, `COURSE_DATA_DIR`, or `BACKUP_ROOT`.
+`.env`, named volumes, `COURSE_DATA_DIR`, `MAIL_DATA_DIR`,
+`DOCUMENT_DATA_DIR`, or `BACKUP_ROOT`.
 
 Normal `make down` and `make restart` never request volume deletion. Only test
 and E2E projects with explicit isolated identities use volume cleanup. Never
@@ -171,7 +180,7 @@ make backup
 ```
 
 The command pauses backend/frontend writes, dumps PostgreSQL in custom format,
-archives the matching course and mail-attachment trees, and writes a unique
+archives the matching course, mail-attachment, and document-source trees, and writes a unique
 UTC-stamped bundle:
 
 ```text
@@ -179,11 +188,12 @@ backups/<UTC timestamp>-<installation-id>/
 ├── database.dump
 ├── course-content.tar.gz
 ├── mail-attachments.tar.gz
+├── document-projects.tar.gz
 └── manifest.json
 ```
 
 The manifest contains SHA-256 hashes and byte counts. Success is reported only
-after `pg_restore` lists the dump and both archives pass checksum, entry-type,
+after `pg_restore` lists the dump and all archives pass checksum, entry-type,
 path, and full-read validation. Directories use `0700`; files use
 `0600`. Previously running services resume.
 
@@ -204,21 +214,25 @@ make restore \
 
 Before changing the target, restore validates the complete bundle and creates a
 new coordinated safety backup. It stops writes, recreates and loads the target
-database with `--exit-on-error`, safely extracts course and mail attachment
-files, runs migrations,
+database with `--exit-on-error`, safely extracts course, mail attachment, and
+document source files, runs migrations,
 and resumes previously running services. The prior course directory remains as
 `course_content.before-restore-<UTC timestamp>` and the prior mail tree remains
-as `mail_attachments.before-restore-<UTC timestamp>`. Keep them and the
+as `mail_attachments.before-restore-<UTC timestamp>`. The prior document tree
+remains as `document_projects.before-restore-<UTC timestamp>`. Keep them and the
 pre-restore bundle until verification.
 
 A missing component, size/checksum mismatch, unreadable PostgreSQL dump,
 duplicate/traversal archive path, symlink, device file, or unsupported manifest
 fails clearly. Bundle validation happens before replacement. If a later host or
 disk error interrupts restore, services remain stopped and the printed safety
-backup plus course rollback directory provide recovery.
+backup plus private-storage rollback directories provide recovery. Legacy M20
+format-2 bundles remain valid: restore creates an empty document root and keeps
+the target's previous document directory as a rollback path.
 
 After restore, verify database record IDs/counts, source hashes, Calendar and
-subscriptions, Courses and summaries, Inbox bodies/attachments, Assistant
+subscriptions, Courses and summaries, Inbox bodies/attachments, document
+records/tags/exact source hashes, Assistant
 history/proposals, diagnostics, and Alembic head. Sign in to ChatGPT and
 reconnect the mailbox when the target renewable-secret volumes are empty.
 
@@ -231,7 +245,7 @@ make data-relocation-test
 ```
 
 It creates fixture installations containing a calendar/event, ICS subscription,
-course/upload, note/slide link, summary, Assistant conversation/proposal,
+course/upload, note/slide link, summary, document project/tag/source, Assistant conversation/proposal,
 citation/context audit, and diagnostic audit. It verifies IDs/counts and hashes
 across migrate/rebuild, same-name parent move, directory rename, coordinated
 backup, clean restore, two-clone isolation, corrupt-archive rejection, legacy

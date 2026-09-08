@@ -88,10 +88,13 @@ database_fingerprint() {
     calendars course_calendar_links course_source_text course_sources courses \
     diagnostic_audit_records diagnostic_errors events note_source_links \
     note_summaries notes mail_addresses mail_attachments mail_cleanup_audits \
-    mail_integration_connections mail_messages mail_quarantines; do
+    mail_integration_connections mail_messages mail_quarantines \
+    document_projects document_tags; do
     compose_in "$repository" exec -T database sh -c \
       "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atc \"select '$table=' || count(*) || ':' || coalesce(md5(string_agg(id::text, ',' order by id::text)), '') from $table\""
   done
+  compose_in "$repository" exec -T database sh -c \
+    "psql -U \"\$POSTGRES_USER\" -d \"\$POSTGRES_DB\" -Atc \"select 'document_project_tags=' || count(*) || ':' || coalesce(md5(string_agg(project_id::text || tag_id::text, ',' order by project_id::text, tag_id::text)), '') from document_project_tags\""
   compose_in "$repository" exec -T database sh -c \
     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select '\''alembic_version='\'' || version_num from alembic_version"'
 }
@@ -113,6 +116,13 @@ mail_fingerprint() {
   local repository=$1
   compose_in "$repository" exec -T backend sha256sum \
     /data/mail_attachments/55555555-5555-4555-8555-555555555555/66666666-6666-4666-8666-666666666666.bin \
+    | awk '{print $1}'
+}
+
+document_fingerprint() {
+  local repository=$1
+  compose_in "$repository" exec -T backend sha256sum \
+    /data/document_projects/15151515-1515-4515-8515-151515151515/source/main.tex \
     | awk '{print $1}'
 }
 
@@ -219,6 +229,10 @@ compose_in "$SOURCE_REPO" exec -T backend sh -c '
   mkdir -p "$mail_path"
   printf "%s" "M20 private mail attachment fixture" > "$mail_path/66666666-6666-4666-8666-666666666666.bin"
   chmod 600 "$mail_path/66666666-6666-4666-8666-666666666666.bin"
+  document_path=/data/document_projects/15151515-1515-4515-8515-151515151515
+  mkdir -p "$document_path/source" "$document_path/build"
+  printf "%s" "\\documentclass{article} fixture" > "$document_path/source/main.tex"
+  chmod 600 "$document_path/source/main.tex"
   printf "%s" "renewable-auth-volume-fixture" > /var/lib/teacher-assistant/codex/m14-relocation-marker
   printf "%s" "renewable-mail-credential-fixture" > /var/lib/teacher-assistant/integrations/m20-relocation-marker
 '
@@ -227,6 +241,7 @@ BASE_DATABASE=$(database_fingerprint "$SOURCE_REPO")
 BASE_FILE=$(file_fingerprint "$SOURCE_REPO")
 BASE_AUTH=$(auth_fingerprint "$SOURCE_REPO")
 BASE_MAIL=$(mail_fingerprint "$SOURCE_REPO")
+BASE_DOCUMENT=$(document_fingerprint "$SOURCE_REPO")
 BASE_INTEGRATION_CREDENTIAL=$(integration_credential_fingerprint "$SOURCE_REPO")
 
 make -C "$SOURCE_REPO" migrate >/dev/null
@@ -236,6 +251,7 @@ assert_equal "$BASE_DATABASE" "$(database_fingerprint "$SOURCE_REPO")" 'Database
 assert_equal "$BASE_FILE" "$(file_fingerprint "$SOURCE_REPO")" 'Upload hash after migrate/rebuild'
 assert_equal "$BASE_AUTH" "$(auth_fingerprint "$SOURCE_REPO")" 'Auth-volume marker after migrate/rebuild'
 assert_equal "$BASE_MAIL" "$(mail_fingerprint "$SOURCE_REPO")" 'Mail attachment hash after migrate/rebuild'
+assert_equal "$BASE_DOCUMENT" "$(document_fingerprint "$SOURCE_REPO")" 'Document hash after migrate/rebuild'
 assert_equal "$BASE_INTEGRATION_CREDENTIAL" "$(integration_credential_fingerprint "$SOURCE_REPO")" 'Integration credential after migrate/rebuild'
 
 make -C "$SOURCE_REPO" down >/dev/null
@@ -246,6 +262,7 @@ assert_equal "$BASE_DATABASE" "$(database_fingerprint "$MOVED_REPO")" 'Database 
 assert_equal "$BASE_FILE" "$(file_fingerprint "$MOVED_REPO")" 'Upload hash after same-name move'
 assert_equal "$BASE_AUTH" "$(auth_fingerprint "$MOVED_REPO")" 'Auth-volume marker after same-name move'
 assert_equal "$BASE_MAIL" "$(mail_fingerprint "$MOVED_REPO")" 'Mail attachment hash after same-name move'
+assert_equal "$BASE_DOCUMENT" "$(document_fingerprint "$MOVED_REPO")" 'Document hash after same-name move'
 assert_equal "$BASE_INTEGRATION_CREDENTIAL" "$(integration_credential_fingerprint "$MOVED_REPO")" 'Integration credential after same-name move'
 
 make -C "$MOVED_REPO" down >/dev/null
@@ -256,6 +273,7 @@ assert_equal "$BASE_DATABASE" "$(database_fingerprint "$RENAMED_REPO")" 'Databas
 assert_equal "$BASE_FILE" "$(file_fingerprint "$RENAMED_REPO")" 'Upload hash after rename'
 assert_equal "$BASE_AUTH" "$(auth_fingerprint "$RENAMED_REPO")" 'Auth-volume marker after rename'
 assert_equal "$BASE_MAIL" "$(mail_fingerprint "$RENAMED_REPO")" 'Mail attachment hash after rename'
+assert_equal "$BASE_DOCUMENT" "$(document_fingerprint "$RENAMED_REPO")" 'Document hash after rename'
 assert_equal "$BASE_INTEGRATION_CREDENTIAL" "$(integration_credential_fingerprint "$RENAMED_REPO")" 'Integration credential after rename'
 
 make -C "$RENAMED_REPO" backup >/dev/null
@@ -271,6 +289,7 @@ wait_for_backend "$RESTORE_REPO"
 assert_equal "$BASE_DATABASE" "$(database_fingerprint "$RESTORE_REPO")" 'Database IDs/counts after clean restore'
 assert_equal "$BASE_FILE" "$(file_fingerprint "$RESTORE_REPO")" 'Upload hash after clean restore'
 assert_equal "$BASE_MAIL" "$(mail_fingerprint "$RESTORE_REPO")" 'Mail attachment hash after clean restore'
+assert_equal "$BASE_DOCUMENT" "$(document_fingerprint "$RESTORE_REPO")" 'Document hash after clean restore'
 if compose_in "$RESTORE_REPO" exec -T backend test -e \
   /var/lib/teacher-assistant/codex/m14-relocation-marker; then
   printf 'Codex-auth fixture was copied into a clean restore.\n' >&2
@@ -287,6 +306,7 @@ RESTORE_DATABASE_VOLUME=$(compose_in "$RESTORE_REPO" config --format json | sed 
 [[ "$SOURCE_DATABASE_VOLUME" != "$RESTORE_DATABASE_VOLUME" ]]
 [[ "$(realpath "$RENAMED_REPO/data/course_content")" != "$(realpath "$RESTORE_REPO/data/course_content")" ]]
 [[ "$(realpath "$RENAMED_REPO/data/mail_attachments")" != "$(realpath "$RESTORE_REPO/data/mail_attachments")" ]]
+[[ "$(realpath "$RENAMED_REPO/data/document_projects")" != "$(realpath "$RESTORE_REPO/data/document_projects")" ]]
 
 CORRUPT_BUNDLE="$RESTORE_REPO/corrupt-backup"
 cp -a "$BUNDLE" "$CORRUPT_BUNDLE"
@@ -297,5 +317,13 @@ if make -C "$RESTORE_REPO" restore BACKUP="$CORRUPT_BUNDLE" CONFIRM_RESTORE="$RE
   exit 1
 fi
 assert_equal "$BEFORE_CORRUPT_TEST" "$(database_fingerprint "$RESTORE_REPO")" 'Database after corrupt restore rejection'
+
+CORRUPT_DOCUMENT_BUNDLE="$RESTORE_REPO/corrupt-document-backup"
+cp -a "$BUNDLE" "$CORRUPT_DOCUMENT_BUNDLE"
+printf 'corrupt' >> "$CORRUPT_DOCUMENT_BUNDLE/document-projects.tar.gz"
+if make -C "$RESTORE_REPO" restore BACKUP="$CORRUPT_DOCUMENT_BUNDLE" CONFIRM_RESTORE="$RESTORE_ID" >/dev/null 2>&1; then
+  printf 'A corrupt document archive was accepted unexpectedly.\n' >&2
+  exit 1
+fi
 
 printf 'M14 relocation/restore drill passed for fixture IDs %s and %s.\n' "$SOURCE_ID" "$RESTORE_ID"
