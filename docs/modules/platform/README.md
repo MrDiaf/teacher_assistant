@@ -16,44 +16,79 @@ Current paths include `frontend/src/{App,main,styles}.tsx`/`styles.css`,
 Plan remain shell placeholders. Platform owns no feature business tables; its
 diagnostic tables are `diagnostic_errors` and `diagnostic_audit_records`.
 
-## Required public contracts
+## Implemented composition extension points
 
-The first five contracts below have concrete entry surfaces; M21F restructures
-the AI/diagnostic implementations behind them and later milestones establish
-the remaining entries:
+Composition is explicit and static. Metadata describes an extension, a public
+entry binds that metadata to code, and a Platform-owned catalog assembles the
+known entries. Neither catalog data nor browser input is interpreted as an
+import path, component name, router name, or executable.
 
-- A typed, metadata-only module registration contract for stable IDs,
-  navigation/pages, router identities, declared dependency capabilities,
-  settings contributions, and lifecycle identities lives in
-  `backend/app/platform/modules/` and `frontend/src/platform/modules/`. Strict
-  parsers reject missing/unknown fields, duplicate IDs/orders, missing modules
-  or capabilities, and dependency cycles. `frontendCatalog.ts` and
-  `backend_catalog.py` attach explicitly imported public entries and validate
-  that their page/router code matches the metadata; catalog/browser input
-  cannot name code to import or execute.
-- Backend public entries bind lifecycle identities to explicit async startup
-  functions. Platform starts only the supplied entry set in stable effect order,
-  records successful cleanup callbacks, unwinds them in reverse after startup
-  failure, and gives each shutdown callback a five-second hard bound. The full
-  app supplies all registered entries; selective tests may supply only their
-  chosen entries without opening unrelated private roots or schedulers.
-- Shared UI entry points for the existing icon, modal, shell, persistence, API
-  error, model selector, and styling/token needs actually used by modules live
-  under `frontend/src/platform/`. Persistence retains the version-1 storage key
-  and owns its bounded Calendar-view/Course-tab value types without importing a
-  feature. Generic database enum serialization lives in Platform infrastructure.
-- `backend/app/platform/ai.py` publishes the existing model
-  listing/validation, authentication, Codex execution, and bounded private
-  workspace interfaces without moving their implementation. They do not query
-  feature data; M21F restructures providers behind this entry point.
-- `backend/app/platform/diagnostics.py` publishes the existing safe schemas,
-  redaction helpers, and diagnostic service interface. Credentials and raw
-  provider output remain forbidden; M21F removes its remaining persistence
-  coupling behind this entry point.
-- A recovery coordinator consumes typed module contributions and owns quiescence,
-  manifest/checksum validation, rollback, and old-format compatibility.
-- An application transaction coordinator accepts specific cross-module use
-  cases. It never exposes an unrestricted session as a module public API.
+| Concern | Declaration or public entry | Platform assembly consumer |
+| --- | --- | --- |
+| Shared identities, order, dependencies, capabilities, routes, pages, Settings panels, and lifecycle IDs | Mirrored `backend/app/platform/modules/catalog.json` and `frontend/src/platform/modules/catalog.json` | Strict `contract.py`/`contract.ts` parsers; `make check-module-contract` also compares both files with the ownership manifest |
+| Frontend pages | `frontend/src/platform/entry.ts` for Platform pages and `frontend/src/features/<owner>/entry.ts` for feature pages | `frontendCatalog.ts` statically imports every entry, `assembleFrontendPages` validates it, and `App.tsx` passes `registeredPages` to `RegisteredApplication` |
+| Backend routes and lifecycle hooks | `backend/app/platform/entry.py` and `backend/app/<owner>/entry.py` | `backend_catalog.py` statically imports every entry, `assemble_backend_modules` validates it, and `app/main.py` includes routers and runs `backend_module_lifespan` |
+| Test-only page/router assembly | A synthetic validated catalog plus an explicit tuple of test entries | Call `assembleFrontendPages` or `assemble_backend_modules` directly; do not mutate the production catalogs or global registered entry sets |
+
+The Settings-panel IDs in the metadata currently reserve and validate identity
+and order only. The existing mailbox panel remains directly hosted by Settings;
+M21G owns its code contribution and M21H owns module switches. Do not treat
+`enabled_by_default` as a runtime module switch before M21H.
+
+### Adding an entry in an owner-selected milestone
+
+1. Add the same metadata registration to both catalog JSON files. Keep IDs
+   lowercase kebab-case and globally unique, give module/page/Settings orders
+   unique integers, and declare only capabilities actually provided and
+   dependencies actually consumed. Update the closed `ModuleId`/`PageId` types
+   when an explicitly approved module or page is added.
+2. Add or update the owner public `entry.ts` and/or `entry.py`. A frontend page
+   binds its metadata ID to an explicitly imported React component and icon. A
+   backend route binds its metadata ID to an explicitly imported `APIRouter`,
+   normally under `/api/v1`.
+3. Add the public entry to the corresponding static tuple in
+   `frontendCatalog.ts` and/or `backend_catalog.py`. Do not add dynamic discovery,
+   import strings, a service locator, or business logic to either catalog.
+4. For a lifecycle hook, bind the declared ID to an async startup callback with
+   a unique global order. Startup may return an idempotent async cleanup; use
+   `background_task_lifecycle` for a cooperative scheduler. Cleanups run in
+   reverse successful-start order and each has a positive, finite timeout
+   (five seconds by default). Private roots must start before jobs that use them.
+5. Update `architecture/module-boundaries.json` with ownership, declared
+   dependencies, and the exact public-entry path. Do not add a broad exception
+   or allow a business feature to import Platform assembly internals.
+6. Add metadata, missing/unknown/duplicate binding, page/router, and lifecycle
+   tests as applicable. Run `make check-module-contract`,
+   `make check-boundaries`, and the relevant full regression commands.
+
+Production assembly intentionally requires an entry for every registration and
+keeps every current module enabled. Selective tests instead pass only a matching
+synthetic catalog and explicit entries, so unrelated private storage and
+schedulers are never started.
+
+## Shared Platform entry points
+
+- Frontend feature code may use `platform/ui`, `platform/api`,
+  `platform/persistence`, `platform/ai`, and
+  `platform/modules/frontendContract` as permitted by the boundary manifest.
+  `platform/shell` and `platform/entry` are root-composition surfaces, not
+  business-feature imports. Persistence retains the exact
+  `teacher-assistant.ui-state.v1` key and version-1 bounded schema.
+- `app.platform.modules.backend_contract` publishes route, lifecycle, and module
+  code-entry types plus the assembly/lifespan functions.
+- `app.platform.ai` publishes existing model listing/validation,
+  authentication, Codex execution, and bounded private-workspace interfaces.
+  M21F may restructure their implementations behind this surface.
+- `app.platform.diagnostics` publishes safe schemas, redaction helpers, and the
+  diagnostic service interface. Credentials and raw provider output remain
+  forbidden; M21F owns removal of its remaining persistence coupling.
+- Generic database enum serialization lives in `app.database.types` as Platform
+  infrastructure. Configuration, errors, database sessions, and models remain
+  infrastructure rather than unrestricted feature service APIs.
+
+A typed recovery contribution/coordinator and an explicit cross-module
+transaction coordinator remain later-milestone work. Neither may expose an
+unrestricted session, physical private path, credential, or feature repository.
 
 Platform owns configuration/database availability and safe diagnostic errors.
 Feature permissions stay with the feature owner. Database sessions remain
@@ -62,14 +97,14 @@ which UI/test module is selected.
 
 ## Dependencies and migration debt
 
-The business graph gives Platform no feature dependency. Composition imports
-only the exact module `entry.py`/`entry.ts` files declared in the boundary
-manifest. `App.tsx` renders registered pages, while `main.py` includes validated
-registered routers and runs their lifecycle contributions. Feature code consumes
-the Platform UI, persistence, API, and model-selection façades; Settings still
-imports Inbox internals. AI/diagnostic deeper separation belongs to M21F; mail
-Settings separation belongs to M21G. Feature selectors remain deliberately mixed
-in the legacy stylesheet until their owner milestones extract them.
+The business graph gives Platform no feature dependency. Its composition layer
+may import only the exact module `entry.py`/`entry.ts` files declared in the
+boundary manifest; that root wiring is not permission for other Platform code
+to reach feature internals. Feature code consumes the Platform UI, persistence,
+API, and model-selection façades; Settings still imports Inbox internals.
+AI/diagnostic deeper separation belongs to M21F; mail Settings separation belongs
+to M21G. Feature selectors remain deliberately mixed in the legacy stylesheet
+until their owner milestones extract them.
 
 ## Current commands
 

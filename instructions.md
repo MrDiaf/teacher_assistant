@@ -363,7 +363,7 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
 - [x] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
 - [x] [M21A - Module ownership, contracts, and refactoring baseline](milestones/m21a-module-ownership-and-baseline.md)
-- [ ] [M21B - Application composition and shared platform boundaries](milestones/m21b-application-composition.md)
+- [x] [M21B - Application composition and shared platform boundaries](milestones/m21b-application-composition.md)
 - [ ] [M21C - Documents module and isolated development pilot](milestones/m21c-documents-module-pilot.md)
 - [ ] [M21D - Calendar ownership and public service contract](milestones/m21d-calendar-module-boundary.md)
 - [ ] [M21E - Courses ownership and Calendar integration](milestones/m21e-courses-module-boundary.md)
@@ -375,17 +375,14 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
 - [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
-Current active milestone: **M21B - Application composition and shared platform
-boundaries**.
+Current active milestone: **none**. M21B is complete. M21C is the next planned
+milestone and remains inactive until the owner explicitly selects it.
 
-The typed common module contract, explicit frontend-page/backend-router
-assembly, registered backend lifecycle hooks, shared UI/platform entry points
-with compatible navigation state, and the corresponding composition/lifecycle
-test and boundary-tightening work are implemented. The next M21B subtask is its
-final checklist item: update Platform and root wiring documentation with the
-actual extension points, record final verification, and close M21B only if all
-acceptance criteria pass. M21C remains inactive until M21B is complete and the
-owner explicitly selects it.
+M21B established the typed common module contract, explicit
+frontend-page/backend-router assembly, bounded backend lifecycle hooks, shared
+UI/platform entry points with compatible navigation state, composition and
+lifecycle enforcement tests, tightened boundaries, and documented static
+extension points. Every current module remains enabled by default.
 
 M1 through M21 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
@@ -393,10 +390,10 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M21A is complete. M21B is active and incomplete; M21C-M21I remain planned and
-intentionally unchecked. Their required order is composition, Documents pilot,
-Calendar, Courses, Assistant and AI platform, Inbox/Settings, module controls,
-and final verification.
+M21A and M21B are complete. M21C-M21I remain planned and intentionally
+unchecked. Their remaining required order is Documents pilot, Calendar,
+Courses, Assistant and AI platform, Inbox/Settings, module controls, and final
+verification.
 These suffix IDs insert the refactoring without renumbering completed work or
 the existing feature specifications.
 

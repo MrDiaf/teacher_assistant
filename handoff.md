@@ -23,11 +23,12 @@ explicitly requested.
 - M1-M21, the post-M7 linked proposal batches, and the recorded post-M13
   Assistant refinements are complete.
 - M21A is complete at revision `d826ac1` (`m21a is done`).
-- M21B is active. Its first five checklist items—the typed common module
-  contract, explicit frontend-page/backend-router assembly, registered backend
-  lifecycle hooks, and shared UI/platform entry points with compatible
-  navigation state, followed by composition/lifecycle coverage and boundary
-  tightening—are implemented in the current uncommitted worktree.
+- M21B is complete. Its typed contract, explicit frontend/backend assembly,
+  bounded lifecycle handling, shared Platform entry points, compatible
+  navigation state, enforcement tests, tightened boundaries, and documented
+  extension procedure are implemented in the current uncommitted worktree.
+- No milestone is active. M21C is next in the required sequence but remains
+  planned until explicitly selected.
 - No feature behavior, schema, storage identity, private data, or visible design
   was changed. M21C and M22 were not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
@@ -139,13 +140,21 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   of granting broad `app.core` or `app.database` access. New negative fixtures
   prove business features cannot import backend assembly internals or bypass the
   frontend Platform facade to reach shell internals.
-- Current-subtask verification passed `make test` (208 backend and 97 frontend
+- Final M21B verification passed `make test` (208 backend and 97 frontend
   tests, boundary/catalog-drift/data-safety gates), the frontend production
   build, `make lint`, and all 12 E2E/accessibility tests.
+- Platform and root wiring documentation now records the mirrored metadata,
+  owner public entries, static frontend/backend catalogs, root consumers,
+  selective-test assembly, lifecycle rules, boundary updates, and module-safe
+  shared façades. It explicitly distinguishes metadata-only Settings panels and
+  future runtime switches from implemented composition.
+- Final verification also confirmed the sole `20260908_0021 (head)` migration,
+  healthy isolated database/backend/frontend startup, JSON validity, diff
+  hygiene, and removal of isolated test volumes.
 
 ## Shared cautions
 
-- M21B-M21I remain separate milestones. Metadata registration, public
+- M21C-M21I remain separate planned milestones. Metadata registration, public
   page/router entries, catalog-driven assembly, and lifecycle registration now
   exist alongside shared UI/platform façades. Scoped feature CSS, focused
   `dev-module`/`test-module` commands, and Settings module controls do not exist
@@ -175,17 +184,14 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21B is active and its first five checklist items are complete. The exact next
-step is its sixth and final checklist item: update the Platform README/handoff
-and root wiring documentation with the actual extension points, record final
-verification, and close M21B only if every acceptance criterion passes.
+No milestone is active. M21B is complete. The owner may explicitly select M21C,
+the Documents module and isolated-development pilot, as the next milestone in
+the required sequence. Do not begin it from a bare `continue` prompt.
 
 Recommended next prompt:
 
 ```text
-Continue M21B with its final incomplete subtask: update the Platform
-README/handoff and root wiring documentation with the actual extension points,
-record final verification, and close M21B only if every acceptance criterion
-passes. Preserve behavior, design, storage IDs, and private data; do not start
-M21C or M22.
+Start M21C, the Documents module and isolated-development pilot. Read its plan
+and implement only its first incomplete subtask. Preserve behavior, design,
+storage IDs, and private data; do not start M21D or M22.
 ```

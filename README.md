@@ -11,20 +11,33 @@ Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Development roadmap
 
-M1-M21 and M21A are implemented. M21B is active; its typed metadata contract,
-explicit frontend-page/backend-router assembly, registered backend lifecycle
-hooks, and shared UI/platform entry points with compatible navigation state are
-implemented, while later checklist items remain incomplete.
+M1-M21, M21A, and M21B are implemented. M21C is the next planned refactoring
+milestone but is not active until explicitly selected.
 M21B-M21I precede the LaTeX editor/compiler/advice work in M22-M24. The
 refactoring sequence covers ownership and public contracts, application
 composition, a Documents pilot, the other existing modules, Settings module
 controls, and focused Docker testing with final recovery verification.
 
 See the [authoritative milestone index](instructions.md#milestone-status), the
-[module ownership index](docs/modules/README.md), and the active milestone
-[M21B](milestones/m21b-application-composition.md). Module switches,
+[module ownership index](docs/modules/README.md), and the completed composition
+milestone [M21B](milestones/m21b-application-composition.md). Module switches,
 module-specific Docker commands, and the isolated module host are planned,
 not available features yet.
+
+## Application composition wiring
+
+Teacher Assistant uses mirrored, validated module metadata plus statically
+imported public code entries; it does not load plugins or executable names from
+configuration or browser input. Frontend pages are bound in
+`frontend/src/platform/modules/frontendCatalog.ts` and rendered through
+`App.tsx`. Backend routers and lifecycle hooks are bound in
+`backend/app/platform/modules/backend_catalog.py` and consumed by
+`backend/app/main.py`. Existing modules remain enabled by default.
+
+The exact extension procedure, selective-test assembly path, lifecycle cleanup
+rules, and approved shared Platform imports are documented in the
+[Platform module README](docs/modules/platform/README.md). Adding a product
+module or page still requires an explicitly selected milestone.
 
 ## Requirements
 

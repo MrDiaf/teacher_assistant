@@ -1,6 +1,6 @@
 # M21B - Application composition and shared platform boundaries
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -54,8 +54,18 @@ volumes, bind roots, backups, and credential exclusions stay compatible.
 - [x] Establish shared UI/platform entry points and preserve navigation state.
 - [x] Add composition, missing-dependency, duplicate-registration, and lifecycle
   tests; tighten the corresponding M21A boundary allowances.
-- [ ] Update platform README/handoff and root wiring documentation with actual
+- [x] Update platform README/handoff and root wiring documentation with actual
   extension points; record verification and the exact next step.
+
+## Verification record
+
+Completed on 2026-09-10. `make test` passed 208 backend and 97 frontend tests,
+including boundary, catalog agreement/drift, and data-safety gates. `make lint`,
+the frontend production build, and all 12 isolated E2E/accessibility scenarios
+passed. The isolated database migrated through the sole
+`20260908_0021 (head)` revision, and the E2E database/backend/frontend stack
+reached healthy state before its private test volumes were removed. JSON and
+diff hygiene checks passed. M21C and M22 were not started.
 
 ## Acceptance criteria
 

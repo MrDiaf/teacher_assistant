@@ -1,11 +1,10 @@
 # Module ownership and dependency index
 
 This is the ownership map for the current modular-monolith transition. M21A
-established the baseline; M21B is active and its typed metadata, page/router
-assembly, backend lifecycle registration, and shared UI/platform entry points
-are implemented. Feature
-directories are not yet isolated modules; later M21B work and M21C-M21G remove
-the remaining exact legacy exceptions in
+established the baseline and M21B implemented typed metadata, page/router
+assembly, bounded backend lifecycle registration, shared UI/platform entry
+points, and their enforcement tests. Feature directories are not yet isolated
+modules; M21C-M21G remove the remaining exact legacy exceptions in
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
 ## Reading workflow
@@ -56,7 +55,9 @@ permitted.
 catalogs against each other and this ownership graph. The typed parsers validate
 capability requirements and contribution uniqueness without resolving catalog
 values to code. Application assembly binds validated metadata to explicit
-public code entries.
+public code entries. The canonical extension procedure and distinction between
+module-safe façades and root-only assembly surfaces are in the
+[Platform README](platform/README.md#implemented-composition-extension-points).
 
 Current exact exception count: 38 backend and 7 frontend imports. Removal is
 owned by M21D (20), M21E (4), M21F (19), and M21G (2). The manifest
