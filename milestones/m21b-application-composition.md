@@ -52,7 +52,7 @@ volumes, bind roots, backups, and credential exclusions stay compatible.
 - [x] Register existing background lifecycle hooks with bounded shutdown and
   startup-failure cleanup; default full-app behavior remains unchanged.
 - [x] Establish shared UI/platform entry points and preserve navigation state.
-- [ ] Add composition, missing-dependency, duplicate-registration, and lifecycle
+- [x] Add composition, missing-dependency, duplicate-registration, and lifecycle
   tests; tighten the corresponding M21A boundary allowances.
 - [ ] Update platform README/handoff and root wiring documentation with actual
   extension points; record verification and the exact next step.

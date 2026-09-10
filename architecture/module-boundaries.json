@@ -38,8 +38,11 @@
       { "prefix": "app", "owner": "platform" }
     ],
     "allowed_platform_imports": [
-      "app.core",
-      "app.database",
+      "app.core.config",
+      "app.core.errors",
+      "app.database.base",
+      "app.database.session",
+      "app.database.types",
       "app.platform.ai",
       "app.platform.diagnostics",
       "app.platform.modules.backend_contract"

@@ -67,6 +67,18 @@ def test_production_catalog_has_stable_module_and_page_order() -> None:
             "requires unknown module",
         ),
         (
+            lambda payload: payload["registrations"][1]["dependencies"].append(
+                copy.deepcopy(payload["registrations"][1]["dependencies"][0])
+            ),
+            "declares dependency 'platform' twice",
+        ),
+        (
+            lambda payload: payload["registrations"][0]["dependencies"].append(
+                {"id": "platform", "requires": ["shell"]}
+            ),
+            "cannot depend on itself",
+        ),
+        (
             lambda payload: payload["registrations"][1]["dependencies"][0]["requires"].append(
                 "missing-capability"
             ),
@@ -83,6 +95,24 @@ def test_production_catalog_has_stable_module_and_page_order() -> None:
                 payload["registrations"][0]["contributions"]["routes"][0]
             ),
             "duplicate route id",
+        ),
+        (
+            lambda payload: payload["registrations"][1]["capabilities"].append(
+                payload["registrations"][1]["capabilities"][0]
+            ),
+            "contains duplicate identifier",
+        ),
+        (
+            lambda payload: payload["registrations"][1]["contributions"]["pages"].append(
+                copy.deepcopy(payload["registrations"][1]["contributions"]["pages"][0])
+            ),
+            "duplicate page id",
+        ),
+        (
+            lambda payload: payload["registrations"][4]["contributions"]["lifecycle"].append(
+                payload["registrations"][4]["contributions"]["lifecycle"][0]
+            ),
+            "contains duplicate identifier",
         ),
         (
             lambda payload: payload["registrations"][1]["contributions"]["pages"][0].update(

@@ -112,6 +112,26 @@ def test_fixture_router_assembles_without_production_modules() -> None:
     assert "/api/v1/fixture" in {route.path for route in composed_app.routes}
 
 
+def test_missing_backend_module_entry_is_rejected() -> None:
+    with pytest.raises(BackendModuleEntryError, match="missing backend module entry"):
+        assemble_backend_modules(_fixture_catalog(), ())
+
+
+def test_unknown_backend_module_entry_is_rejected() -> None:
+    with pytest.raises(BackendModuleEntryError, match="unknown backend module entries"):
+        assemble_backend_modules(
+            _fixture_catalog(),
+            (BackendModuleEntry(id="unknown"),),
+        )
+
+
+def test_duplicate_backend_module_entry_is_rejected() -> None:
+    entry = BackendModuleEntry(id="fixture")
+
+    with pytest.raises(BackendModuleEntryError, match="duplicate backend module entry"):
+        assemble_backend_modules(_fixture_catalog(), (entry, entry))
+
+
 def test_missing_router_code_contribution_is_rejected() -> None:
     with pytest.raises(BackendModuleEntryError, match="missing router code contributions"):
         assemble_backend_modules(
@@ -120,11 +140,70 @@ def test_missing_router_code_contribution_is_rejected() -> None:
         )
 
 
+def test_unknown_router_code_contribution_is_rejected() -> None:
+    with pytest.raises(BackendModuleEntryError, match="unknown router code contributions"):
+        assemble_backend_modules(
+            _fixture_catalog(),
+            (
+                BackendModuleEntry(
+                    id="fixture",
+                    routers=(RouterCodeContribution(id="unknown-router", router=APIRouter()),),
+                ),
+            ),
+        )
+
+
+def test_duplicate_router_code_contribution_is_rejected() -> None:
+    contribution = RouterCodeContribution(id="fixture-router", router=APIRouter())
+
+    with pytest.raises(BackendModuleEntryError, match="duplicate router code contribution"):
+        assemble_backend_modules(
+            _fixture_catalog("fixture-router"),
+            (
+                BackendModuleEntry(
+                    id="fixture",
+                    routers=(contribution, contribution),
+                ),
+            ),
+        )
+
+
 def test_missing_lifecycle_code_contribution_is_rejected() -> None:
     with pytest.raises(BackendModuleEntryError, match="missing lifecycle code contributions"):
         assemble_backend_modules(
             _fixture_catalog(lifecycle_ids=("required-hook",)),
             (BackendModuleEntry(id="fixture"),),
+        )
+
+
+def test_unknown_lifecycle_code_contribution_is_rejected() -> None:
+    async def startup():
+        return None
+
+    with pytest.raises(BackendModuleEntryError, match="unknown lifecycle code contributions"):
+        assemble_backend_modules(
+            _fixture_catalog(),
+            (
+                BackendModuleEntry(
+                    id="fixture",
+                    lifecycle=(
+                        LifecycleCodeContribution(id="unknown-hook", startup=startup, order=10),
+                    ),
+                ),
+            ),
+        )
+
+
+def test_duplicate_lifecycle_code_contribution_is_rejected() -> None:
+    async def startup():
+        return None
+
+    contribution = LifecycleCodeContribution(id="fixture-hook", startup=startup, order=10)
+
+    with pytest.raises(BackendModuleEntryError, match="duplicate lifecycle code contribution"):
+        assemble_backend_modules(
+            _fixture_catalog(lifecycle_ids=("fixture-hook",)),
+            (BackendModuleEntry(id="fixture", lifecycle=(contribution, contribution)),),
         )
 
 

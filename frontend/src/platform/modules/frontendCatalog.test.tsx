@@ -88,4 +88,81 @@ describe("frontend module composition", () => {
       assembleFrontendPages(moduleCatalog, [mismatched]),
     ).toThrowError("Missing frontend page code contribution");
   });
+
+  it("rejects missing, unknown, and duplicate module code entries", () => {
+    const fixtureCatalog = parseModuleCatalog({
+      schema_version: 1,
+      registrations: [
+        {
+          id: "fixture",
+          display_name: "Fixture",
+          order: 0,
+          enabled_by_default: true,
+          capabilities: [],
+          dependencies: [],
+          contributions: {
+            routes: [],
+            pages: [],
+            settings_panels: [],
+            lifecycle: [],
+          },
+        },
+      ],
+    });
+    const fixtureEntry = {
+      id: "fixture",
+      pages: [],
+    } as const satisfies FrontendModuleEntry<"fixture", never>;
+
+    expect(() => assembleFrontendPages(fixtureCatalog, [])).toThrowError(
+      "Missing frontend module entry",
+    );
+    expect(() =>
+      assembleFrontendPages(fixtureCatalog, [{ id: "unknown", pages: [] }]),
+    ).toThrowError("Unknown frontend module entry");
+    expect(() =>
+      assembleFrontendPages(fixtureCatalog, [fixtureEntry, fixtureEntry]),
+    ).toThrowError("Duplicate frontend module entry");
+  });
+
+  it("rejects unknown and duplicate page code contributions", () => {
+    function FixturePage() {
+      return <main>Fixture</main>;
+    }
+    const fixtureCatalog = parseModuleCatalog({
+      schema_version: 1,
+      registrations: [
+        {
+          id: "fixture",
+          display_name: "Fixture",
+          order: 0,
+          enabled_by_default: true,
+          capabilities: ["page"],
+          dependencies: [],
+          contributions: {
+            routes: [],
+            pages: [{ id: "fixture-page", label: "Fixture", order: 0 }],
+            settings_panels: [],
+            lifecycle: [],
+          },
+        },
+      ],
+    });
+    const page = {
+      id: "fixture-page",
+      icon: "leaf",
+      component: FixturePage,
+    } as const;
+
+    expect(() =>
+      assembleFrontendPages(fixtureCatalog, [
+        { id: "fixture", pages: [{ ...page, id: "unknown-page" }] },
+      ]),
+    ).toThrowError("Unknown frontend page code contribution");
+    expect(() =>
+      assembleFrontendPages(fixtureCatalog, [
+        { id: "fixture", pages: [page, page] },
+      ]),
+    ).toThrowError("Duplicate frontend page code contribution");
+  });
 });

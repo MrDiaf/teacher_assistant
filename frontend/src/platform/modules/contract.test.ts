@@ -71,6 +71,25 @@ describe("module registration contract", () => {
       "requires unknown module",
     ],
     [
+      "duplicate dependency declarations",
+      (value: MutableCatalog) => {
+        value.registrations[1].dependencies.push(
+          structuredClone(value.registrations[1].dependencies[0]),
+        );
+      },
+      "declares a dependency twice",
+    ],
+    [
+      "self dependencies",
+      (value: MutableCatalog) => {
+        value.registrations[0].dependencies.push({
+          id: "platform",
+          requires: ["shell"],
+        });
+      },
+      "cannot depend on itself",
+    ],
+    [
       "missing provider capabilities",
       (value: MutableCatalog) => {
         value.registrations[1].dependencies[0].requires.push(
@@ -97,6 +116,33 @@ describe("module registration contract", () => {
         );
       },
       "duplicate route id",
+    ],
+    [
+      "duplicate capabilities",
+      (value: MutableCatalog) => {
+        value.registrations[1].capabilities.push(
+          value.registrations[1].capabilities[0],
+        );
+      },
+      "contains duplicate identifier",
+    ],
+    [
+      "duplicate page IDs",
+      (value: MutableCatalog) => {
+        value.registrations[1].contributions.pages.push(
+          structuredClone(value.registrations[1].contributions.pages[0]),
+        );
+      },
+      "duplicate page id",
+    ],
+    [
+      "duplicate lifecycle IDs",
+      (value: MutableCatalog) => {
+        value.registrations[4].contributions.lifecycle.push(
+          value.registrations[4].contributions.lifecycle[0],
+        );
+      },
+      "contains duplicate identifier",
     ],
     [
       "duplicate page order",

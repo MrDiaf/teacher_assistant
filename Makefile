@@ -26,6 +26,20 @@ check-boundaries:
 		--allow-stale-exceptions >/dev/null 2>&1; then \
 		echo "Frontend invalid boundary fixture was not rejected."; exit 1; \
 	else echo "Frontend invalid boundary fixture rejected."; fi
+	@set -e; \
+	if $(COMPOSE) run --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint python backend /workspace/scripts/check-backend-boundaries.py \
+		--repo /workspace --source-root architecture/fixtures/backend-platform \
+		--allow-stale-exceptions >/dev/null 2>&1; then \
+		echo "Backend unapproved Platform-import fixture was not rejected."; exit 1; \
+	else echo "Backend unapproved Platform-import fixture rejected."; fi
+	@set -e; \
+	if $(COMPOSE) run --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint node frontend /workspace/scripts/check-frontend-boundaries.mjs \
+		--repo /workspace --source-root architecture/fixtures/frontend-platform/src \
+		--allow-stale-exceptions >/dev/null 2>&1; then \
+		echo "Frontend unapproved Platform-import fixture was not rejected."; exit 1; \
+	else echo "Frontend unapproved Platform-import fixture rejected."; fi
 
 check-module-contract:
 	$(COMPOSE) run --build --rm --no-deps -v "$(CURDIR):/workspace:ro" \

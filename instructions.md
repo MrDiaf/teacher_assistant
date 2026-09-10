@@ -379,11 +379,12 @@ Current active milestone: **M21B - Application composition and shared platform
 boundaries**.
 
 The typed common module contract, explicit frontend-page/backend-router
-assembly, registered backend lifecycle hooks, and shared UI/platform entry
-points with compatible navigation state are implemented. The next M21B subtask
-is to add the remaining composition, missing-dependency,
-duplicate-registration, and lifecycle tests while tightening the corresponding
-M21A boundary allowances. M21C remains inactive until M21B is complete and the
+assembly, registered backend lifecycle hooks, shared UI/platform entry points
+with compatible navigation state, and the corresponding composition/lifecycle
+test and boundary-tightening work are implemented. The next M21B subtask is its
+final checklist item: update Platform and root wiring documentation with the
+actual extension points, record final verification, and close M21B only if all
+acceptance criteria pass. M21C remains inactive until M21B is complete and the
 owner explicitly selects it.
 
 M1 through M21 and the post-M7 linked-batch milestone are complete. The

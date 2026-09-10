@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-09
+Updated: 2026-09-10
 
 ## Start here
 
@@ -23,10 +23,11 @@ explicitly requested.
 - M1-M21, the post-M7 linked proposal batches, and the recorded post-M13
   Assistant refinements are complete.
 - M21A is complete at revision `d826ac1` (`m21a is done`).
-- M21B is active. Its first four checklist items—the typed common module
+- M21B is active. Its first five checklist items—the typed common module
   contract, explicit frontend-page/backend-router assembly, registered backend
   lifecycle hooks, and shared UI/platform entry points with compatible
-  navigation state—are implemented in the current uncommitted worktree.
+  navigation state, followed by composition/lifecycle coverage and boundary
+  tightening—are implemented in the current uncommitted worktree.
 - No feature behavior, schema, storage identity, private data, or visible design
   was changed. M21C and M22 were not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
@@ -128,7 +129,17 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 - The boundary allowlist now permits only the five exact feature entry paths.
   Removing direct composition and shared-helper imports reduced exact exceptions
   from 63 to 38 backend and from 21 to 7 frontend; no M21B exception remains.
-- Current-subtask verification passed `make test` (191 backend and 90 frontend
+- Backend and frontend contract tests now cover duplicate dependency,
+  capability, page, and lifecycle declarations. Assembly tests cover missing,
+  unknown, and duplicate code contributions; lifecycle tests cover normal and
+  exceptional reverse cleanup, aggregate shutdown failures, invalid cleanup
+  callbacks, bounded cleanup, and task cancellation.
+- Platform's backend boundary allowance now names only the exact configuration,
+  error, database, AI, diagnostic, and registration modules it consumes instead
+  of granting broad `app.core` or `app.database` access. New negative fixtures
+  prove business features cannot import backend assembly internals or bypass the
+  frontend Platform facade to reach shell internals.
+- Current-subtask verification passed `make test` (208 backend and 97 frontend
   tests, boundary/catalog-drift/data-safety gates), the frontend production
   build, `make lint`, and all 12 E2E/accessibility tests.
 
@@ -164,16 +175,17 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21B is active and its first four checklist items are complete. The exact next
-step is its fifth checklist item: add composition, missing-dependency,
-duplicate-registration, and lifecycle tests, then tighten the corresponding
-M21A boundary allowances.
+M21B is active and its first five checklist items are complete. The exact next
+step is its sixth and final checklist item: update the Platform README/handoff
+and root wiring documentation with the actual extension points, record final
+verification, and close M21B only if every acceptance criterion passes.
 
 Recommended next prompt:
 
 ```text
-Continue M21B with its next incomplete subtask: add composition,
-missing-dependency, duplicate-registration, and lifecycle tests, and tighten the
-corresponding M21A boundary allowances. Preserve behavior, design, storage IDs,
-and private data; do not start the final M21B documentation item, M21C, or M22.
+Continue M21B with its final incomplete subtask: update the Platform
+README/handoff and root wiring documentation with the actual extension points,
+record final verification, and close M21B only if every acceptance criterion
+passes. Preserve behavior, design, storage IDs, and private data; do not start
+M21C or M22.
 ```
