@@ -1,101 +1,34 @@
-import asyncio
 import logging
 import uuid
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.ai.routes import router as ai_router
-from app.assistant.execution import assistant_execution_registry
-from app.assistant.routes import router as assistant_router
-from app.calendar.import_routes import router as calendar_import_router
-from app.calendar.routes import router as calendar_router
-from app.calendar.subscription_routes import router as calendar_subscription_router
-from app.calendar.subscription_scheduler import subscription_scheduler
-from app.codex_runtime.adapter import get_codex_auth_manager
-from app.core.config import get_settings
 from app.core.errors import ApplicationError
-from app.course_calendars.routes import router as course_calendar_router
-from app.course_sources.routes import router as course_source_router
-from app.courses.routes import router as course_router
 from app.database.session import session_factory
 from app.diagnostics.redaction import redact_text
-from app.diagnostics.routes import router as diagnostic_router
 from app.diagnostics.service import DiagnosticService
-from app.documents.routes import router as document_router
-from app.documents.storage import DocumentStorage
-from app.inbox.mail_storage import MailStorage
-from app.inbox.routes import router as inbox_router
-from app.inbox.scheduler import mail_scheduler
-from app.integrations.credentials import IntegrationCredentialStore
-from app.integrations.routes import router as integration_router
-from app.notes.prettify_routes import router as note_prettify_router
-from app.notes.routes import router as note_router
-from app.notes.summary_routes import router as note_summary_router
+from app.platform.modules.backend_catalog import (
+    include_registered_routers,
+    registered_backend_modules,
+)
+from app.platform.modules.backend_contract import backend_module_lifespan
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    settings = get_settings()
-    await IntegrationCredentialStore(settings.integration_credential_root).ensure_root()
-    await MailStorage(
-        settings.mail_storage_root, settings.mail_max_total_storage_bytes
-    ).ensure_root()
-    await DocumentStorage(
-        settings.document_storage_root, settings.document_max_source_bytes
-    ).ensure_root()
-    stop = asyncio.Event()
-    task = asyncio.create_task(subscription_scheduler(stop))
-    mail_task = asyncio.create_task(mail_scheduler(stop))
-    try:
+    async with backend_module_lifespan(registered_backend_modules):
         yield
-    finally:
-        stop.set()
-        task.cancel()
-        mail_task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
-        with suppress(asyncio.CancelledError):
-            await mail_task
-        await assistant_execution_registry.shutdown()
-        await get_codex_auth_manager().shutdown()
 
 
 app = FastAPI(title="Teacher Assistant API", version="1.0.0", lifespan=lifespan)
-app.include_router(ai_router, prefix="/api/v1", tags=["ai"])
-app.include_router(calendar_router, prefix="/api/v1", tags=["calendar"])
-app.include_router(course_router, prefix="/api/v1", tags=["courses"])
-app.include_router(
-    course_calendar_router,
-    prefix="/api/v1",
-    tags=["course-calendars"],
-)
-app.include_router(course_source_router, prefix="/api/v1", tags=["course-materials"])
-app.include_router(note_router, prefix="/api/v1", tags=["course-notes"])
-app.include_router(note_prettify_router, prefix="/api/v1", tags=["course-note-prettify"])
-app.include_router(
-    note_summary_router,
-    prefix="/api/v1",
-    tags=["course-note-summaries"],
-)
-app.include_router(assistant_router, prefix="/api/v1", tags=["assistant"])
-app.include_router(diagnostic_router, prefix="/api/v1", tags=["diagnostics"])
-app.include_router(integration_router, prefix="/api/v1", tags=["integrations"])
-app.include_router(inbox_router, prefix="/api/v1", tags=["inbox"])
-app.include_router(document_router, prefix="/api/v1", tags=["documents"])
-app.include_router(calendar_import_router, prefix="/api/v1", tags=["calendar-import"])
-app.include_router(
-    calendar_subscription_router,
-    prefix="/api/v1",
-    tags=["calendar-subscription"],
-)
+include_registered_routers(app)
 
 
 @app.middleware("http")
@@ -279,10 +212,3 @@ async def handle_unexpected_error(
             "request_id": str(request_id),
         },
     )
-
-
-@app.get("/health", tags=["system"])
-async def health() -> dict[str, str]:
-    async with session_factory() as session:
-        await session.execute(text("SELECT 1"))
-    return {"status": "ok"}

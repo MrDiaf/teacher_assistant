@@ -1,9 +1,11 @@
 # Module ownership and dependency index
 
-This is the M21A ownership map for the current modular-monolith transition. It
-describes the repository as it exists at revision `dcada0a` plus the M21A
-documentation and checks. Feature directories are not yet isolated modules;
-M21B-M21G remove the exact legacy exceptions recorded in
+This is the ownership map for the current modular-monolith transition. M21A
+established the baseline; M21B is active and its typed metadata, page/router
+assembly, backend lifecycle registration, and shared UI/platform entry points
+are implemented. Feature
+directories are not yet isolated modules; later M21B work and M21C-M21G remove
+the remaining exact legacy exceptions in
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
 ## Reading workflow
@@ -50,17 +52,24 @@ proves both checks fail on deliberately invalid fixtures. `make test` runs this
 gate before application tests. New wildcard exceptions and new cycles are not
 permitted.
 
-Current exact exception count: 63 backend and 21 frontend imports. Removal is
-owned by M21B (33), M21D (20), M21E (4), M21F (25), and M21G (2). The manifest
+`make check-module-contract` validates the mirrored frontend/backend metadata
+catalogs against each other and this ownership graph. The typed parsers validate
+capability requirements and contribution uniqueness without resolving catalog
+values to code. Application assembly binds validated metadata to explicit
+public code entries.
+
+Current exact exception count: 38 backend and 7 frontend imports. Removal is
+owned by M21D (20), M21E (4), M21F (19), and M21G (2). The manifest
 is authoritative down to importer and imported module; this summary is not an
-allowlist.
+allowlist. Platform composition may import only the exact public module entries
+listed in the manifest.
 
 ## Repository and data ownership
 
 | Area | Owner | Current locations/data |
 | --- | --- | --- |
-| React/FastAPI assembly and shell | Platform | `frontend/src/{App,main}.tsx`, `components/`, `hooks/`, `persistence/`, `backend/app/main.py` |
-| Shared UI/CSS | Platform host with feature debt | `frontend/src/styles.css`; feature selector families remain globally coupled until M21C-M21G |
+| React/FastAPI assembly and shell | Platform | `frontend/src/{App,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,platform}/` |
+| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; feature selector families remain in `frontend/src/styles.css` until M21C-M21G |
 | Configuration/errors/database | Platform | `backend/app/core/`, `database/`; PostgreSQL session creation is infrastructure, not a public business query API |
 | AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; internal paths become public Platform contracts in M21B/M21F |
 | Migrations/recovery | Platform coordination | `backend/alembic/`, `backend/app/maintenance/`, `scripts/`, Compose volumes and host bind roots |
@@ -115,9 +124,10 @@ be preserved during refactoring:
 
 ## Known non-import coupling
 
-- `frontend/src/styles.css` mixes shell and every feature's selectors. Platform
-  owns root tokens, reset, shell/navigation, shared button/form/dialog/error,
-  accessibility, responsive, and placeholder rules. `.documents-*` and
+- `frontend/src/platform/styles.css` now owns root tokens, reset,
+  shell/navigation, accessibility, responsive shell, and placeholder rules;
+  `frontend/src/styles.css` still mixes the remaining shared-control and feature
+  selectors. Platform owns shared button/form/dialog/error rules. `.documents-*` and
   `.document-*` move in M21C; `.calendar-*`, `.month-*`, `.time-*`, `.event-*`,
   and `.ics-*` in M21D; `.course-*`, `.courses-*`, note/editor/summary/source
   families in M21E; `.assistant-*`, conversation/proposal/job/composer families
@@ -126,8 +136,11 @@ be preserved during refactoring:
   current `.assistant-error-action` inside Courses require explicit contract or
   shared-primitive decisions in their owning milestones. Preserve cascade and
   design while extracting them.
-- `backend/app/main.py` owns all router, storage-root, scheduler, Assistant
-  registry, and Codex shutdown hooks. M21B introduces explicit lifecycle entries.
+- Public backend module entries own their existing private-root, scheduler,
+  Assistant-registry, and Codex-auth lifecycle bindings. Platform starts only
+  supplied entries, unwinds successful starts after startup failure, and bounds
+  every shutdown hook. `backend/app/main.py` supplies the complete registered
+  set so default full-app behavior is preserved.
 - `backend/tests/conftest.py` knows all tables and private roots; tests share one
   database reset. M21C-M21G introduce owner fixtures without weakening full tests.
 - Recovery scripts and `data_archive.py` know every storage component by name.

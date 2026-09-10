@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-08
+Updated: 2026-09-09
 
 ## Start here
 
@@ -22,11 +22,13 @@ explicitly requested.
 
 - M1-M21, the post-M7 linked proposal batches, and the recorded post-M13
   Assistant refinements are complete.
-- M21A is implemented in the current uncommitted worktree: ownership/module
-  documentation, exact dependency rules, backend/frontend boundary checks,
-  invalid fixtures, and a measured verification baseline.
-- No feature code, schema, storage identity, private data, or visible design was
-  changed by M21A. No M21B or M22 work was started.
+- M21A is complete at revision `d826ac1` (`m21a is done`).
+- M21B is active. Its first four checklist items—the typed common module
+  contract, explicit frontend-page/backend-router assembly, registered backend
+  lifecycle hooks, and shared UI/platform entry points with compatible
+  navigation state—are implemented in the current uncommitted worktree.
+- No feature behavior, schema, storage identity, private data, or visible design
+  was changed. M21C and M22 were not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
 - The observed migration head is `20260908_0021 (head)`.
 - The installation identity remains `teacher_assistant`, with its established
@@ -84,11 +86,59 @@ Final M21A worktree verification passed the boundary gate, full backend and
 frontend tests, lint, production build, running-stack health, link/JSON checks,
 and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
+## M21B current result
+
+- Matching metadata catalogs describe the six architecture owners and all eight
+  current pages in stable order, including route, settings-panel, lifecycle,
+  dependency, and capability identities.
+- Strict Python and TypeScript contracts reject malformed schemas, duplicate
+  registrations/contributions/orders, missing dependencies/capabilities, and
+  cycles. Unknown lookup input returns no registration and cannot name code.
+- `make check-module-contract` detects frontend/backend or ownership/dependency
+  drift and is now part of `make test`.
+- Every current module exposes an explicit page/router entry. Static Platform
+  catalogs bind those entries to validated metadata; no runtime value names a
+  component, router, import, or executable.
+- `App.tsx`/`AppShell.tsx` render the ordered page registrations, while
+  `app/main.py` includes validated registered routers. Test fixtures prove a
+  page or router can mount without production assembly changes.
+- Public backend entries bind all seven existing private-root, scheduler,
+  Assistant-registry, and Codex-auth lifecycle identities. Platform starts only
+  hooks from the supplied entries, records successful cleanup callbacks, and
+  unwinds them in reverse after normal shutdown or a later startup failure.
+- Every cleanup has a five-second hard bound. A failed or timed-out cleanup is
+  safely logged without skipping earlier hooks; normal shutdown reports the
+  aggregate failure, while startup cleanup preserves the original startup
+  exception. Full-app assembly supplies every registered entry in the existing
+  effective order: private roots before the two schedulers.
+- Feature code now consumes stable Platform façades for the existing icon,
+  modal hook, API error parser, browser preferences, and shared model selector.
+  Root tokens, reset, shell/navigation, accessibility, and placeholder CSS live
+  in Platform styling; feature selectors remain in the legacy stylesheet for
+  their scheduled owner milestones.
+- Browser persistence owns its bounded Calendar-view and Course-tab value types
+  instead of importing feature types. The storage key remains exactly
+  `teacher-assistant.ui-state.v1`, version 1, and existing module, Calendar,
+  Course, Assistant-sidebar, and draft values restore unchanged.
+- Generic database enum-value serialization moved from Calendar to Platform
+  database infrastructure without a schema or stored-value change.
+- Stable backend Platform façades now publish the existing AI/model-selection,
+  private-workspace, redaction, and diagnostic interfaces; M21F still owns
+  restructuring their implementation and removing persistence coupling.
+- The boundary allowlist now permits only the five exact feature entry paths.
+  Removing direct composition and shared-helper imports reduced exact exceptions
+  from 63 to 38 backend and from 21 to 7 frontend; no M21B exception remains.
+- Current-subtask verification passed `make test` (191 backend and 90 frontend
+  tests, boundary/catalog-drift/data-safety gates), the frontend production
+  build, `make lint`, and all 12 E2E/accessibility tests.
+
 ## Shared cautions
 
-- M21B-M21I remain separate milestones. Module registration, public code entry
-  points, scoped feature CSS, focused `dev-module`/`test-module` commands, and
-  Settings module controls do not exist yet.
+- M21B-M21I remain separate milestones. Metadata registration, public
+  page/router entries, catalog-driven assembly, and lifecycle registration now
+  exist alongside shared UI/platform façades. Scoped feature CSS, focused
+  `dev-module`/`test-module` commands, and Settings module controls do not exist
+  yet.
 - M22-M24 remain unimplemented: Documents has no editor, compilation, preview,
   or Codex compilation advice.
 - The exact boundary manifest is a burn-down list. Remove entries as owning
@@ -97,7 +147,7 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   for proposal/job/action and Calendar changes. Course-calendar links also use
   direct Calendar access. Preserve atomicity via the documented coordinator.
 - `backend/tests/conftest.py`, the combined E2E file, global `styles.css`, and
-  application lifecycle/recovery assembly remain intentionally coupled debt.
+  recovery assembly remain intentionally coupled debt.
 - `alembic check` reports deliberately retained retired integration tables and
   four known enum/VARCHAR length differences. It reports no Documents drift.
 - A real mailbox-provider check was not run; local fakes cover TLS/read-only,
@@ -114,16 +164,16 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21A is complete; stop here. M21B requires explicit owner selection. Its first
-subtask is the typed common module
-registration/dependency contract and composition validation; it must use the
-M21A inventory and tighten the corresponding exact exceptions.
+M21B is active and its first four checklist items are complete. The exact next
+step is its fifth checklist item: add composition, missing-dependency,
+duplicate-registration, and lifecycle tests, then tighten the corresponding
+M21A boundary allowances.
 
 Recommended next prompt:
 
 ```text
-Select M21B and implement its first incomplete subtask: the typed common module
-registration and dependency contract. Preserve behavior and private data, use
-the M21A ownership map, remove only verified M21B boundary exceptions, and do
-not start M21C or M22.
+Continue M21B with its next incomplete subtask: add composition,
+missing-dependency, duplicate-registration, and lifecycle tests, and tighten the
+corresponding M21A boundary allowances. Preserve behavior, design, storage IDs,
+and private data; do not start the final M21B documentation item, M21C, or M22.
 ```

@@ -15,8 +15,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.calendar.models import enum_values
 from app.database.base import Base, TimestampMixin
+from app.database.types import enum_values
 
 if TYPE_CHECKING:
     from app.courses.models import Course

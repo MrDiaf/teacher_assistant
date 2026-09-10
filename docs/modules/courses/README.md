@@ -23,7 +23,9 @@ These interfaces are specified but not yet implemented:
 - A course-calendar association service owns list/link/unlink operations and
   consumes Calendar's public existence/event-query port. It returns bounded
   Calendar values and preserves Calendar records when a course/link is removed.
-- A module entry contributes routes/page/recovery/focused-test metadata.
+- `backend/app/courses/entry.py` and `frontend/src/features/courses/entry.ts`
+  contribute the existing routes and page through Platform composition.
+  Recovery and focused-test contributions remain pending.
 
 Courses owns same-course source/link validation, source-type separation,
 summary/prettify validation, and owner acceptance/save rules. Errors include

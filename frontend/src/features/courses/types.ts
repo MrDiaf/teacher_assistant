@@ -1,3 +1,5 @@
+import type { PersistedCourseTab } from "../../platform/persistence";
+
 export type CourseStatus = "active" | "archived";
 export type CourseOriginType = "manual";
 export type CourseMaterialType = "literature" | "slides";
@@ -8,7 +10,7 @@ export type ExtractionStatus =
   | "completed"
   | "failed"
   | "unsupported";
-export type CourseTab = "overview" | "notes" | "materials" | "calendar";
+export type CourseTab = PersistedCourseTab;
 
 export interface CourseModel {
   id: string;

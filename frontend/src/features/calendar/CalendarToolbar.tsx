@@ -1,4 +1,4 @@
-import { Icon } from "../../components/Icon";
+import { Icon } from "../../platform/ui";
 import { formatHeading } from "./dateUtils";
 import type { CalendarView } from "./types";
 

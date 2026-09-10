@@ -6,11 +6,11 @@ import {
   type ReactNode,
 } from "react";
 
-import { Icon } from "../../components/Icon";
 import {
   getCalendarPreference,
   setCalendarPreference,
-} from "../../persistence/uiState";
+} from "../../platform/persistence";
+import { Icon } from "../../platform/ui";
 import { calendarApi } from "./api";
 import { CalendarDialog } from "./CalendarDialog";
 import { CalendarFilters } from "./CalendarFilters";

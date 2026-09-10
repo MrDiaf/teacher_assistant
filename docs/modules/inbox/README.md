@@ -13,8 +13,11 @@ roots; credentials are excluded from backup.
 
 ## Required public contracts
 
-- A module entry contributes Inbox routes/page, one mailbox Settings panel,
-  scheduler lifecycle, and recovery metadata.
+- `backend/app/inbox/entry.py` and `frontend/src/features/inbox/entry.ts`
+  contribute the existing routes and Inbox page through Platform composition.
+  The backend entry also contributes both private-root initializers and the
+  existing mail scheduler. The mailbox Settings panel and recovery metadata
+  remain pending.
 - The Settings contribution exposes rendered UI/actions, never the stored app
   password. Platform hosts it but contains no mail business logic.
 - The recovery contribution identifies bounded metadata/attachment content to
@@ -29,9 +32,9 @@ attachment create/delete retain filesystem compensation and recoverable cleanup.
 
 Inbox depends only on Platform. `inbox` and `integrations` imports in both
 directions are internal to this one owner, not a cross-module cycle. Imports of
-Calendar's generic enum helper are M21B debt. Platform `main.py` imports routes,
-storage, credentials, and scheduler internals until M21B. Settings imports Inbox
-API/types directly until M21G. CSS and shared fixtures move in M21G.
+Calendar's generic enum helper is M21B debt. Platform `main.py` consumes routes,
+private-root setup, and the scheduler through the public entry. Settings imports
+Inbox API/types directly until M21G. CSS and shared fixtures move in M21G.
 
 ## Current commands
 

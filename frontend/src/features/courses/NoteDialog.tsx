@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { Icon } from "../../components/Icon";
-import { useModalDialog } from "../../hooks/useModalDialog";
-import { AiModelSelector } from "../ai/AiModelSelector";
-import { useAiModelSelection } from "../ai/useAiModelSelection";
+import { AiModelSelector, useAiModelSelection } from "../../platform/ai";
+import { Icon, useModalDialog } from "../../platform/ui";
 import { courseApi } from "./api";
 import { MarkdownNoteEditor } from "./MarkdownNoteEditor";
 import type {

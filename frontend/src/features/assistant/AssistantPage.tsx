@@ -7,7 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 
-import { Icon } from "../../components/Icon";
+import { AiModelSelector, useAiModelSelection } from "../../platform/ai";
 import {
   clearAssistantDraft,
   getAssistantDraft,
@@ -18,9 +18,8 @@ import {
   setAssistantDraft,
   setAssistantSidebarMode,
   type AssistantSidebarMode,
-} from "../../persistence/uiState";
-import { AiModelSelector } from "../ai/AiModelSelector";
-import { useAiModelSelection } from "../ai/useAiModelSelection";
+} from "../../platform/persistence";
+import { Icon } from "../../platform/ui";
 import { assistantApi } from "./api";
 import { ErrorAssistantAction } from "./ErrorAssistantAction";
 import type {

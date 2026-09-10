@@ -15,7 +15,9 @@ or part of this boundary.
 
 ## Required public contracts
 
-- A module entry contributes current routers/page and later focused-test setup.
+- `backend/app/documents/entry.py` and
+  `frontend/src/features/documents/entry.ts` contribute the current router and
+  page through Platform composition; focused-test setup remains pending.
 - A recovery contribution lets Platform coordinate a checksummed source archive
   with PostgreSQL state and old-format compatibility. It returns bounded archive
   metadata, never a browser-visible physical path.
@@ -30,9 +32,9 @@ purges only after commit. Platform recovery remains the cross-owner coordinator.
 ## Dependencies and migration debt
 
 Documents depends only on Platform configuration/errors/database, UI primitives,
-and coordinated recovery. `main.py` imports its route/storage internals until
-M21B. Documents selectors remain global until the M21C pilot. There are no
-current Documents-to-feature import exceptions.
+and coordinated recovery. `main.py` consumes the router and private-root setup
+through the public entry. Documents selectors remain global until the M21C
+pilot. There are no current Documents-to-feature import exceptions.
 
 ## Current commands
 

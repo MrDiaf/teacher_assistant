@@ -11,17 +11,18 @@ Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Development roadmap
 
-M1-M21 and M21A are implemented. Eight remaining modular refactoring
-milestones, M21B-M21I, precede the LaTeX editor/compiler/advice work in
-M22-M24. The refactoring sequence covers ownership and public contracts,
-application composition, a Documents pilot, the other existing modules,
-Settings module controls, and focused Docker testing with final recovery
-verification.
+M1-M21 and M21A are implemented. M21B is active; its typed metadata contract,
+explicit frontend-page/backend-router assembly, registered backend lifecycle
+hooks, and shared UI/platform entry points with compatible navigation state are
+implemented, while later checklist items remain incomplete.
+M21B-M21I precede the LaTeX editor/compiler/advice work in M22-M24. The
+refactoring sequence covers ownership and public contracts, application
+composition, a Documents pilot, the other existing modules, Settings module
+controls, and focused Docker testing with final recovery verification.
 
 See the [authoritative milestone index](instructions.md#milestone-status), the
-[module ownership index](docs/modules/README.md), and the next planned milestone
-[M21B](milestones/m21b-application-composition.md). Implementation requires
-explicit milestone selection. Module switches,
+[module ownership index](docs/modules/README.md), and the active milestone
+[M21B](milestones/m21b-application-composition.md). Module switches,
 module-specific Docker commands, and the isolated module host are planned,
 not available features yet.
 

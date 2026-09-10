@@ -1,45 +1,29 @@
 import type { ReactNode } from "react";
 
 import { Icon, type IconName } from "./Icon";
+import type { PageId } from "../platform/modules/contract";
 
-export type ModuleId =
-  | "dashboard"
-  | "calendar"
-  | "courses"
-  | "inbox"
-  | "documents"
-  | "study-plan"
-  | "assistant"
-  | "settings";
+export type ModuleId = PageId;
 
-interface NavigationItem {
-  id: ModuleId;
+export interface NavigationItem<TPageId extends string = PageId> {
+  id: TPageId;
   label: string;
   icon: IconName;
 }
 
-const NAVIGATION: NavigationItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: "dashboard" },
-  { id: "calendar", label: "Calendar", icon: "calendar" },
-  { id: "courses", label: "Courses", icon: "courses" },
-  { id: "inbox", label: "Inbox", icon: "inbox" },
-  { id: "documents", label: "Documents", icon: "file" },
-  { id: "study-plan", label: "Study Plan", icon: "checklist" },
-  { id: "assistant", label: "Assistant", icon: "assistant" },
-  { id: "settings", label: "Settings", icon: "settings" },
-];
-
-interface AppShellProps {
-  activeModule: ModuleId;
+interface AppShellProps<TPageId extends string> {
+  activeModule: TPageId;
   children: ReactNode;
-  onNavigate: (module: ModuleId) => void;
+  navigation: readonly NavigationItem<TPageId>[];
+  onNavigate: (module: TPageId) => void;
 }
 
-export function AppShell({
+export function AppShell<TPageId extends string>({
   activeModule,
   children,
+  navigation,
   onNavigate,
-}: AppShellProps) {
+}: AppShellProps<TPageId>) {
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -57,7 +41,7 @@ export function AppShell({
         </div>
 
         <nav className="primary-nav" aria-label="Main navigation">
-          {NAVIGATION.map((item) => (
+          {navigation.map((item) => (
             <button
               className={
                 item.id === activeModule ? "nav-item active" : "nav-item"

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Icon } from "../../components/Icon";
 import {
   clearCourseSelection,
   getCourseSelection,
   pruneCourseCalendars,
   removeCourseCalendarPreference,
   setCourseSelection,
-} from "../../persistence/uiState";
+} from "../../platform/persistence";
+import { Icon } from "../../platform/ui";
 import { CourseCalendar } from "./CourseCalendar";
 import { CourseDialog } from "./CourseDialog";
 import { CourseMaterials } from "./CourseMaterials";

@@ -3,6 +3,7 @@ TEST_COMPOSE := docker compose -p teacher-assistant-test -f compose.yml -f compo
 E2E_COMPOSE := docker compose -p teacher-assistant-e2e -f compose.e2e.yml
 
 .PHONY: dev down restart logs test e2e lint format migrate backup restore check-boundaries \
+	check-module-contract \
 	data-preflight data-init data-adopt data-guard data-record-started \
 	data-safety-test data-relocation-test
 
@@ -25,6 +26,16 @@ check-boundaries:
 		--allow-stale-exceptions >/dev/null 2>&1; then \
 		echo "Frontend invalid boundary fixture was not rejected."; exit 1; \
 	else echo "Frontend invalid boundary fixture rejected."; fi
+
+check-module-contract:
+	$(COMPOSE) run --build --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint python backend /workspace/scripts/check-module-contract.py --repo /workspace
+	@set -e; \
+	if $(COMPOSE) run --rm --no-deps -v "$(CURDIR):/workspace:ro" \
+		--entrypoint python backend /workspace/scripts/check-module-contract.py \
+		--repo /workspace --simulate-frontend-drift >/dev/null 2>&1; then \
+		echo "Frontend/backend identity drift was not rejected."; exit 1; \
+	else echo "Frontend/backend identity drift rejected."; fi
 
 data-preflight:
 	@./scripts/data-safety.sh preflight
@@ -54,7 +65,7 @@ restart: data-guard
 logs:
 	$(COMPOSE) logs -f
 
-test: check-boundaries
+test: check-boundaries check-module-contract
 	@set -e; \
 	trap '$(TEST_COMPOSE) down -v --remove-orphans' EXIT; \
 	$(TEST_COMPOSE) run --build --rm backend pytest -q; \

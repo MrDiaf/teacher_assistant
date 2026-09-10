@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Icon } from "../../components/Icon";
+import { Icon } from "../../platform/ui";
 import { mailApi } from "../inbox/api";
 import type { MailConnectionInput, MailConnectionStatus } from "../inbox/types";
 

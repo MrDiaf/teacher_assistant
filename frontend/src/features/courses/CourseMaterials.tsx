@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { Icon } from "../../components/Icon";
-import { useModalDialog } from "../../hooks/useModalDialog";
+import { Icon, useModalDialog } from "../../platform/ui";
 import { ErrorAssistantAction } from "../assistant/ErrorAssistantAction";
 import { CourseApiError, courseApi } from "./api";
 import type {

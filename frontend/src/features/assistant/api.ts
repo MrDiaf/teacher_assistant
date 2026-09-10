@@ -1,4 +1,4 @@
-import { ApiError } from "../calendar/api";
+import { parseApiResponse } from "../../platform/api";
 import type {
   AssistantAuthStatus,
   AssistantConversation,
@@ -10,15 +10,6 @@ import type {
   AssistantTurn,
 } from "./types";
 
-interface ApiErrorPayload {
-  error_id?: string;
-  code?: string;
-  message?: string;
-  details?: Record<string, unknown>;
-  request_id?: string;
-  detail?: string | { msg?: string }[];
-}
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
     ...init,
@@ -27,30 +18,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers,
     },
   });
-  if (!response.ok) {
-    let payload: ApiErrorPayload | undefined;
-    try {
-      payload = (await response.json()) as ApiErrorPayload;
-    } catch {
-      payload = undefined;
-    }
-    const validationMessage = Array.isArray(payload?.detail)
-      ? payload.detail[0]?.msg
-      : payload?.detail;
-    throw new ApiError(
-      payload?.message ??
-        validationMessage ??
-        "The assistant request could not be completed.",
-      response.status,
-      {
-        errorId: payload?.error_id,
-        code: payload?.code,
-        details: payload?.details,
-        requestId: payload?.request_id,
-      },
-    );
-  }
-  return (await response.json()) as T;
+  return parseApiResponse<T>(
+    response,
+    "The assistant request could not be completed.",
+  );
 }
 
 export const assistantApi = {

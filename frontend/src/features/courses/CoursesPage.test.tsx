@@ -13,7 +13,7 @@ import {
   getCourseSelection,
   setCalendarPreference,
   setCourseSelection,
-} from "../../persistence/uiState";
+} from "../../platform/persistence";
 import { CoursesPage } from "./CoursesPage";
 import type {
   CourseModel,

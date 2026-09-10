@@ -15,7 +15,8 @@ subscribed calendar configuration is private PostgreSQL data.
 
 ## Required public contracts
 
-These are required interfaces, not yet implemented public entry points:
+The router/page module entries are implemented; the business interfaces remain
+specified for later milestones:
 
 - A query port accepts explicit calendar/event IDs, bounded ranges, search, and
   availability inputs and returns typed `CalendarSummary`/`EventSummary` values.
@@ -25,8 +26,10 @@ These are required interfaces, not yet implemented public entry points:
   create/update/delete individual event operations already allowed by proposal
   policy. It has no calendar deletion, protection change, raw repository, bulk
   delete, or session escape hatch.
-- A module entry contributes routers, page metadata, lifecycle hook, and later
-  focused-test registration to Platform composition.
+- `backend/app/calendar/entry.py` and `frontend/src/features/calendar/entry.ts`
+  contribute the existing routers and page through Platform composition. The
+  backend entry also contributes the existing ICS refresh scheduler lifecycle;
+  later focused-test registration remains pending.
 
 Errors remain explicit safe application errors: not found, read-only/source
 protected, invalid time/recurrence, database protection, and invalid ICS or
@@ -42,8 +45,9 @@ Courses and Assistant currently import Calendar ORM entities, repositories,
 schemas, services, UI types/components, and API utilities directly. Exact paths
 are in the boundary manifest and are removed in M21D. The generic `enum_values`
 helper currently under Calendar models is imported by other owners and moves to
-Platform in M21B. `main.py` router/scheduler imports move behind public entries
-in M21B. Calendar selectors remain in global `styles.css` until M21D.
+Platform in M21B. `main.py` now consumes Calendar routers and its scheduler
+through the public entry. Calendar selectors remain in global `styles.css`
+until M21D.
 
 ## Current commands
 

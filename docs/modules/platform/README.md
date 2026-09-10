@@ -9,7 +9,8 @@ migrations, coordinated backup/restore/relocation, shared AI authentication and
 model allowlisting, Codex adapter/workspace lifecycle, and sanitized diagnostics.
 
 Current paths include `frontend/src/{App,main,styles}.tsx`/`styles.css`,
-`components/`, `hooks/`, `persistence/`, `features/{ai,settings}/`,
+`frontend/src/platform/`, `components/`, `hooks/`, `persistence/`,
+`features/{ai,settings}/`, `backend/app/platform/`,
 `backend/app/{main,core,database,ai,codex_runtime,diagnostics,maintenance}/`,
 `backend/alembic/`, root Compose/Make files, and `scripts/`. Dashboard and Study
 Plan remain shell placeholders. Platform owns no feature business tables; its
@@ -17,16 +18,38 @@ diagnostic tables are `diagnostic_errors` and `diagnostic_audit_records`.
 
 ## Required public contracts
 
-These become concrete in M21B/M21F:
+The first five contracts below have concrete entry surfaces; M21F restructures
+the AI/diagnostic implementations behind them and later milestones establish
+the remaining entries:
 
-- A typed module registration contract for stable ID, navigation/page, routers,
-  declared dependencies, settings/recovery contributions, and lifecycle hooks.
+- A typed, metadata-only module registration contract for stable IDs,
+  navigation/pages, router identities, declared dependency capabilities,
+  settings contributions, and lifecycle identities lives in
+  `backend/app/platform/modules/` and `frontend/src/platform/modules/`. Strict
+  parsers reject missing/unknown fields, duplicate IDs/orders, missing modules
+  or capabilities, and dependency cycles. `frontendCatalog.ts` and
+  `backend_catalog.py` attach explicitly imported public entries and validate
+  that their page/router code matches the metadata; catalog/browser input
+  cannot name code to import or execute.
+- Backend public entries bind lifecycle identities to explicit async startup
+  functions. Platform starts only the supplied entry set in stable effect order,
+  records successful cleanup callbacks, unwinds them in reverse after startup
+  failure, and gives each shutdown callback a five-second hard bound. The full
+  app supplies all registered entries; selective tests may supply only their
+  chosen entries without opening unrelated private roots or schedulers.
 - Shared UI entry points for the existing icon, modal, shell, persistence, API
-  error, and styling/token needs actually used by modules.
-- AI ports for model listing/validation, authentication, Codex execution, and
-  bounded private workspace lifecycle. They do not query feature data.
-- Diagnostic ports accept sanitized bounded error records and return typed safe
-  IDs/explanations; credentials and raw provider output are forbidden.
+  error, model selector, and styling/token needs actually used by modules live
+  under `frontend/src/platform/`. Persistence retains the version-1 storage key
+  and owns its bounded Calendar-view/Course-tab value types without importing a
+  feature. Generic database enum serialization lives in Platform infrastructure.
+- `backend/app/platform/ai.py` publishes the existing model
+  listing/validation, authentication, Codex execution, and bounded private
+  workspace interfaces without moving their implementation. They do not query
+  feature data; M21F restructures providers behind this entry point.
+- `backend/app/platform/diagnostics.py` publishes the existing safe schemas,
+  redaction helpers, and diagnostic service interface. Credentials and raw
+  provider output remain forbidden; M21F removes its remaining persistence
+  coupling behind this entry point.
 - A recovery coordinator consumes typed module contributions and owns quiescence,
   manifest/checksum validation, rollback, and old-format compatibility.
 - An application transaction coordinator accepts specific cross-module use
@@ -39,12 +62,14 @@ which UI/test module is selected.
 
 ## Dependencies and migration debt
 
-The business graph gives Platform no feature dependency. Composition may import
-public module entries only. Current `App.tsx`, `main.py`, and lifecycle code reach
-feature internals directly; exact exceptions are removed in M21B. `uiState`
-imports feature types and Settings imports Inbox internals. AI/diagnostic deeper
-separation belongs to M21F; mail Settings separation belongs to M21G. The global
-stylesheet remains deliberately mixed until feature milestones extract it.
+The business graph gives Platform no feature dependency. Composition imports
+only the exact module `entry.py`/`entry.ts` files declared in the boundary
+manifest. `App.tsx` renders registered pages, while `main.py` includes validated
+registered routers and runs their lifecycle contributions. Feature code consumes
+the Platform UI, persistence, API, and model-selection façades; Settings still
+imports Inbox internals. AI/diagnostic deeper separation belongs to M21F; mail
+Settings separation belongs to M21G. Feature selectors remain deliberately mixed
+in the legacy stylesheet until their owner milestones extract them.
 
 ## Current commands
 
@@ -54,6 +79,7 @@ make down
 make restart
 make logs
 make check-boundaries
+make check-module-contract
 make test
 make e2e
 make lint

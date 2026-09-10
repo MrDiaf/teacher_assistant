@@ -1,3 +1,5 @@
+import { parseApiResponse } from "../../platform/api";
+
 import type {
   CalendarEvent,
   CalendarModel,
@@ -10,42 +12,6 @@ import type {
   IcsSubscriptionOptions,
 } from "./types";
 
-interface ApiErrorPayload {
-  error_id?: string;
-  code?: string;
-  message?: string;
-  details?: Record<string, unknown>;
-  request_id?: string;
-  detail?: string | { msg?: string }[];
-}
-
-export class ApiError extends Error {
-  readonly status: number;
-  readonly errorId: string | null;
-  readonly code: string | null;
-  readonly details: Record<string, unknown>;
-  readonly requestId: string | null;
-
-  constructor(
-    message: string,
-    status: number,
-    options: {
-      errorId?: string;
-      code?: string;
-      details?: Record<string, unknown>;
-      requestId?: string;
-    } = {},
-  ) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.errorId = options.errorId ?? null;
-    this.code = options.code ?? null;
-    this.details = options.details ?? {};
-    this.requestId = options.requestId ?? null;
-  }
-}
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
     ...init,
@@ -55,38 +21,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
 
-  return parseResponse<T>(response);
-}
-
-async function parseResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    let payload: ApiErrorPayload | undefined;
-    try {
-      payload = (await response.json()) as ApiErrorPayload;
-    } catch {
-      payload = undefined;
-    }
-    const validationMessage = Array.isArray(payload?.detail)
-      ? payload.detail[0]?.msg
-      : payload?.detail;
-    throw new ApiError(
-      payload?.message ??
-        validationMessage ??
-        "The request could not be completed.",
-      response.status,
-      {
-        errorId: payload?.error_id,
-        code: payload?.code,
-        details: payload?.details,
-        requestId: payload?.request_id,
-      },
-    );
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-  return (await response.json()) as T;
+  return parseApiResponse<T>(response);
 }
 
 async function icsRequest<T>(
@@ -99,7 +34,7 @@ async function icsRequest<T>(
     headers: { "Content-Type": file.type || "text/calendar" },
     body: file,
   });
-  return parseResponse<T>(response);
+  return parseApiResponse<T>(response);
 }
 
 export const calendarApi = {

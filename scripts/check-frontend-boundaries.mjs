@@ -126,6 +126,7 @@ function main() {
     ),
   );
   const frontend = config.frontend;
+  const publicModuleEntries = frontend.public_module_entries;
   const exceptions = new Map(
     frontend.legacy_exceptions.map((item) => [
       `${item.importer}\0${item.imported}`,
@@ -153,6 +154,11 @@ function main() {
         continue;
       }
       if (importedOwner === importerOwner) continue;
+      if (
+        importerOwner === "platform" &&
+        publicModuleEntries[importedOwner] === imported
+      )
+        continue;
       if (
         importedOwner === "platform" &&
         frontend.allowed_platform_paths.some((prefix) =>

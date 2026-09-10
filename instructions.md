@@ -375,10 +375,16 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
 - [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
-Current active milestone: **none**.
+Current active milestone: **M21B - Application composition and shared platform
+boundaries**.
 
-Next planned milestone: **M21B - Application composition and shared platform boundaries**.
-It must be explicitly selected before implementation begins.
+The typed common module contract, explicit frontend-page/backend-router
+assembly, registered backend lifecycle hooks, and shared UI/platform entry
+points with compatible navigation state are implemented. The next M21B subtask
+is to add the remaining composition, missing-dependency,
+duplicate-registration, and lifecycle tests while tightening the corresponding
+M21A boundary allowances. M21C remains inactive until M21B is complete and the
+owner explicitly selects it.
 
 M1 through M21 and the post-M7 linked-batch milestone are complete. The
 post-M13 Assistant diagnostics, general-helper routing, bounded automatic
@@ -386,9 +392,10 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M21A is complete. M21B-M21I remain planned and intentionally unchecked. Their
-required order is composition, Documents pilot, Calendar, Courses, Assistant
-and AI platform, Inbox/Settings, module controls, and final verification.
+M21A is complete. M21B is active and incomplete; M21C-M21I remain planned and
+intentionally unchecked. Their required order is composition, Documents pilot,
+Calendar, Courses, Assistant and AI platform, Inbox/Settings, module controls,
+and final verification.
 These suffix IDs insert the refactoring without renumbering completed work or
 the existing feature specifications.
 

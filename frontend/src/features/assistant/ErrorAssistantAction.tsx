@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Icon } from "../../components/Icon";
+import { Icon } from "../../platform/ui";
 import { assistantApi } from "./api";
 import type { DiagnosticExplanation } from "./types";
 

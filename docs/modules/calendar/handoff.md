@@ -3,6 +3,8 @@
 Current state: completed Calendar behavior through M7 and linked Assistant
 proposal integration is preserved. M21A only mapped ownership and installed
 boundary checks; it did not change Calendar code, schema, permissions, or UI.
+M21B now routes Calendar API/page composition through explicit public entries;
+the backend entry registers the unchanged ICS subscription scheduler lifecycle.
 
 Verification: [M21A baseline](../baseline.md). Historical feature acceptance is
 owned by [M7](../../../milestones/m07-final-calendar-hardening.md) and
@@ -10,4 +12,5 @@ owned by [M7](../../../milestones/m07-final-calendar-hardening.md) and
 
 Next Calendar work: M21D, after M21B and M21C complete, implements the typed
 query/mutation contracts and removes the exact Calendar exceptions. The current
-application-wide next step is M21B; do not begin M21D early.
+application-wide next step is M21B's remaining composition-test and
+boundary-tightening subtask; do not begin M21D early.

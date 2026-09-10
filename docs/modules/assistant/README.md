@@ -16,8 +16,9 @@ Platform services and are not Assistant data.
 
 ## Required public contracts
 
-- The module entry contributes Assistant routes/page and execution-registry
-  shutdown through Platform composition.
+- `backend/app/assistant/entry.py` and `frontend/src/features/assistant/entry.ts`
+  contribute the existing routes and page through Platform composition.
+  The backend entry also contributes bounded execution-registry shutdown.
 - Assistant consumes Calendar query/revalidation/restricted-command ports and
   Courses' bounded context port. It receives typed values/errors only.
 - Platform provides model allowlisting/authentication, Codex execution,
@@ -37,9 +38,9 @@ before a separately committed safe failure record.
 
 Assistant's approved dependencies are Calendar, Courses, and Platform public
 contracts. Current direct ORM/repository/schema/service imports are exact M21D,
-M21E, and M21F exceptions. Its frontend API borrows Calendar's `ApiError`
-(M21B), and AI UI/runtime/diagnostic internals are M21F debt. Assistant CSS
-remains global until M21F.
+M21E, and M21F exceptions. Its frontend API error handling and shared model UI
+now use Platform façades; deeper AI runtime/diagnostic internals remain M21F
+debt. Assistant CSS remains global until M21F.
 
 ## Current commands
 

@@ -4,8 +4,8 @@ import uuid
 from sqlalchemy import JSON, CheckConstraint, Enum, ForeignKey, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.calendar.models import enum_values
 from app.database.base import Base, TimestampMixin
+from app.database.types import enum_values
 
 
 class NoteSummaryStatus(str, enum.Enum):

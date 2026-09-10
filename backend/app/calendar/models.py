@@ -16,6 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base, TimestampMixin
+from app.database.types import enum_values
 
 
 class CalendarSourceType(str, enum.Enum):
@@ -27,10 +28,6 @@ class EventStatus(str, enum.Enum):
     CONFIRMED = "confirmed"
     TENTATIVE = "tentative"
     CANCELLED = "cancelled"
-
-
-def enum_values(enum_type: type[enum.Enum]) -> list[str]:
-    return [member.value for member in enum_type]
 
 
 class Calendar(TimestampMixin, Base):

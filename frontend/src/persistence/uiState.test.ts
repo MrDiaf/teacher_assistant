@@ -19,7 +19,7 @@ import {
   setAssistantSidebarMode,
   setCalendarPreference,
   setCourseSelection,
-} from "./uiState";
+} from "../platform/persistence";
 
 const COURSE_ID = "11111111-1111-4111-8111-111111111111";
 const CONVERSATION_ID = "22222222-2222-4222-8222-222222222222";
@@ -71,6 +71,42 @@ describe("uiState persistence", () => {
       window.localStorage.getItem(UI_STATE_STORAGE_KEY) ?? "null",
     ) as Record<string, unknown>;
     expect(stored.version).toBe(1);
+  });
+
+  it("restores the existing storage envelope through the Platform entry point", () => {
+    window.localStorage.setItem(
+      "teacher-assistant.ui-state.v1",
+      JSON.stringify({
+        version: 1,
+        activeModule: "courses",
+        calendars: {
+          main: { view: "week", anchor: "2026-09-07", updatedAt: 1 },
+          courses: {
+            [COURSE_ID]: {
+              view: "day",
+              anchor: "2026-09-09",
+              updatedAt: 2,
+            },
+          },
+        },
+        courseSelection: { courseId: COURSE_ID, tab: "materials" },
+      }),
+    );
+
+    expect(UI_STATE_STORAGE_KEY).toBe("teacher-assistant.ui-state.v1");
+    expect(getActiveModule()).toBe("courses");
+    expect(getCalendarPreference()).toEqual({
+      view: "week",
+      anchor: "2026-09-07",
+    });
+    expect(getCalendarPreference(COURSE_ID)).toEqual({
+      view: "day",
+      anchor: "2026-09-09",
+    });
+    expect(getCourseSelection()).toEqual({
+      courseId: COURSE_ID,
+      tab: "materials",
+    });
   });
 
   it("accepts Documents as a supported module preference", () => {

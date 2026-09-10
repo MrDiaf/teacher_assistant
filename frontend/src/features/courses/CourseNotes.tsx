@@ -1,8 +1,7 @@
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 
-import { Icon } from "../../components/Icon";
-import { AiModelSelector } from "../ai/AiModelSelector";
-import { useAiModelSelection } from "../ai/useAiModelSelection";
+import { AiModelSelector, useAiModelSelection } from "../../platform/ai";
+import { Icon } from "../../platform/ui";
 import { NoteDialog } from "./NoteDialog";
 import { SafeMarkdown } from "./SafeMarkdown";
 import { courseApi } from "./api";

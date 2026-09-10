@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "registrations": [
+    {
+      "id": "platform",
+      "display_name": "Platform",
+      "order": 0,
+      "enabled_by_default": true,
+      "capabilities": [
+        "ai-runtime",
+        "database",
+        "diagnostics",
+        "recovery",
+        "settings-host",
+        "shell"
+      ],
+      "dependencies": [],
+      "contributions": {
+        "routes": ["ai-models", "diagnostics", "system-health"],
+        "pages": [
+          { "id": "dashboard", "label": "Dashboard", "order": 10 },
+          { "id": "study-plan", "label": "Study Plan", "order": 60 },
+          { "id": "settings", "label": "Settings", "order": 80 }
+        ],
+        "settings_panels": [],
+        "lifecycle": ["codex-auth"]
+      }
+    },
+    {
+      "id": "calendar",
+      "display_name": "Calendar",
+      "order": 10,
+      "enabled_by_default": true,
+      "capabilities": [
+        "api",
+        "background-jobs",
+        "calendar-mutation",
+        "calendar-query",
+        "page"
+      ],
+      "dependencies": [{ "id": "platform", "requires": ["database", "shell"] }],
+      "contributions": {
+        "routes": ["calendar", "calendar-import", "calendar-subscription"],
+        "pages": [{ "id": "calendar", "label": "Calendar", "order": 20 }],
+        "settings_panels": [],
+        "lifecycle": ["ics-subscription-refresh"]
+      }
+    },
+    {
+      "id": "courses",
+      "display_name": "Courses",
+      "order": 20,
+      "enabled_by_default": true,
+      "capabilities": ["api", "course-context", "page", "recovery"],
+      "dependencies": [
+        { "id": "calendar", "requires": ["calendar-query"] },
+        {
+          "id": "platform",
+          "requires": ["ai-runtime", "database", "recovery", "shell"]
+        }
+      ],
+      "contributions": {
+        "routes": [
+          "courses",
+          "course-calendars",
+          "course-materials",
+          "course-notes",
+          "course-note-prettify",
+          "course-note-summaries"
+        ],
+        "pages": [{ "id": "courses", "label": "Courses", "order": 30 }],
+        "settings_panels": [],
+        "lifecycle": []
+      }
+    },
+    {
+      "id": "inbox",
+      "display_name": "Inbox",
+      "order": 30,
+      "enabled_by_default": true,
+      "capabilities": [
+        "api",
+        "background-jobs",
+        "page",
+        "recovery",
+        "settings-panel"
+      ],
+      "dependencies": [
+        {
+          "id": "platform",
+          "requires": ["database", "recovery", "settings-host", "shell"]
+        }
+      ],
+      "contributions": {
+        "routes": ["mail-integration", "inbox"],
+        "pages": [{ "id": "inbox", "label": "Inbox", "order": 40 }],
+        "settings_panels": [
+          { "id": "mail-inbox", "label": "Mail inbox", "order": 10 }
+        ],
+        "lifecycle": ["mail-credential-root", "mail-storage-root", "mail-sync"]
+      }
+    },
+    {
+      "id": "documents",
+      "display_name": "Documents",
+      "order": 40,
+      "enabled_by_default": true,
+      "capabilities": ["api", "page", "recovery"],
+      "dependencies": [
+        { "id": "platform", "requires": ["database", "recovery", "shell"] }
+      ],
+      "contributions": {
+        "routes": ["documents"],
+        "pages": [{ "id": "documents", "label": "Documents", "order": 50 }],
+        "settings_panels": [],
+        "lifecycle": ["document-storage-root"]
+      }
+    },
+    {
+      "id": "assistant",
+      "display_name": "Assistant",
+      "order": 50,
+      "enabled_by_default": true,
+      "capabilities": ["api", "background-jobs", "calendar-proposals", "page"],
+      "dependencies": [
+        {
+          "id": "calendar",
+          "requires": ["calendar-mutation", "calendar-query"]
+        },
+        { "id": "courses", "requires": ["course-context"] },
+        {
+          "id": "platform",
+          "requires": ["ai-runtime", "database", "diagnostics", "shell"]
+        }
+      ],
+      "contributions": {
+        "routes": ["assistant"],
+        "pages": [{ "id": "assistant", "label": "Assistant", "order": 70 }],
+        "settings_panels": [],
+        "lifecycle": ["assistant-execution"]
+      }
+    }
+  ]
+}

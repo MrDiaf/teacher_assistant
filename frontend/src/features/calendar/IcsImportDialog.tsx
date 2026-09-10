@@ -1,7 +1,6 @@
 import { useState, type ChangeEvent } from "react";
 
-import { Icon } from "../../components/Icon";
-import { useModalDialog } from "../../hooks/useModalDialog";
+import { Icon, useModalDialog } from "../../platform/ui";
 import { calendarApi } from "./api";
 import { recurrenceLabel } from "./recurrence";
 import type { CalendarModel, IcsImportResult, IcsPreview } from "./types";

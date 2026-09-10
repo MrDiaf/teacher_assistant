@@ -1,6 +1,4 @@
-import type { ModuleId } from "../components/AppShell";
-import type { CalendarView } from "../features/calendar/types";
-import type { CourseTab } from "../features/courses/types";
+import type { PageId } from "../platform/modules/contract";
 
 export const UI_STATE_STORAGE_KEY = "teacher-assistant.ui-state.v1";
 export const UI_STATE_VERSION = 1;
@@ -9,7 +7,7 @@ export const MAX_ASSISTANT_DRAFTS = 20;
 
 const MAX_COURSE_CALENDARS = 50;
 const NEW_CONVERSATION_DRAFT_KEY = "new";
-const MODULES: readonly ModuleId[] = [
+const MODULES: readonly PageId[] = [
   "dashboard",
   "calendar",
   "courses",
@@ -19,25 +17,22 @@ const MODULES: readonly ModuleId[] = [
   "assistant",
   "settings",
 ];
-const CALENDAR_VIEWS: readonly CalendarView[] = ["day", "week", "month"];
-const COURSE_TABS: readonly CourseTab[] = [
-  "overview",
-  "notes",
-  "materials",
-  "calendar",
-];
+const CALENDAR_VIEWS = ["day", "week", "month"] as const;
+const COURSE_TABS = ["overview", "notes", "materials", "calendar"] as const;
 const ASSISTANT_SIDEBAR_MODES = ["conversations", "activity"] as const;
 
+export type PersistedCalendarView = (typeof CALENDAR_VIEWS)[number];
+export type PersistedCourseTab = (typeof COURSE_TABS)[number];
 export type AssistantSidebarMode = (typeof ASSISTANT_SIDEBAR_MODES)[number];
 
 export interface CalendarPreference {
-  view: CalendarView;
+  view: PersistedCalendarView;
   anchor: string;
 }
 
 export interface CourseSelection {
   courseId: string;
-  tab: CourseTab;
+  tab: PersistedCourseTab;
 }
 
 export interface AssistantPreference {
@@ -56,7 +51,7 @@ interface StoredDraft {
 
 interface PersistedUiState {
   version: 1;
-  activeModule?: ModuleId;
+  activeModule?: PageId;
   calendars?: {
     main?: StoredCalendarPreference;
     courses?: Record<string, StoredCalendarPreference>;
@@ -104,14 +99,14 @@ function parseCalendarPreference(
 ): StoredCalendarPreference | undefined {
   if (!isRecord(value)) return undefined;
   if (
-    !CALENDAR_VIEWS.includes(value.view as CalendarView) ||
+    !CALENDAR_VIEWS.includes(value.view as PersistedCalendarView) ||
     !isLocalDate(value.anchor) ||
     !isTimestamp(value.updatedAt)
   ) {
     return undefined;
   }
   return {
-    view: value.view as CalendarView,
+    view: value.view as PersistedCalendarView,
     anchor: value.anchor,
     updatedAt: value.updatedAt,
   };
@@ -121,8 +116,8 @@ function sanitizeState(value: unknown): PersistedUiState | null {
   if (!isRecord(value) || value.version !== UI_STATE_VERSION) return null;
 
   const result: PersistedUiState = { version: UI_STATE_VERSION };
-  if (MODULES.includes(value.activeModule as ModuleId)) {
-    result.activeModule = value.activeModule as ModuleId;
+  if (MODULES.includes(value.activeModule as PageId)) {
+    result.activeModule = value.activeModule as PageId;
   }
 
   if (isRecord(value.calendars)) {
@@ -156,11 +151,11 @@ function sanitizeState(value: unknown): PersistedUiState | null {
   if (
     isRecord(value.courseSelection) &&
     isUuid(value.courseSelection.courseId) &&
-    COURSE_TABS.includes(value.courseSelection.tab as CourseTab)
+    COURSE_TABS.includes(value.courseSelection.tab as PersistedCourseTab)
   ) {
     result.courseSelection = {
       courseId: value.courseSelection.courseId,
-      tab: value.courseSelection.tab as CourseTab,
+      tab: value.courseSelection.tab as PersistedCourseTab,
     };
   }
 
@@ -266,11 +261,11 @@ function draftKey(conversationId: string | null): string | null {
   return isUuid(conversationId) ? conversationId : null;
 }
 
-export function getActiveModule(): ModuleId {
+export function getActiveModule(): PageId {
   return readState().activeModule ?? "calendar";
 }
 
-export function setActiveModule(module: ModuleId): void {
+export function setActiveModule(module: PageId): void {
   if (!MODULES.includes(module)) return;
   updateState((state) => {
     state.activeModule = module;

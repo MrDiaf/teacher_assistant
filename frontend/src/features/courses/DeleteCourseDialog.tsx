@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import { Icon } from "../../components/Icon";
-import { useModalDialog } from "../../hooks/useModalDialog";
+import { Icon, useModalDialog } from "../../platform/ui";
 import type { CourseModel } from "./types";
 
 interface DeleteCourseDialogProps {

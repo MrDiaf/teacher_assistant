@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { Icon } from "../../components/Icon";
+import { Icon } from "../../platform/ui";
 import { mailApi } from "./api";
 import type { MailListItem, MailMessage } from "./types";
 

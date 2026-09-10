@@ -6,7 +6,7 @@ import {
   type FormEvent,
 } from "react";
 
-import { Icon } from "../../components/Icon";
+import { Icon } from "../../platform/ui";
 import { documentsApi } from "./api";
 import { DeleteProjectDialog, ProjectDialog } from "./DocumentDialogs";
 import type { DocumentProject, DocumentTag } from "./types";

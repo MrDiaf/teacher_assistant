@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 from sqlalchemy import CheckConstraint, Enum, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.calendar.models import enum_values
 from app.course_calendars.models import CourseCalendarLink
 from app.database.base import Base, TimestampMixin
+from app.database.types import enum_values
 
 if TYPE_CHECKING:
     from app.course_sources.models import CourseSource

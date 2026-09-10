@@ -69,6 +69,7 @@ def check(repo: Path, source_root: Path, *, require_current_exceptions: bool) ->
     backend = config["backend"]
     mappings = backend["path_owners"]
     allowed_platform = backend["allowed_platform_imports"]
+    public_module_entries = backend["public_module_entries"]
     exceptions = {
         (item["importer"], item["imported"]): item["remove_in"]
         for item in backend["legacy_exceptions"]
@@ -90,6 +91,11 @@ def check(repo: Path, source_root: Path, *, require_current_exceptions: bool) ->
                 errors.append(f"unowned backend import: {importer_path} -> {imported}")
                 continue
             if imported_owner == importer_owner:
+                continue
+            if (
+                importer_owner == "platform"
+                and public_module_entries.get(imported_owner) == imported
+            ):
                 continue
             if imported_owner == "platform" and any(
                 _matches(imported, prefix) for prefix in allowed_platform

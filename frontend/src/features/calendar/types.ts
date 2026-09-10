@@ -1,6 +1,8 @@
+import type { PersistedCalendarView } from "../../platform/persistence";
+
 export type CalendarSourceType = "local" | "ics_import";
 export type EventStatus = "confirmed" | "tentative" | "cancelled";
-export type CalendarView = "month" | "week" | "day";
+export type CalendarView = PersistedCalendarView;
 
 export interface CalendarModel {
   id: string;
