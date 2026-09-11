@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.errors import DocumentProjectNotFoundError, DocumentTagNotFoundError
+from app.documents.errors import DocumentProjectNotFoundError, DocumentTagNotFoundError
 from app.documents.models import DocumentProject, DocumentTag, document_project_tags
 
 

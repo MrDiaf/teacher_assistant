@@ -375,8 +375,16 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
 - [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
-Current active milestone: **none**. M21B is complete. M21C is the next planned
-milestone and remains inactive until the owner explicitly selects it.
+Current active milestone: **M21C - Documents module and isolated development
+pilot**.
+
+M21C's first two checklist items are implemented: the existing Documents public
+entries remain the sole production composition imports, Documents owns its
+application/storage errors and feature styles, and its bounded recovery
+contribution now supplies the established source-archive identities and limits
+to Platform's unchanged coordinated archive/restore flow. The next M21C subtask
+is the shared module host and initial focused Docker commands. M21D and M22
+remain inactive.
 
 M21B established the typed common module contract, explicit
 frontend-page/backend-router assembly, bounded backend lifecycle hooks, shared
@@ -390,10 +398,10 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M21A and M21B are complete. M21C-M21I remain planned and intentionally
-unchecked. Their remaining required order is Documents pilot, Calendar,
-Courses, Assistant and AI platform, Inbox/Settings, module controls, and final
-verification.
+M21A and M21B are complete. M21C is active and incomplete; M21D-M21I remain
+planned and intentionally unchecked. Their required order remains Documents
+pilot, Calendar, Courses, Assistant and AI platform, Inbox/Settings, module
+controls, and final verification.
 These suffix IDs insert the refactoring without renumbering completed work or
 the existing feature specifications.
 

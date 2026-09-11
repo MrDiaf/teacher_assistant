@@ -142,7 +142,7 @@ export function DeleteProjectDialog({
       <section
         aria-labelledby="delete-document-title"
         aria-modal="true"
-        className="event-dialog delete-course-dialog"
+        className="event-dialog delete-document-dialog"
         ref={dialogRef}
         role="alertdialog"
       >
@@ -160,7 +160,7 @@ export function DeleteProjectDialog({
             <Icon name="x" size={19} />
           </button>
         </header>
-        <div className="delete-course-content">
+        <div className="delete-document-content">
           <p>
             This permanently removes the project record and its private source
             files, including <code>main.tex</code>. Tags themselves are kept.

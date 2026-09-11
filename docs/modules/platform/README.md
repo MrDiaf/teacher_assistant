@@ -76,6 +76,10 @@ schedulers are never started.
   `teacher-assistant.ui-state.v1` key and version-1 bounded schema.
 - `app.platform.modules.backend_contract` publishes route, lifecycle, and module
   code-entry types plus the assembly/lifespan functions.
+- `app.platform.recovery` publishes the bounded storage-recovery declaration.
+  Documents supplies its stable archive identities and limits through its public
+  entry; Platform retains coordinated archive/restore behavior and no live path,
+  session, repository, or executable callback appears in the declaration.
 - `app.platform.ai` publishes existing model listing/validation,
   authentication, Codex execution, and bounded private-workspace interfaces.
   M21F may restructure their implementations behind this surface.
@@ -86,9 +90,11 @@ schedulers are never started.
   infrastructure. Configuration, errors, database sessions, and models remain
   infrastructure rather than unrestricted feature service APIs.
 
-A typed recovery contribution/coordinator and an explicit cross-module
-transaction coordinator remain later-milestone work. Neither may expose an
-unrestricted session, physical private path, credential, or feature repository.
+The Documents recovery contribution is implemented; equivalent ownership for
+other private roots remains with their later module milestones. The explicit
+cross-module transaction coordinator also remains later-milestone work. Neither
+interface may expose an unrestricted session, physical private path, credential,
+or feature repository.
 
 Platform owns configuration/database availability and safe diagnostic errors.
 Feature permissions stay with the feature owner. Database sessions remain

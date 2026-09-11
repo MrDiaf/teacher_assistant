@@ -27,10 +27,11 @@ explicitly requested.
   bounded lifecycle handling, shared Platform entry points, compatible
   navigation state, enforcement tests, tightened boundaries, and documented
   extension procedure are implemented in the current uncommitted worktree.
-- No milestone is active. M21C is next in the required sequence but remains
-  planned until explicitly selected.
+- M21C is active. Its first two checklist items establish Documents-owned errors
+  and scoped CSS plus a typed recovery contribution consumed by Platform;
+  later M21C items remain incomplete.
 - No feature behavior, schema, storage identity, private data, or visible design
-  was changed. M21C and M22 were not started.
+  was changed by M21C. M22 was not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
 - The observed migration head is `20260908_0021 (head)`.
 - The installation identity remains `teacher_assistant`, with its established
@@ -152,13 +153,42 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   healthy isolated database/backend/frontend startup, JSON validity, diff
   hygiene, and removal of isolated test volumes.
 
+## M21C current result
+
+- The existing `app.documents.entry` and `features/documents/entry` surfaces
+  remain the only production imports used by Platform composition. The backend
+  entry still contributes the existing router and private-root initialization;
+  the frontend entry now also owns loading Documents styles.
+- Document project/tag not-found and conflict errors plus storage/mismatch
+  errors moved from `app.core.errors` to `app.documents.errors`. Their codes,
+  statuses, safe messages, and common `ApplicationError` handling are unchanged.
+- All existing `.documents-*` and `.document-*` declarations moved from the
+  global feature stylesheet to `features/documents/styles.css`, retaining
+  desktop and responsive behavior. The delete dialog has equivalent
+  Documents-owned selectors instead of borrowing Courses selectors.
+- Verification passed 8 focused backend and 2 focused frontend Documents tests,
+  `make test` (208 backend and 97 frontend tests plus boundary, catalog-drift,
+  and data-safety gates), `make lint`, the frontend production build, and all 12
+  isolated E2E/accessibility scenarios. Test stacks and volumes were removed.
+- Documents now re-exports a typed recovery declaration containing its unchanged
+  manifest key, archive filename/root, format-3 introduction, and archive limits.
+  It contains no live path, database/session, repository, restore order, or
+  executable callback.
+- Platform's coordinated archive helper consumes that declaration for creation,
+  manifest build/verification, archive safety checks, and restore. PostgreSQL and
+  filesystem quiescence, checksums, restore ordering, format-2 empty-root
+  behavior, rollback directories, CLI commands, and scripts remain unchanged.
+- Recovery verification passed 18 focused archive tests, including contribution
+  validation and simulated document publish-failure rollback. `make
+  data-relocation-test` passed the exact coordinated database/private-file drill;
+  `make test` passed 217 backend and 97 frontend tests plus all gates, and `make
+  lint` passed.
+
 ## Shared cautions
 
-- M21C-M21I remain separate planned milestones. Metadata registration, public
-  page/router entries, catalog-driven assembly, and lifecycle registration now
-  exist alongside shared UI/platform façades. Scoped feature CSS, focused
-  `dev-module`/`test-module` commands, and Settings module controls do not exist
-  yet.
+- M21C is active; M21D-M21I remain separate planned milestones. Documents owns
+  its feature CSS, while other feature CSS, focused `dev-module`/`test-module`
+  commands, and Settings module controls do not exist yet.
 - M22-M24 remain unimplemented: Documents has no editor, compilation, preview,
   or Codex compilation advice.
 - The exact boundary manifest is a burn-down list. Remove entries as owning
@@ -166,8 +196,8 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 - Assistant confirmation currently relies on one shared SQLAlchemy transaction
   for proposal/job/action and Calendar changes. Course-calendar links also use
   direct Calendar access. Preserve atomicity via the documented coordinator.
-- `backend/tests/conftest.py`, the combined E2E file, global `styles.css`, and
-  recovery assembly remain intentionally coupled debt.
+- `backend/tests/conftest.py`, the combined E2E file, global non-Documents
+  feature CSS, and the remaining recovery assembly are intentionally coupled debt.
 - `alembic check` reports deliberately retained retired integration tables and
   four known enum/VARCHAR length differences. It reports no Documents drift.
 - A real mailbox-provider check was not run; local fakes cover TLS/read-only,
@@ -184,14 +214,15 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-No milestone is active. M21B is complete. The owner may explicitly select M21C,
-the Documents module and isolated-development pilot, as the next milestone in
-the required sequence. Do not begin it from a bare `continue` prompt.
+M21C is active and its first two checklist items are complete. The exact next
+step is its third checklist item: implement the shared module host and initial
+focused Docker commands. Do not start fixture separation, M21D, or M22.
 
 Recommended next prompt:
 
 ```text
-Start M21C, the Documents module and isolated-development pilot. Read its plan
-and implement only its first incomplete subtask. Preserve behavior, design,
-storage IDs, and private data; do not start M21D or M22.
+Continue M21C with its next incomplete subtask: implement the shared module host
+and initial focused Docker commands. Preserve the real shell and module entries,
+isolate ports/data, omit unrelated schedulers, and do not start fixture
+separation, M21D, or M22.
 ```

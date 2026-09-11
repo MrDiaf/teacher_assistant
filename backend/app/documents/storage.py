@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 
 from fastapi.concurrency import run_in_threadpool
 
-from app.core.errors import DocumentStorageError, DocumentStorageMismatchError
+from app.documents.errors import DocumentStorageError, DocumentStorageMismatchError
 
 INITIAL_MAIN_TEX = r"""\documentclass{article}
 \begin{document}

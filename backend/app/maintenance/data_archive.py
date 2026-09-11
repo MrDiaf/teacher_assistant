@@ -12,20 +12,23 @@ import uuid
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
+from app.documents.entry import documents_recovery_contribution
+from app.platform.recovery import StorageRecoveryContribution
+
 FORMAT_VERSION = 3
 DATABASE_FILE = "database.dump"
 COURSE_ARCHIVE_FILE = "course-content.tar.gz"
 MAIL_ARCHIVE_FILE = "mail-attachments.tar.gz"
-DOCUMENT_ARCHIVE_FILE = "document-projects.tar.gz"
+DOCUMENT_ARCHIVE_FILE = documents_recovery_contribution.archive_file
 MANIFEST_FILE = "manifest.json"
 COURSE_ARCHIVE_ROOT = "course_content"
 MAIL_ARCHIVE_ROOT = "mail_attachments"
-DOCUMENT_ARCHIVE_ROOT = "document_projects"
+DOCUMENT_ARCHIVE_ROOT = documents_recovery_contribution.archive_root
 BUFFER_SIZE = 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 100_000
 MAX_ARCHIVE_BYTES = 100 * 1024 * 1024 * 1024
-MAX_DOCUMENT_ARCHIVE_MEMBERS = MAX_ARCHIVE_MEMBERS
-MAX_DOCUMENT_ARCHIVE_BYTES = MAX_ARCHIVE_BYTES
+MAX_DOCUMENT_ARCHIVE_MEMBERS = documents_recovery_contribution.max_members
+MAX_DOCUMENT_ARCHIVE_BYTES = documents_recovery_contribution.max_bytes
 
 
 class ArchiveValidationError(ValueError):
@@ -83,7 +86,17 @@ def create_mail_archive(source: Path, output: BinaryIO) -> None:
 
 
 def create_document_archive(source: Path, output: BinaryIO) -> None:
-    create_storage_archive(source, output, DOCUMENT_ARCHIVE_ROOT)
+    create_contributed_archive(documents_recovery_contribution, source, output)
+
+
+def create_contributed_archive(
+    contribution: StorageRecoveryContribution,
+    source: Path,
+    output: BinaryIO,
+) -> None:
+    """Create one module archive while Platform owns coordinated timing."""
+
+    create_storage_archive(source, output, contribution.archive_root)
 
 
 def _validated_members(
@@ -148,13 +161,22 @@ def verify_mail_archive(path: Path) -> int:
 
 
 def verify_document_archive(path: Path) -> int:
+    return verify_contributed_archive(documents_recovery_contribution, path)
+
+
+def verify_contributed_archive(
+    contribution: StorageRecoveryContribution,
+    path: Path,
+) -> int:
+    """Verify one contributed archive and return bounded manifest metadata."""
+
     try:
         with tarfile.open(path, mode="r:gz") as archive:
             members = _validated_members(
                 archive,
-                DOCUMENT_ARCHIVE_ROOT,
-                max_members=MAX_DOCUMENT_ARCHIVE_MEMBERS,
-                max_bytes=MAX_DOCUMENT_ARCHIVE_BYTES,
+                contribution.archive_root,
+                max_members=contribution.max_members,
+                max_bytes=contribution.max_bytes,
             )
             for member in members:
                 if member.isfile():
@@ -174,7 +196,7 @@ def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[
     database = bundle / DATABASE_FILE
     courses = bundle / COURSE_ARCHIVE_FILE
     mail = bundle / MAIL_ARCHIVE_FILE
-    documents = bundle / DOCUMENT_ARCHIVE_FILE
+    documents = bundle / documents_recovery_contribution.archive_file
     if not all(item.is_file() for item in (database, courses, mail, documents)):
         raise ArchiveValidationError(
             "The database dump and all private storage archives are required."
@@ -206,9 +228,9 @@ def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[
             "bytes": mail.stat().st_size,
             "sha256": sha256_file(mail),
         },
-        "document_files": {
-            "file": DOCUMENT_ARCHIVE_FILE,
-            "root": DOCUMENT_ARCHIVE_ROOT,
+        documents_recovery_contribution.manifest_key: {
+            "file": documents_recovery_contribution.archive_file,
+            "root": documents_recovery_contribution.archive_root,
             "file_count": document_file_count,
             "bytes": documents.stat().st_size,
             "sha256": sha256_file(documents),
@@ -273,8 +295,13 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     courses = _manifest_component(bundle, manifest, "course_files", COURSE_ARCHIVE_FILE)
     mail = _manifest_component(bundle, manifest, "mail_files", MAIL_ARCHIVE_FILE)
     documents = (
-        _manifest_component(bundle, manifest, "document_files", DOCUMENT_ARCHIVE_FILE)
-        if format_version >= 3
+        _manifest_component(
+            bundle,
+            manifest,
+            documents_recovery_contribution.manifest_key,
+            documents_recovery_contribution.archive_file,
+        )
+        if format_version >= documents_recovery_contribution.introduced_in_format
         else None
     )
     file_count = verify_course_archive(courses)
@@ -290,7 +317,7 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     document_file_count = 0
     if documents is not None:
         document_file_count = verify_document_archive(documents)
-        document_component = manifest["document_files"]
+        document_component = manifest[documents_recovery_contribution.manifest_key]
         assert isinstance(document_component, dict)
         if document_component.get("file_count") != document_file_count:
             raise ArchiveValidationError("Document archive file count does not match the manifest.")
@@ -412,14 +439,32 @@ def restore_mail_archive(
 def restore_document_archive(
     archive_path: Path, parent: Path, directory_name: str, rollback_suffix: str
 ) -> Path | None:
+    return restore_contributed_archive(
+        documents_recovery_contribution,
+        archive_path,
+        parent,
+        directory_name,
+        rollback_suffix,
+    )
+
+
+def restore_contributed_archive(
+    contribution: StorageRecoveryContribution,
+    archive_path: Path,
+    parent: Path,
+    directory_name: str,
+    rollback_suffix: str,
+) -> Path | None:
+    """Restore one module archive without owning cross-store rollback order."""
+
     return restore_storage_archive(
         archive_path,
         parent,
         directory_name,
         rollback_suffix,
-        DOCUMENT_ARCHIVE_ROOT,
-        MAX_DOCUMENT_ARCHIVE_MEMBERS,
-        MAX_DOCUMENT_ARCHIVE_BYTES,
+        contribution.archive_root,
+        contribution.max_members,
+        contribution.max_bytes,
     )
 
 

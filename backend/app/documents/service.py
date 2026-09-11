@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import DocumentTagConflictError
+from app.documents.errors import DocumentTagConflictError
 from app.documents.models import DocumentProject, DocumentTag
 from app.documents.repository import DocumentRepository
 from app.documents.storage import DocumentStorage

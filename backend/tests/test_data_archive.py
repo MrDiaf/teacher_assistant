@@ -2,26 +2,33 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import tarfile
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
 
+from app.documents.entry import documents_recovery_contribution
 from app.maintenance.data_archive import (
     ArchiveValidationError,
     build_manifest,
+    create_contributed_archive,
     create_course_archive,
     create_document_archive,
     create_mail_archive,
+    restore_contributed_archive,
     restore_course_archive,
     restore_document_archive,
     restore_empty_storage,
     restore_mail_archive,
     verify_bundle,
+    verify_contributed_archive,
     verify_course_archive,
     verify_document_archive,
     verify_mail_archive,
 )
+from app.platform.recovery import RecoveryContributionError, StorageRecoveryContribution
 
 
 def create_bundle(tmp_path: Path) -> tuple[Path, Path]:
@@ -66,6 +73,57 @@ def test_bundle_manifest_verifies_database_and_course_checksums(tmp_path: Path) 
     assert verified["mail_archive"] == "mail-attachments.tar.gz"
     assert verified["document_file_count"] == 1
     assert verified["document_archive"] == "document-projects.tar.gz"
+
+
+def test_documents_recovery_contribution_preserves_bounded_storage_identities() -> None:
+    assert documents_recovery_contribution == StorageRecoveryContribution(
+        id="documents",
+        manifest_key="document_files",
+        archive_file="document-projects.tar.gz",
+        archive_root="document_projects",
+        introduced_in_format=3,
+        max_members=100_000,
+        max_bytes=100 * 1024 * 1024 * 1024,
+    )
+    assert {field.name for field in fields(StorageRecoveryContribution)} == {
+        "id",
+        "manifest_key",
+        "archive_file",
+        "archive_root",
+        "introduced_in_format",
+        "max_members",
+        "max_bytes",
+    }
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    [
+        ({"id": "../documents"}, "id"),
+        ({"manifest_key": "document/files"}, "manifest key"),
+        ({"archive_file": "../documents.tar.gz"}, "archive file"),
+        ({"archive_root": "/document_projects"}, "archive root"),
+        ({"introduced_in_format": 0}, "format version"),
+        ({"max_members": 0}, "member limit"),
+        ({"max_bytes": True}, "byte limit"),
+    ],
+)
+def test_recovery_contribution_rejects_unsafe_or_unbounded_values(
+    override: dict[str, object], message: str
+) -> None:
+    values: dict[str, object] = {
+        "id": "documents",
+        "manifest_key": "document_files",
+        "archive_file": "document-projects.tar.gz",
+        "archive_root": "document_projects",
+        "introduced_in_format": 3,
+        "max_members": 100,
+        "max_bytes": 1024,
+    }
+    values.update(override)
+
+    with pytest.raises(RecoveryContributionError, match=message):
+        StorageRecoveryContribution(**values)  # type: ignore[arg-type]
 
 
 def test_bundle_verification_accepts_pre_documents_format_two_backup(tmp_path: Path) -> None:
@@ -134,12 +192,18 @@ def test_document_archive_round_trip_and_rejects_special_entries(tmp_path: Path)
     main.write_text("source", encoding="utf-8")
     archive_path = tmp_path / "documents.tar.gz"
     with archive_path.open("wb") as output:
-        create_document_archive(source, output)
-    assert verify_document_archive(archive_path) == 1
+        create_contributed_archive(documents_recovery_contribution, source, output)
+    assert verify_contributed_archive(documents_recovery_contribution, archive_path) == 1
 
     parent = tmp_path / "restore-documents"
     parent.mkdir()
-    restore_document_archive(archive_path, parent, "documents", "fixture")
+    restore_contributed_archive(
+        documents_recovery_contribution,
+        archive_path,
+        parent,
+        "documents",
+        "fixture",
+    )
     assert (parent / "documents" / "project" / "source" / "main.tex").read_text() == "source"
 
     unsafe = tmp_path / "unsafe-documents.tar.gz"
@@ -153,6 +217,39 @@ def test_document_archive_round_trip_and_rejects_special_entries(tmp_path: Path)
         archive.addfile(link)
     with pytest.raises(ArchiveValidationError, match="Unsupported"):
         verify_document_archive(unsafe)
+
+
+def test_document_restore_recovers_previous_tree_when_publish_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = tmp_path / "source-documents"
+    main = source / "project" / "source" / "main.tex"
+    main.parent.mkdir(parents=True)
+    main.write_text("restored source", encoding="utf-8")
+    archive_path = tmp_path / "documents.tar.gz"
+    with archive_path.open("wb") as output:
+        create_document_archive(source, output)
+
+    parent = tmp_path / "restore-documents"
+    target = parent / "documents"
+    target.mkdir(parents=True)
+    old = target / "old.tex"
+    old.write_text("old source", encoding="utf-8")
+    real_replace = os.replace
+
+    def fail_staging_publish(source_path: Path, destination_path: Path) -> None:
+        if source_path.name.startswith(".documents.restore-") and destination_path == target:
+            raise OSError("fixture publish failure")
+        real_replace(source_path, destination_path)
+
+    monkeypatch.setattr("app.maintenance.data_archive.os.replace", fail_staging_publish)
+
+    with pytest.raises(OSError, match="fixture publish failure"):
+        restore_document_archive(archive_path, parent, "documents", "fixture")
+
+    assert old.read_text(encoding="utf-8") == "old source"
+    assert not (parent / "documents.before-restore-fixture").exists()
+    assert not list(parent.glob(".documents.restore-*"))
 
 
 def test_restore_keeps_previous_course_tree_as_rollback(tmp_path: Path) -> None:

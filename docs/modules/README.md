@@ -3,8 +3,10 @@
 This is the ownership map for the current modular-monolith transition. M21A
 established the baseline and M21B implemented typed metadata, page/router
 assembly, bounded backend lifecycle registration, shared UI/platform entry
-points, and their enforcement tests. Feature directories are not yet isolated
-modules; M21C-M21G remove the remaining exact legacy exceptions in
+points, and their enforcement tests. M21C is active; Documents now owns its
+internal errors and scoped feature stylesheet, while its later pilot work and
+the other feature migrations remain incomplete. M21C-M21G remove the remaining
+ownership debt and exact legacy exceptions in
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
 ## Reading workflow
@@ -70,7 +72,7 @@ listed in the manifest.
 | Area | Owner | Current locations/data |
 | --- | --- | --- |
 | React/FastAPI assembly and shell | Platform | `frontend/src/{App,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,platform}/` |
-| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; feature selector families remain in `frontend/src/styles.css` until M21C-M21G |
+| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents styles are scoped under its feature, while other feature selector families remain in `frontend/src/styles.css` until M21D-M21G |
 | Configuration/errors/database | Platform | `backend/app/core/`, `database/`; PostgreSQL session creation is infrastructure, not a public business query API |
 | AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; internal paths become public Platform contracts in M21B/M21F |
 | Migrations/recovery | Platform coordination | `backend/alembic/`, `backend/app/maintenance/`, `scripts/`, Compose volumes and host bind roots |
@@ -79,7 +81,7 @@ listed in the manifest.
 | Assistant implementation/data | Assistant | `backend/app/assistant/`, `frontend/src/features/assistant/`; Assistant conversation/job/proposal/audit tables |
 | Mail implementation/data | Inbox | `backend/app/{inbox,integrations}/`, `frontend/src/features/inbox/`; mail tables, attachment root, credential root |
 | Mailbox settings UI | Inbox content, Platform host | currently `frontend/src/features/settings/SettingsPage.tsx`; becomes a registered Inbox contribution in M21G |
-| Documents implementation/data | Documents | `backend/app/documents/`, `frontend/src/features/documents/`; document tables and private document root |
+| Documents implementation/data | Documents | `backend/app/documents/` including owned errors, `frontend/src/features/documents/` including `styles.css`; document tables and private document root |
 | Backend tests | Same feature owner; Platform fixture debt | `backend/tests/test_*.py`; `conftest.py` truncates every table and clears every storage root |
 | Frontend tests | Same feature owner; Platform composition debt | colocated `*.test.*`, plus full-App persistence/Assistant tests |
 | Browser tests | Joint provider/consumer evidence | one combined `e2e/tests/calendar-assistant.spec.ts`; split ownership is scheduled in M21C-M21G |
@@ -128,9 +130,10 @@ be preserved during refactoring:
 - `frontend/src/platform/styles.css` now owns root tokens, reset,
   shell/navigation, accessibility, responsive shell, and placeholder rules;
   `frontend/src/styles.css` still mixes the remaining shared-control and feature
-  selectors. Platform owns shared button/form/dialog/error rules. `.documents-*` and
-  `.document-*` move in M21C; `.calendar-*`, `.month-*`, `.time-*`, `.event-*`,
-  and `.ics-*` in M21D; `.course-*`, `.courses-*`, note/editor/summary/source
+  selectors. Platform owns shared button/form/dialog/error rules. Documents now
+  owns `.documents-*`, `.document-*`, and its delete-dialog variants.
+  `.calendar-*`, `.month-*`, `.time-*`, `.event-*`, and `.ics-*` move in M21D;
+  `.course-*`, `.courses-*`, note/editor/summary/source
   families in M21E; `.assistant-*`, conversation/proposal/job/composer families
   in M21F; and `.inbox-*`, `.mail-*`, `.connection-*` plus mailbox Settings in
   M21G. Cross-feature selectors such as `.course-calendar .calendar-*` and the
@@ -144,9 +147,11 @@ be preserved during refactoring:
   set so default full-app behavior is preserved.
 - `backend/tests/conftest.py` knows all tables and private roots; tests share one
   database reset. M21C-M21G introduce owner fixtures without weakening full tests.
-- Recovery scripts and `data_archive.py` know every storage component by name.
-  This is intentional Platform coordination, later expressed as typed recovery
-  contributions rather than independent backups.
+- Recovery scripts retain Platform's coordinated quiescence, PostgreSQL dump,
+  manifest verification, restore order, and rollback behavior. Documents now
+  supplies its established manifest/archive/root identities and safety limits
+  through a typed contribution; the other storage components remain named
+  directly in `data_archive.py` until their owning milestones.
 
 ## Verification baseline
 

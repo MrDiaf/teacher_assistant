@@ -1,1 +1,1 @@
-"""Private document-project application module."""
+"""Documents application package; ``entry`` is its public composition surface."""

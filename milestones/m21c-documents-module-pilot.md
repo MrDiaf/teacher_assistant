@@ -42,8 +42,8 @@ Selective bootstrap must avoid unrelated schedulers and per-test storage wipes.
 
 ## Ordered checklist
 
-- [ ] Establish Documents public entry points, internal ownership, and scoped CSS.
-- [ ] Connect Documents recovery through a tested platform contribution.
+- [x] Establish Documents public entry points, internal ownership, and scoped CSS.
+- [x] Connect Documents recovery through a tested platform contribution.
 - [ ] Implement the shared module host and initial focused Docker commands.
 - [ ] Separate Documents fixtures and backend/frontend/browser scenarios while
   retaining real API/storage coverage and fake/provider contract checks.

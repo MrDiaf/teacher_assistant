@@ -45,7 +45,8 @@
       "app.database.types",
       "app.platform.ai",
       "app.platform.diagnostics",
-      "app.platform.modules.backend_contract"
+      "app.platform.modules.backend_contract",
+      "app.platform.recovery"
     ],
     "public_module_entries": {
       "assistant": "app.assistant.entry",

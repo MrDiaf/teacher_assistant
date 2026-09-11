@@ -11,8 +11,11 @@ Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Development roadmap
 
-M1-M21, M21A, and M21B are implemented. M21C is the next planned refactoring
-milestone but is not active until explicitly selected.
+M1-M21, M21A, and M21B are implemented. M21C is active; its first two subtasks
+give Documents explicit internal error ownership, feature-scoped styling, and a
+bounded recovery contribution used by Platform's coordinated archive/restore
+flow. Its shared module-host, focused-fixture, boundary, and workflow subtasks
+remain incomplete.
 M21B-M21I precede the LaTeX editor/compiler/advice work in M22-M24. The
 refactoring sequence covers ownership and public contracts, application
 composition, a Documents pilot, the other existing modules, Settings module

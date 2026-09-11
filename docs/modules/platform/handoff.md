@@ -39,6 +39,12 @@ The full app supplies every registered entry, initializes existing private roots
 before starting the ICS/mail schedulers, and retains the existing Assistant and
 Codex shutdown behavior. Selective test assembly starts no unselected hook.
 
+Documents now re-exports a typed recovery contribution containing only its
+stable manifest/archive/root identities, format introduction, and safety limits.
+Platform's existing coordinator consumes it for archive creation, manifest
+verification, format-2 compatibility, restore, and rollback; quiescence,
+PostgreSQL coordination, restore order, and live paths remain Platform-owned.
+
 Feature code now imports the existing icon/modal, API error, browser persistence,
 and model-selection primitives through narrow Platform façades. Persistence no
 longer imports Calendar or Courses types, the version-1 storage envelope is
@@ -51,8 +57,8 @@ and diagnostic interfaces for M21F to restructure behind. No M21B boundary
 exception remains. The backend Platform allowance now names exact consumed
 configuration, error, database, AI, diagnostic, and registration modules;
 negative fixtures reject feature imports of backend assembly or frontend shell
-internals. Focused commands, scoped feature CSS, and deeper M21F AI/diagnostic
-separation are still unimplemented.
+internals. Focused commands, non-Documents scoped feature CSS, and deeper M21F
+AI/diagnostic separation are still unimplemented.
 
 Verification: [M21A baseline](../baseline.md). Shared cautions and active
 application status remain in the root `handoff.md`.
@@ -64,6 +70,6 @@ passed. The isolated database migrated through the sole
 `20260908_0021 (head)` revision; database, backend, and frontend reached healthy
 state, and the test volumes were removed afterward. JSON and diff checks passed.
 
-Next step: no milestone is active. M21C is next in the required sequence but
-must be explicitly selected before implementation. M22 remains inactive until
-the M21A-M21I refactoring sequence is complete.
+Next step: M21C is active. Its next incomplete checklist item is the shared
+module host and initial focused Docker commands. M22 remains inactive until the
+M21A-M21I refactoring sequence is complete.
