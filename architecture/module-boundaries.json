@@ -263,6 +263,7 @@
       { "prefix": "persistence", "owner": "platform" },
       { "prefix": "test", "owner": "platform" },
       { "prefix": "styles", "owner": "platform" },
+      { "prefix": "ModuleHost", "owner": "platform" },
       { "prefix": "App", "owner": "platform" },
       { "prefix": "main", "owner": "platform" }
     ],

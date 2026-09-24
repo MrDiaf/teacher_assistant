@@ -19,7 +19,8 @@ or part of this boundary.
 - `backend/app/documents/entry.py` and
   `frontend/src/features/documents/entry.ts` contribute the current router and
   page through Platform composition. The frontend entry also loads the
-  Documents-owned stylesheet; focused-test setup remains pending.
+  Documents-owned stylesheet. The shared focused host selects these real entries
+  plus their Platform dependency; it does not define a second Documents UI/API.
 - `backend/app/documents/recovery.py`, re-exported by the public backend entry,
   contributes the established `document_files`, `document-projects.tar.gz`, and
   `document_projects` identities, format-3 introduction, and archive limits to
@@ -48,6 +49,10 @@ Documents-to-feature import exceptions.
 
 ```bash
 make dev
+make dev-module MODULE=documents
+make test-module MODULE=documents
+make logs-module MODULE=documents
+make down-module MODULE=documents
 make check-boundaries
 docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml run --build --rm backend pytest -q tests/test_documents.py
 docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml run --build --rm backend pytest -q tests/test_data_archive.py
@@ -57,5 +62,9 @@ make e2e
 make data-relocation-test
 ```
 
-The selected tests still use full-app fixtures. M21C builds the real isolated
-module host. See measured limitations in the [M21A baseline](../baseline.md).
+The focused development host runs on separate default ports (UI `15173`, API
+`18000`) and project-scoped PostgreSQL/private-data volumes. Its initial test
+command covers the host and selection contracts, but the selected Documents
+CRUD/storage tests still use the full-app fixture. Separating those fixtures and
+adding focused browser/provider scenarios is the next M21C item. See measured
+limitations in the [M21A baseline](../baseline.md).

@@ -85,6 +85,40 @@ class ModuleCatalog:
         return self._by_id.get(module_id)
 
 
+def select_module_catalog(
+    catalog: ModuleCatalog,
+    requested_module_ids: Iterable[str],
+) -> ModuleCatalog:
+    """Return requested modules and their transitive dependencies in catalog order."""
+
+    requested = tuple(requested_module_ids)
+    if not requested:
+        raise ModuleContractError("module selection must not be empty")
+    if len(set(requested)) != len(requested):
+        raise ModuleContractError("module selection contains duplicate identifiers")
+
+    selected: set[str] = set()
+
+    def include(module_id: str) -> None:
+        registration = catalog.get(module_id)
+        if registration is None:
+            raise ModuleContractError(f"module selection contains unknown module {module_id!r}")
+        if module_id in selected:
+            return
+        selected.add(module_id)
+        for dependency in registration.dependencies:
+            include(dependency.id)
+
+    for module_id in requested:
+        include(module_id)
+
+    return ModuleCatalog(
+        registration
+        for registration in catalog.registrations
+        if registration.id in selected
+    )
+
+
 def parse_module_catalog(payload: object) -> ModuleCatalog:
     """Parse and validate a JSON-compatible catalog payload."""
 

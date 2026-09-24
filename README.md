@@ -11,21 +11,20 @@ Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Development roadmap
 
-M1-M21, M21A, and M21B are implemented. M21C is active; its first two subtasks
+M1-M21, M21A, and M21B are implemented. M21C is active; its first three subtasks
 give Documents explicit internal error ownership, feature-scoped styling, and a
 bounded recovery contribution used by Platform's coordinated archive/restore
-flow. Its shared module-host, focused-fixture, boundary, and workflow subtasks
-remain incomplete.
+flow, plus a dependency-closed shared module host with initial focused Docker
+commands. Its focused-fixture, boundary, and workflow subtasks remain incomplete.
 M21B-M21I precede the LaTeX editor/compiler/advice work in M22-M24. The
 refactoring sequence covers ownership and public contracts, application
 composition, a Documents pilot, the other existing modules, Settings module
 controls, and focused Docker testing with final recovery verification.
 
 See the [authoritative milestone index](instructions.md#milestone-status), the
-[module ownership index](docs/modules/README.md), and the completed composition
-milestone [M21B](milestones/m21b-application-composition.md). Module switches,
-module-specific Docker commands, and the isolated module host are planned,
-not available features yet.
+[module ownership index](docs/modules/README.md), and the active Documents pilot
+[M21C](milestones/m21c-documents-module-pilot.md). Runtime module switches remain
+planned for M21H; the Documents-only development host is available now.
 
 ## Application composition wiring
 
@@ -96,14 +95,23 @@ make logs      # follow application logs
 make migrate   # apply database migrations
 make check-boundaries # reject new cross-module imports and dependency cycles
 make test      # boundaries plus isolated backend and frontend tests
+make dev-module MODULE=documents  # Documents host on isolated ports/data
+make test-module MODULE=documents # initial focused host/contract tests
+make down-module MODULE=documents # stop the focused host
+make logs-module MODULE=documents # follow focused-host logs
 make e2e       # isolated Playwright browser tests
 make lint      # Python, TypeScript, and formatting checks
 make data-preflight # read-only data-resolution report
 make backup    # coordinated PostgreSQL + course/mail/document-file backup
 ```
 
-Both test commands use separate temporary databases and remove their Docker
-volumes after the run. They never truncate the owner database.
+The test commands use separate temporary databases and remove their Docker
+volumes after the run. They never truncate the owner database. The Documents
+development host defaults to UI port `15173` and API port `18000`, uses its own
+Compose project and named volumes, and may run beside the full application.
+Unknown or multiple module IDs are rejected. Its current focused test command
+covers host and contract selection; M21C's next item adds the Documents-owned
+CRUD/storage and browser fixtures.
 
 ## ChatGPT subscription authentication
 

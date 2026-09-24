@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import catalogJson from "./catalog.json";
-import { ModuleContractError, parseModuleCatalog } from "./contract";
+import {
+  ModuleContractError,
+  parseModuleCatalog,
+  selectModuleCatalog,
+} from "./contract";
 
 type MutableCatalog = {
   schema_version: number;
@@ -180,5 +184,25 @@ describe("module registration contract", () => {
 
   it("uses the contract error type", () => {
     expect(() => parseModuleCatalog({})).toThrow(ModuleContractError);
+  });
+
+  it("selects a module and its transitive dependencies in catalog order", () => {
+    const selected = selectModuleCatalog(parseModuleCatalog(payload()), [
+      "documents",
+    ]);
+
+    expect(
+      selected.registrations.map((registration) => registration.id),
+    ).toEqual(["platform", "documents"]);
+  });
+
+  it.each([
+    [[], "must not be empty"],
+    [["documents", "documents"], "duplicate"],
+    [["unknown"], "unknown module"],
+  ] as const)("rejects invalid module selection %j", (moduleIds, message) => {
+    expect(() =>
+      selectModuleCatalog(parseModuleCatalog(payload()), moduleIds),
+    ).toThrowError(message);
   });
 });

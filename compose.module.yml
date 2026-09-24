@@ -1,0 +1,54 @@
+services:
+  database:
+    profiles: [module-host]
+    environment:
+      POSTGRES_DB: teacher_assistant_documents_module
+      POSTGRES_USER: teacher_assistant_documents_module
+      POSTGRES_PASSWORD: teacher_assistant_documents_module
+    volumes:
+      - module-database-data:/var/lib/postgresql/data
+    restart: "no"
+
+  backend:
+    profiles: [module-host]
+    command:
+      - uvicorn
+      - app.module_host:create_module_host_from_environment
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+      - --no-access-log
+    environment:
+      DATABASE_URL: postgresql+asyncpg://teacher_assistant_documents_module:teacher_assistant_documents_module@database:5432/teacher_assistant_documents_module
+      TEACHER_ASSISTANT_MODULE_HOST: ${MODULE_HOST:?MODULE_HOST is required}
+      TESTING: "false"
+      OPENAI_API_KEY: ""
+      CODEX_AUTH_HOME: ${CODEX_AUTH_HOME:-/var/lib/teacher-assistant/codex}
+      INTEGRATION_CREDENTIAL_ROOT: ${INTEGRATION_CREDENTIAL_ROOT:-/var/lib/teacher-assistant/integrations}
+      COURSE_STORAGE_ROOT: ${COURSE_STORAGE_ROOT:-/data/course_content}
+      MAIL_STORAGE_ROOT: ${MAIL_STORAGE_ROOT:-/data/mail_attachments}
+      DOCUMENT_STORAGE_ROOT: ${DOCUMENT_STORAGE_ROOT:-/data/document_projects}
+    volumes:
+      - module-codex-auth:${CODEX_AUTH_HOME:-/var/lib/teacher-assistant/codex}
+      - module-integration-credentials:${INTEGRATION_CREDENTIAL_ROOT:-/var/lib/teacher-assistant/integrations}
+      - module-course-content:${COURSE_STORAGE_ROOT:-/data/course_content}
+      - module-mail-attachments:${MAIL_STORAGE_ROOT:-/data/mail_attachments}
+      - module-document-projects:${DOCUMENT_STORAGE_ROOT:-/data/document_projects}
+    restart: "no"
+
+  frontend:
+    profiles: [module-host]
+    environment:
+      VITE_MODULE_HOST: ${MODULE_HOST:?MODULE_HOST is required}
+    restart: "no"
+
+volumes:
+  module-codex-auth:
+  module-integration-credentials:
+  module-course-content:
+  module-mail-attachments:
+  module-document-projects:
+  module-database-data:

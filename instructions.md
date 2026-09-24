@@ -378,13 +378,14 @@ below. Update `handoff.md` with the new current state and exact next step.
 Current active milestone: **M21C - Documents module and isolated development
 pilot**.
 
-M21C's first two checklist items are implemented: the existing Documents public
+M21C's first three checklist items are implemented: the existing Documents public
 entries remain the sole production composition imports, Documents owns its
 application/storage errors and feature styles, and its bounded recovery
 contribution now supplies the established source-archive identities and limits
-to Platform's unchanged coordinated archive/restore flow. The next M21C subtask
-is the shared module host and initial focused Docker commands. M21D and M22
-remain inactive.
+to Platform's unchanged coordinated archive/restore flow. A dependency-closed
+Documents host now uses the real shell and public entries with isolated Docker
+ports/data through guarded root commands. The next M21C subtask is fixture and
+backend/frontend/browser scenario separation. M21D and M22 remain inactive.
 
 M21B established the typed common module contract, explicit
 frontend-page/backend-router assembly, bounded backend lifecycle hooks, shared

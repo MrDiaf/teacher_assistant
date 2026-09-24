@@ -4,8 +4,9 @@ This is the ownership map for the current modular-monolith transition. M21A
 established the baseline and M21B implemented typed metadata, page/router
 assembly, bounded backend lifecycle registration, shared UI/platform entry
 points, and their enforcement tests. M21C is active; Documents now owns its
-internal errors and scoped feature stylesheet, while its later pilot work and
-the other feature migrations remain incomplete. M21C-M21G remove the remaining
+internal errors and scoped feature stylesheet and has a dependency-closed shared
+host with isolated initial Docker commands. Its fixture, boundary, and workflow
+work and the other feature migrations remain incomplete. M21C-M21G remove the remaining
 ownership debt and exact legacy exceptions in
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
@@ -71,7 +72,7 @@ listed in the manifest.
 
 | Area | Owner | Current locations/data |
 | --- | --- | --- |
-| React/FastAPI assembly and shell | Platform | `frontend/src/{App,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,platform}/` |
+| React/FastAPI assembly and shell | Platform | `frontend/src/{App,ModuleHost,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,module_host,platform}/` |
 | Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents styles are scoped under its feature, while other feature selector families remain in `frontend/src/styles.css` until M21D-M21G |
 | Configuration/errors/database | Platform | `backend/app/core/`, `database/`; PostgreSQL session creation is infrastructure, not a public business query API |
 | AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; internal paths become public Platform contracts in M21B/M21F |
@@ -143,10 +144,13 @@ be preserved during refactoring:
 - Public backend module entries own their existing private-root, scheduler,
   Assistant-registry, and Codex-auth lifecycle bindings. Platform starts only
   supplied entries, unwinds successful starts after startup failure, and bounds
-  every shutdown hook. `backend/app/main.py` supplies the complete registered
-  set so default full-app behavior is preserved.
+  every shutdown hook. The shared Platform application factory receives an
+  explicit entry set: `backend/app/main.py` supplies the complete registered set,
+  while the Documents host supplies only Platform and Documents.
 - `backend/tests/conftest.py` knows all tables and private roots; tests share one
-  database reset. M21C-M21G introduce owner fixtures without weakening full tests.
+  database reset. The initial `test-module` command therefore still starts its
+  isolated PostgreSQL service; M21C's next item introduces owner fixtures without
+  weakening full tests.
 - Recovery scripts retain Platform's coordinated quiescence, PostgreSQL dump,
   manifest verification, restore order, and rollback behavior. Documents now
   supplies its established manifest/archive/root identities and safety limits

@@ -5,7 +5,11 @@ from pathlib import Path
 import pytest
 
 from app.platform.modules.catalog import module_catalog
-from app.platform.modules.contract import ModuleContractError, parse_module_catalog
+from app.platform.modules.contract import (
+    ModuleContractError,
+    parse_module_catalog,
+    select_module_catalog,
+)
 
 CATALOG_PATH = Path(__file__).parents[1] / "app/platform/modules/catalog.json"
 
@@ -141,3 +145,27 @@ def test_parsed_catalog_is_not_affected_by_mutating_input() -> None:
     payload["registrations"][0]["display_name"] = "Changed"
 
     assert catalog.registrations[0].display_name == "Platform"
+
+
+def test_module_selection_includes_transitive_dependencies_in_catalog_order() -> None:
+    selected = select_module_catalog(module_catalog, ("documents",))
+
+    assert [registration.id for registration in selected.registrations] == [
+        "platform",
+        "documents",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("module_ids", "message"),
+    [
+        ((), "must not be empty"),
+        (("documents", "documents"), "duplicate"),
+        (("unknown",), "unknown module"),
+    ],
+)
+def test_module_selection_rejects_invalid_requests(
+    module_ids: tuple[str, ...], message: str
+) -> None:
+    with pytest.raises(ModuleContractError, match=message):
+        select_module_catalog(module_catalog, module_ids)

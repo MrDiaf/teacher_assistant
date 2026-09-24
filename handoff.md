@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-10
+Updated: 2026-09-11
 
 ## Start here
 
@@ -27,9 +27,10 @@ explicitly requested.
   bounded lifecycle handling, shared Platform entry points, compatible
   navigation state, enforcement tests, tightened boundaries, and documented
   extension procedure are implemented in the current uncommitted worktree.
-- M21C is active. Its first two checklist items establish Documents-owned errors
-  and scoped CSS plus a typed recovery contribution consumed by Platform;
-  later M21C items remain incomplete.
+- M21C is active. Its first three checklist items establish Documents-owned
+  errors and scoped CSS, a typed recovery contribution consumed by Platform,
+  and the shared dependency-closed module host with initial focused Docker
+  commands; later M21C items remain incomplete.
 - No feature behavior, schema, storage identity, private data, or visible design
   was changed by M21C. M22 was not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
@@ -183,12 +184,29 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   data-relocation-test` passed the exact coordinated database/private-file drill;
   `make test` passed 217 backend and 97 frontend tests plus all gates, and `make
   lint` passed.
+- Platform now owns one shared FastAPI application factory and one shared React
+  shell path for full and focused assembly. The allowlisted Documents host closes
+  the catalog dependency graph to Platform plus Documents, includes only their
+  real routes/pages/lifecycle hooks, and rejects empty, multiple, unknown, or
+  path-like module IDs.
+- `make dev-module MODULE=documents`, `logs-module`, `down-module`, and
+  `test-module` run through the root Docker configuration with a dedicated
+  Compose project. Development defaults to UI `15173` and API `18000`; its
+  PostgreSQL and every private mount are project-scoped named volumes, so the
+  host ran concurrently with the owner application without sharing ports/data.
+- Item-3 verification passed 26 backend and 26 frontend focused host/contract
+  tests, `make test` (228 backend and 107 frontend tests plus boundary,
+  catalog-drift, and data-safety gates), `make lint`, full and module-mode
+  production frontend builds, live module API/UI startup, selected/absent route
+  checks, invalid-ID command checks, and diff hygiene. The focused stack was
+  stopped and temporary test/build volumes were removed.
 
 ## Shared cautions
 
 - M21C is active; M21D-M21I remain separate planned milestones. Documents owns
-  its feature CSS, while other feature CSS, focused `dev-module`/`test-module`
-  commands, and Settings module controls do not exist yet.
+  its feature CSS and is the only currently supported focused host. Other
+  feature CSS, other module-host IDs, and Settings module controls do not exist
+  yet.
 - M22-M24 remain unimplemented: Documents has no editor, compilation, preview,
   or Codex compilation advice.
 - The exact boundary manifest is a burn-down list. Remove entries as owning
@@ -196,8 +214,12 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 - Assistant confirmation currently relies on one shared SQLAlchemy transaction
   for proposal/job/action and Calendar changes. Course-calendar links also use
   direct Calendar access. Preserve atomicity via the documented coordinator.
-- `backend/tests/conftest.py`, the combined E2E file, global non-Documents
-  feature CSS, and the remaining recovery assembly are intentionally coupled debt.
+- `backend/tests/conftest.py` still resets all tables/private roots, so the
+  initial focused test command starts isolated PostgreSQL and limits itself to
+  host/contract coverage. Documents-owned CRUD/storage fixtures, focused browser
+  scenarios, and fake/provider contract checks are intentionally deferred to
+  item 4. The combined E2E file, global non-Documents feature CSS, and remaining
+  recovery assembly are also intentional debt.
 - `alembic check` reports deliberately retained retired integration tables and
   four known enum/VARCHAR length differences. It reports no Documents drift.
 - A real mailbox-provider check was not run; local fakes cover TLS/read-only,
@@ -214,15 +236,16 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21C is active and its first two checklist items are complete. The exact next
-step is its third checklist item: implement the shared module host and initial
-focused Docker commands. Do not start fixture separation, M21D, or M22.
+M21C is active and its first three checklist items are complete. The exact next
+step is its fourth checklist item: separate Documents fixtures and
+backend/frontend/browser scenarios while retaining real API/storage coverage and
+fake/provider contract checks. Do not start boundary cleanup, M21D, or M22.
 
 Recommended next prompt:
 
 ```text
-Continue M21C with its next incomplete subtask: implement the shared module host
-and initial focused Docker commands. Preserve the real shell and module entries,
-isolate ports/data, omit unrelated schedulers, and do not start fixture
-separation, M21D, or M22.
+Continue M21C with checklist item 4 only: separate Documents fixtures and
+backend/frontend/browser scenarios while retaining real API/storage coverage
+and fake/provider contract checks. Preserve the shared host and isolated
+ports/data, and do not start boundary cleanup, M21D, or M22.
 ```

@@ -91,6 +91,52 @@ export function parseModuleCatalog(payload: unknown): ModuleCatalog {
   });
 }
 
+export function selectModuleCatalog(
+  catalog: ModuleCatalog,
+  requestedModuleIds: readonly string[],
+): ModuleCatalog {
+  if (requestedModuleIds.length === 0) {
+    throw new ModuleContractError("module selection must not be empty");
+  }
+  if (new Set(requestedModuleIds).size !== requestedModuleIds.length) {
+    throw new ModuleContractError(
+      "module selection contains duplicate identifiers",
+    );
+  }
+
+  const selected = new Set<string>();
+  function include(moduleId: string): void {
+    const registration = catalog.get(moduleId);
+    if (registration === undefined) {
+      throw new ModuleContractError(
+        `module selection contains unknown module ${JSON.stringify(moduleId)}`,
+      );
+    }
+    if (selected.has(moduleId)) return;
+    selected.add(moduleId);
+    for (const dependency of registration.dependencies) {
+      include(dependency.id);
+    }
+  }
+
+  for (const moduleId of requestedModuleIds) include(moduleId);
+
+  const registrations = Object.freeze(
+    catalog.registrations.filter((registration) =>
+      selected.has(registration.id),
+    ),
+  );
+  const byId = new Map(
+    registrations.map((registration) => [registration.id, registration]),
+  );
+  return Object.freeze({
+    registrations,
+    get(moduleId: string) {
+      return byId.get(moduleId);
+    },
+  });
+}
+
 function parseRegistration(value: unknown, index: number): ModuleRegistration {
   const path = `catalog.registrations[${index}]`;
   const raw = objectWithKeys(value, path, [

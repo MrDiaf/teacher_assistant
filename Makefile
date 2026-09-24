@@ -1,9 +1,22 @@
 COMPOSE := docker compose -f compose.yml -f compose.dev.yml
 TEST_COMPOSE := docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml
 E2E_COMPOSE := docker compose -p teacher-assistant-e2e -f compose.e2e.yml
+SUPPORTED_MODULE_HOSTS := documents
+MODULE_BACKEND_PORT ?= 18000
+MODULE_FRONTEND_PORT ?= 15173
+MODULE_COMPOSE = MODULE_HOST=$(MODULE) BACKEND_PORT=$(MODULE_BACKEND_PORT) \
+	FRONTEND_PORT=$(MODULE_FRONTEND_PORT) docker compose \
+	-p teacher-assistant-module-$(MODULE) --profile module-host \
+	-f compose.yml -f compose.dev.yml -f compose.module.yml
+MODULE_TEST_COMPOSE = MODULE_HOST=$(MODULE) docker compose \
+	-p teacher-assistant-module-$(MODULE)-test --profile module-host \
+	-f compose.yml -f compose.module.yml -f compose.test.yml
+require-supported-module = \
+	$(if $(filter 1,$(words $(strip $(MODULE)))),,$(error MODULE must name exactly one supported module: $(SUPPORTED_MODULE_HOSTS))) \
+	$(if $(filter $(SUPPORTED_MODULE_HOSTS),$(strip $(MODULE))),,$(error Unsupported MODULE '$(MODULE)'; supported modules: $(SUPPORTED_MODULE_HOSTS)))
 
 .PHONY: dev down restart logs test e2e lint format migrate backup restore check-boundaries \
-	check-module-contract \
+	check-module-contract dev-module down-module logs-module test-module \
 	data-preflight data-init data-adopt data-guard data-record-started \
 	data-safety-test data-relocation-test
 
@@ -70,6 +83,20 @@ dev: data-guard
 	$(COMPOSE) up --build -d
 	@$(MAKE) --no-print-directory data-record-started
 
+dev-module:
+	$(require-supported-module)
+	$(MODULE_COMPOSE) up --build -d
+	@printf 'Documents module host: http://localhost:%s (API %s)\n' \
+		"$(MODULE_FRONTEND_PORT)" "$(MODULE_BACKEND_PORT)"
+
+down-module:
+	$(require-supported-module)
+	$(MODULE_COMPOSE) down
+
+logs-module:
+	$(require-supported-module)
+	$(MODULE_COMPOSE) logs -f
+
 down:
 	$(COMPOSE) down
 
@@ -85,6 +112,16 @@ test: check-boundaries check-module-contract
 	$(TEST_COMPOSE) run --build --rm backend pytest -q; \
 	$(TEST_COMPOSE) run --build --rm --no-deps frontend npm run test; \
 	./scripts/check-data-safety.sh
+
+test-module:
+	$(require-supported-module)
+	@set -e; \
+	trap '$(MODULE_TEST_COMPOSE) down -v --remove-orphans' EXIT; \
+	$(MODULE_TEST_COMPOSE) run --build --rm backend pytest \
+		-q tests/test_module_host.py tests/test_module_registration.py; \
+	$(MODULE_TEST_COMPOSE) run --build --rm --no-deps frontend npm run test -- \
+		src/platform/modules/moduleHost.test.tsx \
+		src/platform/modules/contract.test.ts
 
 e2e:
 	@set -e; \

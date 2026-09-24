@@ -26,8 +26,8 @@ import path, component name, router name, or executable.
 | Concern | Declaration or public entry | Platform assembly consumer |
 | --- | --- | --- |
 | Shared identities, order, dependencies, capabilities, routes, pages, Settings panels, and lifecycle IDs | Mirrored `backend/app/platform/modules/catalog.json` and `frontend/src/platform/modules/catalog.json` | Strict `contract.py`/`contract.ts` parsers; `make check-module-contract` also compares both files with the ownership manifest |
-| Frontend pages | `frontend/src/platform/entry.ts` for Platform pages and `frontend/src/features/<owner>/entry.ts` for feature pages | `frontendCatalog.ts` statically imports every entry, `assembleFrontendPages` validates it, and `App.tsx` passes `registeredPages` to `RegisteredApplication` |
-| Backend routes and lifecycle hooks | `backend/app/platform/entry.py` and `backend/app/<owner>/entry.py` | `backend_catalog.py` statically imports every entry, `assemble_backend_modules` validates it, and `app/main.py` includes routers and runs `backend_module_lifespan` |
+| Frontend pages | `frontend/src/platform/entry.ts` for Platform pages and `frontend/src/features/<owner>/entry.ts` for feature pages | `frontendCatalog.ts` statically imports every production entry; `App.tsx` passes all pages to `RegisteredApplication`, while `ModuleHost.tsx` passes a dependency-selected page set to the same shell |
+| Backend routes and lifecycle hooks | `backend/app/platform/entry.py` and `backend/app/<owner>/entry.py` | `backend_catalog.py` statically imports every production entry; the shared `app.platform.application` factory hosts either the full set from `app/main.py` or a dependency-selected set from `app/module_host.py` |
 | Test-only page/router assembly | A synthetic validated catalog plus an explicit tuple of test entries | Call `assembleFrontendPages` or `assemble_backend_modules` directly; do not mutate the production catalogs or global registered entry sets |
 
 The Settings-panel IDs in the metadata currently reserve and validate identity
@@ -62,9 +62,17 @@ M21G owns its code contribution and M21H owns module switches. Do not treat
    `make check-boundaries`, and the relevant full regression commands.
 
 Production assembly intentionally requires an entry for every registration and
-keeps every current module enabled. Selective tests instead pass only a matching
-synthetic catalog and explicit entries, so unrelated private storage and
-schedulers are never started.
+keeps every current module enabled. The focused host accepts only an explicit
+allowlisted module ID, closes its declared dependency set, and assembles only
+matching real entries. `documents` therefore hosts Platform plus Documents,
+with no Calendar, Courses, Inbox, or Assistant routes or schedulers.
+
+The root `compose.module.yml` override retains the normal images/source mounts
+but selects the focused host through configuration. Its distinct Compose project,
+ports, database, and named private-data volumes prevent access to the owner's
+running installation. The UI uses `RegisteredApplication`, not a copied shell;
+test-level fetch fakes remain confined to tests and ordinary startup has no fake
+route or response provider.
 
 ## Shared Platform entry points
 
@@ -122,11 +130,20 @@ make logs
 make check-boundaries
 make check-module-contract
 make test
+make dev-module MODULE=documents
+make test-module MODULE=documents
+make logs-module MODULE=documents
+make down-module MODULE=documents
 make e2e
 make lint
 make migrate
 make data-relocation-test
 ```
 
-No focused `dev-module`/`test-module` command exists yet; M21C implements it.
+Only `documents` is currently allowlisted; unknown and multiple IDs fail before
+Compose starts. The development defaults are UI `15173` and API `18000` and may
+be overridden with `MODULE_FRONTEND_PORT`/`MODULE_BACKEND_PORT`. The initial
+focused test command verifies dependency closure, real entries, routes,
+lifecycle selection, shell rendering, and invalid-ID rejection. Documents-owned
+CRUD/storage fixtures and browser/provider scenarios are the next M21C item.
 See the [M21A baseline](../baseline.md).
