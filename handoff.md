@@ -1,22 +1,46 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-28
+Updated: 2026-09-30
 
 ## Start here
 
 Read, in order:
 
 1. `AGENTS.md`
-2. `instructions.md`
-3. `handoff.md`
-4. The owner-selected milestone
-5. `docs/modules/README.md`, the selected owner README/handoff, and only the
+2. The files under `guidelines/` (the working method)
+3. `instructions.md` (durable product rules)
+4. `PLAN.md` (milestone status) and `handoff.md`
+5. The owner-selected milestone file under `guidelines/milestones/`
+6. `docs/modules/README.md`, the selected owner README/handoff, and only the
    public contracts of relevant dependencies
-6. The relevant implementation and tests
+7. The relevant implementation and tests, as the milestone's existing-state
+   check
 
 Run `git status --short` before editing. Preserve owner work and private data.
 Do not commit, push, merge, rebase, delete branches, or discard changes unless
 explicitly requested.
+
+## Working method change (2026-09-30)
+
+The project now follows the `guidelines/` working method only. The earlier
+workflow is retired. This was a documentation change; no application code,
+tests, schema, or Makefile target changed.
+
+- `PLAN.md` at the repository root replaces the milestone status index that
+  used to be in `instructions.md`. `instructions.md` now holds product rules
+  only.
+- The eight open milestones (M21E-M21I, M22-M24) moved from the former root
+  `milestones/` folder to `guidelines/milestones/` and were restructured into
+  the `guidelines/plan.md` format. Their requirements are unchanged. The former acceptance criteria are
+  now checkbox completion criteria mirrored in `PLAN.md`; the former ordered
+  checklists are the unchecked "Work order" lists.
+- The 26 completed milestone files (M1-M21D) moved to `legacy/milestones/`.
+  `legacy/` is archived history, never guidance: each file carries a
+  `LEGACY — ARCHIVED MILESTONE` banner, and `AGENTS.md` opens with a document
+  map marking every path as active or legacy. There is no root `milestones/`
+  folder any more.
+- Testing scope follows `guidelines/scope.md`: focused checks by default,
+  broader checks where a change crosses a shared contract.
 
 ## Current state
 
@@ -43,7 +67,7 @@ explicitly requested.
   document storage identities.
 - `.openai/hosting.json` is absent; this remains a self-hosted Docker app.
 
-The authoritative milestone state is in `instructions.md`. Module ownership,
+The authoritative milestone state is in `PLAN.md`. Module ownership,
 contracts, paths, local work state, and commands are now indexed at
 [`docs/modules/README.md`](docs/modules/README.md). Do not reintroduce their
 history into this root handoff.
@@ -296,10 +320,14 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   `instructions.md`.
 - Automatic LMS imports, assignments, grades, outbound mail, Study Plan, and
   multi-user functionality remain out of scope.
+- `guidelines/deployment.md` requires `make up` and `make help`. The Makefile
+  provides neither; `make dev` is the current start command and the README
+  documents it. This gap is unscheduled and needs an owner decision.
 
 ## Exact next step
 
-No milestone is active. M21E is the next planned milestone, but it must be
+No milestone is active. M21E is the next planned milestone
+(`guidelines/milestones/m21e-courses-module-boundary.md`), but it must be
 explicitly selected before implementation. Do not start M22.
 
 Recommended next prompt:

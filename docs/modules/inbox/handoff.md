@@ -8,7 +8,7 @@ backend entry registers the unchanged credential/attachment root setup and mail
 scheduler lifecycle.
 
 Verification: [M21A baseline](../baseline.md). Feature evidence remains in
-[M20](../../../milestones/m20-forwarded-mail-inbox.md). A real provider check
+[M20](../../../legacy/milestones/m20-forwarded-mail-inbox.md). A real provider check
 was not run because no owner credential is used in ordinary verification.
 
 Next Inbox work: M21G consolidates public entries and contributed Settings after

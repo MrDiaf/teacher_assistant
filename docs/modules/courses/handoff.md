@@ -12,7 +12,7 @@ Calendar-owned. Existing link/unlink and embedded Calendar behavior passed real
 integration tests.
 
 Verification: [M21A baseline](../baseline.md). Feature evidence remains in
-[M18](../../../milestones/m18-codex-note-prettify.md) and its dependency
+[M18](../../../legacy/milestones/m18-codex-note-prettify.md) and its dependency
 milestones rather than being copied here.
 
 Next Courses work: M21E publishes bounded context/association contracts, scopes

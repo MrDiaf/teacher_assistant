@@ -7,8 +7,8 @@ Assistant command ports, and focused Platform+Calendar host. Courses and
 Assistant consume Calendar through exact public contracts only.
 
 Verification: [M21A baseline](../baseline.md). Historical feature acceptance is
-owned by [M7](../../../milestones/m07-final-calendar-hardening.md) and
-[linked batches](../../../milestones/m07a-linked-proposal-batches.md).
+owned by [M7](../../../legacy/milestones/m07-final-calendar-hardening.md) and
+[linked batches](../../../legacy/milestones/m07a-linked-proposal-batches.md).
 
 M21D verification passed provider, Courses, and Assistant integration coverage,
 the full backend/frontend suites, lint, production builds, focused and full

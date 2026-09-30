@@ -13,8 +13,8 @@ failure recording. The port exposes no calendar deletion, protection change,
 bulk deletion, repository, or session.
 
 Verification: [M21A baseline](../baseline.md). Feature evidence is linked from
-[M13](../../../milestones/m13-course-aware-assistant-and-diagnostics.md) and
-[M19](../../../milestones/m19-frontend-navigation-and-draft-persistence.md).
+[M13](../../../legacy/milestones/m13-course-aware-assistant-and-diagnostics.md) and
+[M19](../../../legacy/milestones/m19-frontend-navigation-and-draft-persistence.md).
 
 Next Assistant work: M21F after M21E. It removes remaining foreign internals and
 separates shared AI/diagnostics. M21E is the next planned app-wide milestone and

@@ -23,10 +23,14 @@ refactoring sequence covers ownership and public contracts, application
 composition, a Documents pilot, the other existing modules, Settings module
 controls, and focused Docker testing with final recovery verification.
 
-See the [authoritative milestone index](instructions.md#milestone-status), the
+See the [authoritative milestone plan](PLAN.md), the
 [module ownership index](docs/modules/README.md), and completed Calendar boundary
-[M21D](milestones/m21d-calendar-module-boundary.md). Runtime module switches remain
+[M21D](legacy/milestones/m21d-calendar-module-boundary.md). Runtime module switches remain
 planned for M21H; Calendar and Documents development hosts are available now.
+
+Development follows the working rules in [`guidelines/`](guidelines/); open
+milestones live in [`guidelines/milestones/`](guidelines/milestones/), and
+[`AGENTS.md`](AGENTS.md) gives the reading order for a development session.
 
 ## Application composition wiring
 

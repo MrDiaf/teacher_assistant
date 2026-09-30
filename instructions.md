@@ -1,48 +1,39 @@
 # Teacher Assistant project instructions
 
-This document is the durable project-wide specification and milestone index.
-It describes rules shared by every milestone. Detailed implementation scope and
-acceptance criteria live in the individual files under `milestones/`.
+This document is the durable project-wide product specification. It describes
+the product rules shared by every milestone. It does not describe how work is
+carried out or which milestone is current.
 
-## Required reading order
+## Where everything else lives
 
-Before planning or changing the repository, read these files completely in
-this order:
+The working method is defined by the files under `guidelines/`. The reading
+order for a development session is in `AGENTS.md`, section 3.
 
-1. `AGENTS.md` — repository conduct, safety rules, and session workflow.
-2. `instructions.md` — permanent product constraints and milestone status.
-3. `handoff.md` — current repository state, recent work, and known limitations.
-4. The selected file under `milestones/` — the only implementation scope for
-   that session.
-5. Read `docs/modules/README.md`, the selected owner's README/handoff, and only
-   the public contracts needed from its dependencies. The index identifies the
-   actual paths and records which boundaries are implemented versus planned.
-6. Inspect the relevant implementation and tests before deciding what is
-   missing.
-
-The active documentation set is self-contained. It does not depend on retired
-or historical specification files, and those files may be removed without
-changing this reading order or losing current implementation instructions.
-
-## Document responsibilities
-
-- `AGENTS.md` governs how a development agent works in this repository.
-- `instructions.md` owns global product rules and the milestone status index.
+- `AGENTS.md` holds the project-specific conduct and safety rules and points to
+  the guidelines.
+- `guidelines/` owns the working method: general approach, scope, planning and
+  milestones, development environment, and deployment.
+- `PLAN.md` owns milestone order, dependencies, and checkbox status.
+- A file under `guidelines/milestones/` owns one open milestone's objective,
+  dependencies, scope, required work, completion criteria, verification, and
+  milestone-specific safety requirements.
+- `instructions.md` owns the global product rules below.
 - `handoff.md` owns transient facts such as the current revision, recent work,
   verification results, and immediate cautions.
-- A milestone file owns that milestone's scope, checklist, acceptance criteria,
-  dependencies, and milestone-specific safety requirements.
 - `docs/modules/README.md` indexes module README/handoff pairs created by M21A.
   Each README owns scope, interfaces, paths, and working commands; each local
   handoff owns current work and verification. Root handoff links local state
   and retains shared cautions instead of repeating every module's history.
+- `legacy/` is archived history from the retired workflow, including the
+  completed milestone files. It is never guidance. `AGENTS.md` opens with a
+  document map marking every path as active or legacy.
 
-Do not place a transient worktree snapshot in this file. Do not place global
-product policy only in a milestone file.
+Do not place a transient worktree snapshot or milestone status in this file. Do
+not place global product policy only in a milestone file.
 
-Together, `AGENTS.md`, `instructions.md`, `handoff.md`, and the milestone files
-contain the complete current development guidance. Future handoffs and
-milestones must not require a retired specification file.
+The active documentation set is self-contained. It does not depend on the
+archived milestone files, and those files may be removed without losing current
+instructions.
 
 ## Product and scope
 
@@ -311,125 +302,13 @@ calendar files, or logs containing private owner data. Do not commit, push,
 merge, rebase, delete branches, or discard owner work without an explicit
 request.
 
-## Milestone workflow
+## Milestones and working method
 
-Only one explicitly selected milestone may be active at a time.
+How work is planned, scoped, verified, and reported is defined by the files
+under `guidelines/` together with `AGENTS.md`, not by this file. Milestone
+order and status are in `PLAN.md`; each open milestone is a file under
+`guidelines/milestones/`.
 
-At the start of a development session:
-
-1. Follow the required reading order above.
-2. Run `git status --short` and preserve owner changes.
-3. State the selected milestone and first incomplete subtask.
-4. Inspect the implementation and tests relevant to that subtask.
-
-During implementation:
-
-- implement only the selected milestone;
-- preserve completed behavior;
-- do not scaffold unrelated future modules;
-- test in proportion to risk, with Codex mocked in ordinary tests;
-- do not mark a checkbox complete until its behavior is verified.
-
-When the owner says only `continue`, perform the first incomplete subtask in
-the already active milestone. If there is no active milestone or incomplete
-subtask, do not automatically start the next planned milestone; ask the owner
-to select it for implementation.
-
-At completion, update both the selected milestone file and the status checklist
-below. Update `handoff.md` with the new current state and exact next step.
-
-## Milestone status
-
-- [x] [M1 — Calendar backend foundation](milestones/m01-calendar-backend-foundation.md)
-- [x] [M2 — Calendar interface](milestones/m02-calendar-interface.md)
-- [x] [M3 — Complete calendar interactions](milestones/m03-complete-calendar-interactions.md)
-- [x] [M4 — ICS import and subscriptions](milestones/m04-ics-import-and-subscriptions.md)
-- [x] [M5 — Assistant chat, read-only first](milestones/m05-assistant-chat-read-only.md)
-- [x] [M6 — Codex calendar proposals](milestones/m06-codex-calendar-proposals.md)
-- [x] [M7 — Final calendar hardening](milestones/m07-final-calendar-hardening.md)
-- [x] [Post-M7 — Linked proposal batches](milestones/m07a-linked-proposal-batches.md)
-- [x] [M8 — Course foundation](milestones/m08-course-foundation.md)
-- [x] [M9 — Course materials](milestones/m09-course-materials.md)
-- [x] [M10 — Notes and slide references](milestones/m10-notes-and-slide-references.md)
-- [x] [M11 — AI summaries and model selection](milestones/m11-ai-summaries-and-model-selection.md)
-- [x] [M12 — Course-linked calendars](milestones/m12-course-linked-calendars.md)
-- [x] [M13 — Course-aware Assistant and diagnostics](milestones/m13-course-aware-assistant-and-diagnostics.md)
-- [x] [M14 — Data durability, relocation, and update safety](milestones/m14-data-durability-and-relocation-safety.md)
-- [x] [M15 — Open uploaded PDFs in Teacher Assistant and a new window](milestones/m15-pdf-viewing.md)
-- [x] [M16 — Lightweight Markdown note editor](milestones/m16-lightweight-markdown-note-editor.md)
-- [x] [M17 — Minimized notes, summary decluttering, and removable bullets](milestones/m17-summary-decluttering-and-bullet-removal.md)
-- [x] [M18 — Codex note prettify suggestions](milestones/m18-codex-note-prettify.md)
-- [x] [M19 — Frontend navigation and Assistant-draft persistence](milestones/m19-frontend-navigation-and-draft-persistence.md)
-- [x] [M20 — Forwarded-mail Inbox](milestones/m20-forwarded-mail-inbox.md)
-- [x] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
-- [x] [M21A - Module ownership, contracts, and refactoring baseline](milestones/m21a-module-ownership-and-baseline.md)
-- [x] [M21B - Application composition and shared platform boundaries](milestones/m21b-application-composition.md)
-- [x] [M21C - Documents module and isolated development pilot](milestones/m21c-documents-module-pilot.md)
-- [x] [M21D - Calendar ownership and public service contract](milestones/m21d-calendar-module-boundary.md)
-- [ ] [M21E - Courses ownership and Calendar integration](milestones/m21e-courses-module-boundary.md)
-- [ ] [M21F - Assistant boundary, shared AI runtime, and diagnostics](milestones/m21f-assistant-and-ai-platform.md)
-- [ ] [M21G - Inbox ownership and contributed Settings panels](milestones/m21g-inbox-and-settings-boundary.md)
-- [ ] [M21H - Module controls and data-preserving lifecycle](milestones/m21h-module-controls-and-lifecycle.md)
-- [ ] [M21I - Modular verification, Docker workflow, and refactoring completion](milestones/m21i-modular-verification-and-cutover.md)
-- [ ] [M22 — Relative LaTeX file tree and source editor](milestones/m22-relative-latex-editor.md)
-- [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
-- [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
-
-Most recently completed milestone: **M21D - Calendar ownership and public
-service contract**. No milestone is active.
-
-M21D is complete. Calendar owns its application errors, feature stylesheet,
-scoped backend/browser tests, typed query and restricted Assistant command
-ports, and dependency-closed focused host selection. Courses and Assistant now
-consume Calendar only through its public contracts, while Assistant proposal
-confirmation preserves one shared transaction. The boundary manifest contains
-no M21D exception. M21E and M22 remain inactive and require explicit owner
-selection.
-
-M21B established the typed common module contract, explicit
-frontend-page/backend-router assembly, bounded backend lifecycle hooks, shared
-UI/platform entry points with compatible navigation state, composition and
-lifecycle enforcement tests, tightened boundaries, and documented static
-extension points. Every current module remains enabled by default.
-
-M1 through M21 and the post-M7 linked-batch milestone are complete. The
-post-M13 Assistant diagnostics, general-helper routing, bounded automatic
-response correction, progress display, cancellation, and false course-note
-matching refinements are also complete and are recorded with M13 and in
-`handoff.md`.
-
-M21A-M21D are complete; M21E-M21I remain planned and intentionally unchecked.
-Their required remaining order is Courses, Assistant and AI platform,
-Inbox/Settings, module controls, and final verification.
-These suffix IDs insert the refactoring without renumbering completed work or
-the existing feature specifications.
-
-M22-M24 remain planned and unchecked after M21I: relative LaTeX editing,
-isolated compilation, then Codex error advice. Complete the refactoring before
-starting this feature work. Planning does not authorize implementation; the
-owner must select one milestone explicitly. Reordering requires an explicit
-owner decision.
-
-## Definition of done
-
-A milestone is complete only when:
-
-- every applicable acceptance criterion is satisfied;
-- relevant tests pass and Docker development still starts;
-- safety and read-only rules remain enforced server-side;
-- errors, loading states, and empty states are handled where applicable;
-- the existing visual design is preserved;
-- no unrelated future scope was implemented;
-- the milestone checklist and this status index are accurate;
-- `handoff.md` and setup/user documentation are updated when needed.
-
-End every development session with:
-
-```text
-Completed:
-Tests run:
-Known limitations:
-Files changed:
-Current milestone status:
-Recommended next prompt:
-```
+Only one explicitly owner-selected milestone may be active at a time. Planning
+a milestone does not authorize implementing it, and reordering the plan
+requires an explicit owner decision.

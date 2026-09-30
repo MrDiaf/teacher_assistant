@@ -27,7 +27,7 @@ isolated Compose project, PostgreSQL database, private-data volumes, and default
 UI/API ports `15173`/`18000`, so it can run beside the owner application.
 
 Verification: [M21A baseline](../baseline.md). Completed feature acceptance is
-in [M21](../../../milestones/m21-durable-documents-foundation.md).
+in [M21](../../../legacy/milestones/m21-durable-documents-foundation.md).
 
 Final verification: `make test-module MODULE=documents` passed 34 backend, 29
 frontend, and 2 browser tests. Backend tests use the real focused host, truncate

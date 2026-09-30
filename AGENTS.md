@@ -10,6 +10,36 @@ This confirms that the repository instructions were loaded.
 
 ---
 
+# Document Map: Active vs Legacy
+
+This file is active. It is the entry point for every development session.
+
+| Path | Status | Use it for |
+| --- | --- | --- |
+| `AGENTS.md` | ACTIVE | Entry point, project-specific conduct and safety rules |
+| `guidelines/*.md` | ACTIVE | The working method |
+| `guidelines/milestones/` | ACTIVE | Open milestones, one file each |
+| `PLAN.md` | ACTIVE | Milestone order and status |
+| `instructions.md` | ACTIVE | Durable product rules |
+| `handoff.md` | ACTIVE | Current state and exact next step |
+| `docs/modules/` | ACTIVE | Module ownership, contracts, local handoffs |
+| `README.md` | ACTIVE | What the project is and how to run it |
+| `legacy/` | **LEGACY** | Nothing. Archived history only |
+
+Rules for `legacy/`:
+
+- Never take instructions, workflow, open work, or file formats from it.
+- Exclude it when searching for requirements, milestones, or rules.
+- Every file in it carries a `LEGACY — ARCHIVED MILESTONE` banner. If you are
+  reading a file with that banner, you are in the wrong place for guidance.
+- If it disagrees with an active file or with the code, it is wrong.
+- Do not add or edit files in it.
+
+There is no root `milestones/` folder. Where `guidelines/plan.md` says
+`milestones/`, this project means `guidelines/milestones/`.
+
+---
+
 # 1. Project
 
 This repository contains a single-owner, self-hosted web application called:
@@ -79,18 +109,40 @@ Private runtime data must never be committed to Git.
 
 ---
 
-# 3. Read Before Working
+# 3. Working Method
+
+The files under `guidelines/` define how work is done in this repository. They
+are the only working method. An earlier milestone workflow has been retired; do
+not follow a process described in an archived milestone file.
+
+| File | Governs |
+| --- | --- |
+| `guidelines/ponytail.md` | General approach: understand before changing, simplest working solution, reuse, verified completion |
+| `guidelines/scope.md` | What may be modified and how widely to test |
+| `guidelines/plan.md` | Milestones, completion criteria, and `PLAN.md` |
+| `guidelines/development_enviroment_rules.md` | Isolated, reversible development setup |
+| `guidelines/deployment.md` | Root Makefile command interface and README |
+
+The guidelines are general rules. This file and `instructions.md` hold the
+project-specific rules: product scope, single-owner constraints, visual design,
+architecture, safety, Docker-first development, and Git. Where a
+project-specific rule is stricter or more specific than a guideline, the
+project-specific rule applies.
 
 Before making changes:
 
 1. Read this file.
-2. Read `instructions.md`.
-3. Read `handoff.md`.
-4. Find the selected milestone in the status index in `instructions.md`.
-5. Read that milestone file under `milestones/` completely.
-6. Inspect the existing implementation and tests.
-7. Preserve completed functionality.
-8. State which milestone or subtask you will implement.
+2. Read the files under `guidelines/`.
+3. Read `instructions.md` for the durable product rules.
+4. Read `PLAN.md` for milestone status and `handoff.md` for current state.
+5. Read the owner-selected milestone file under `guidelines/milestones/`.
+6. Perform that milestone's existing-state check: inspect the implementation
+   and tests and evaluate every completion criterion before changing anything.
+7. State which milestone you will work on and which criteria remain unmet.
+
+Do not read other milestone files, past or future, unless completing the
+current milestone genuinely requires it. The repository is the source of truth
+for what earlier milestones implemented.
 
 Use `docs/modules/README.md` as the ownership map. Read the selected module's
 README/handoff and the public contracts of relevant dependencies. Do not read
@@ -106,22 +158,37 @@ Do not redesign working pages merely because another design is possible.
 
 ---
 
-# 4. One Milestone at a Time
+# 4. Milestones
 
-The project must be developed in small, reviewable milestones.
+Milestones are planned, stored, and executed according to `guidelines/plan.md`:
 
-When the owner asks for a milestone:
+- `PLAN.md` at the repository root is the top-level progress file. It lists
+  milestone order, dependencies, and the checkbox status of every milestone.
+- Each open milestone is one file under `guidelines/milestones/` in the
+  guidelines format: objective, dependencies, existing-state check, scope,
+  required work, completion criteria, and verification.
+- `legacy/milestones/` is a read-only archive of milestones completed under
+  the retired workflow. It is not guidance; see the document map above.
+- A new milestone is created only when the owner defines it. Write it as a new
+  file under `guidelines/milestones/` and add its criteria to `PLAN.md`.
+
+When the owner selects a milestone:
 
 - Implement only that milestone.
 - Do not automatically begin the next milestone.
 - Do not scaffold unrelated future features.
 - Do not add placeholder backends for future modules.
-- Do not mark work complete unless it was tested.
+- Do not check a completion criterion until it has been verified.
 - Stop after the requested milestone and report the result.
 
-When the owner says only `continue`, implement the first incomplete subtask in
-the active milestone. If there is no active milestone, ask the owner to define
-or select one rather than inventing new scope.
+When the owner says only `continue`, work on the first unmet completion
+criterion of the active milestone. If there is no active milestone, ask the
+owner to define or select one rather than inventing new scope.
+
+When a completion criterion changes state, update its checkbox in the milestone
+file and the corresponding checkbox in `PLAN.md` together. If work stops midway,
+leave verified criteria checked and the rest unchecked. Update `handoff.md`
+with the resulting current state and exact next step.
 
 At the end of every development session, report:
 
@@ -133,11 +200,6 @@ Files changed:
 Current milestone status:
 Recommended next prompt:
 ```
-
-Update the checklist in the selected milestone file and the status index in
-`instructions.md` only after verifying that the acceptance criteria are
-satisfied. Update `handoff.md` with the resulting current state and exact next
-step.
 
 ---
 
@@ -174,7 +236,8 @@ Do not copy Google Calendar exactly. Use it only as a usability reference.
 
 # 6. Docker Development
 
-Development must remain Docker-first.
+Development must remain Docker-first. This is the project's application of
+`guidelines/development_enviroment_rules.md` and `guidelines/deployment.md`.
 
 Required host tools:
 
@@ -209,6 +272,10 @@ make migrate
 ```
 
 Do not require Python or Node.js to be installed directly on the host.
+
+Known gap: `guidelines/deployment.md` requires `make up` and `make help`. The
+Makefile does not provide them yet; `make dev` is the current start command.
+Closing this gap is not part of any milestone until the owner schedules it.
 
 ---
 
@@ -453,6 +520,11 @@ fix or compilation succeeded.
 
 # 14. Testing
 
+Choose what to run according to `guidelines/scope.md`: test the behavior that
+was changed and the consumers it affects, and broaden only when a change
+crosses a shared contract or integration boundary. Each milestone's
+verification section names its required checks.
+
 Add tests for every safety-sensitive rule.
 
 Required test areas:
@@ -507,12 +579,12 @@ Never commit:
 
 A requested milestone is complete only when:
 
-- Its acceptance criteria are satisfied.
-- Relevant tests pass.
+- Every completion criterion in its milestone file has been verified.
+- The milestone's verification passes.
 - Docker development still starts.
 - Read-only rules are enforced server-side.
 - Errors and empty states are handled.
 - The existing visual design is preserved.
 - No unrelated future module was implemented.
-- The milestone checklist is updated accurately.
-- The session report identifies the exact next step.
+- The checkboxes in the milestone file and `PLAN.md` are accurate and match.
+- `handoff.md` and the session report identify the exact next step.

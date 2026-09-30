@@ -14,8 +14,9 @@ ownership debt and exact legacy exceptions in
 
 ## Reading workflow
 
-After the project-wide `AGENTS.md`, `instructions.md`, and root `handoff.md`,
-read the selected milestone and the README/handoff for the owner being changed.
+After the project-wide `AGENTS.md`, `guidelines/`, `instructions.md`, `PLAN.md`,
+and root `handoff.md`, read the selected milestone under `guidelines/milestones/`
+and the README/handoff for the owner being changed.
 Read dependency READMEs only for contracts the change consumes. Do not load all
 module histories for an ordinary local change.
 
