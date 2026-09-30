@@ -16,6 +16,10 @@ Verification: [M21A baseline](../baseline.md). Feature evidence is linked from
 [M13](../../../legacy/milestones/m13-course-aware-assistant-and-diagnostics.md) and
 [M19](../../../legacy/milestones/m19-frontend-navigation-and-draft-persistence.md).
 
-Next Assistant work: M21F after M21E. It removes remaining foreign internals and
-separates shared AI/diagnostics. M21E is the next planned app-wide milestone and
-requires explicit owner selection.
+M21E moved course context onto Courses' public contract. Assistant still owns
+when course context applies and which notes are relevant; it no longer queries
+Courses tables. The existing course-aware Assistant tests pass unchanged
+against the real contract.
+
+Next Assistant work: M21F. It removes the remaining Platform AI/diagnostic
+internals and separates shared AI/diagnostics.

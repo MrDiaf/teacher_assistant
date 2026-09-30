@@ -5,15 +5,16 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import noload, selectinload
 
 from app.core.errors import InvalidAssistantResponseError
-from app.course_sources.models import CourseSourceType, ExtractionStatus
-from app.courses.models import Course
+from app.courses.public import (
+    CourseContextQueryPort,
+    CourseSummary,
+    NoteReference,
+    course_context_query_port,
+)
 from app.diagnostics.redaction import redact_text
-from app.notes.models import Note, NoteSourceLink
 
 MAX_CONTEXT_NOTES = 8
 MAX_CONTEXT_SLIDES = 40
@@ -274,19 +275,26 @@ class CourseContextSelection:
 
 
 class CourseContextService:
-    def __init__(self, session: AsyncSession) -> None:
-        self.session = session
+    """Assistant-owned policy for when and which course context is relevant.
+
+    Courses owns the records.  This service decides relevance from the owner's
+    question and asks Courses' public contract for bounded, identified excerpts;
+    it never queries Courses tables or receives ORM entities.
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        courses: CourseContextQueryPort | None = None,
+    ) -> None:
+        self.courses = courses or course_context_query_port(session)
 
     async def select(self, question: str) -> CourseContextSelection:
         # Capability questions describe how note access works; they do not need any
         # private note bodies and must not accidentally become citation-required turns.
         if _is_capability_question(question):
             return self._empty()
-        courses = list(
-            await self.session.scalars(
-                select(Course).order_by(Course.name, Course.id)
-            )
-        )
+        courses = list(await self.courses.list_courses())
         if not courses:
             return self._empty()
 
@@ -294,8 +302,7 @@ class CourseContextService:
         explicit_courses = [
             course for course in courses if self._course_is_named(course, normalized_question)
         ]
-        note_intent = _has_explicit_note_intent(question)
-        if not note_intent:
+        if not _has_explicit_note_intent(question):
             if explicit_courses and _has_explicit_calendar_intent(question):
                 return CourseContextSelection(
                     courses=[
@@ -309,41 +316,31 @@ class CourseContextService:
             return self._empty()
 
         question_tokens = set(_tokens(question))
-        notes = list(
-            await self.session.scalars(
-                select(Note)
-                .join(Course, Course.id == Note.course_id)
-                .options(noload(Note.slide_references))
-                .order_by(Note.updated_at.desc(), Note.id)
-            )
-        )
-        matched_notes = [
-            note
-            for note in notes
-            if question_tokens
-            and question_tokens.intersection(
-                _TOKEN_PATTERN.findall(f"{note.title} {note.body}".casefold())
-            )
-        ]
         course_by_id = {course.id: course for course in courses}
 
-        requires_clarification = False
+        selected_notes: list[NoteReference]
         if explicit_courses:
             selected_course_ids = {course.id for course in explicit_courses[:2]}
-            selected_notes: list[Note] = []
-            if note_intent:
-                selected_notes = [
-                    note
-                    for note in matched_notes
-                    if note.course_id in selected_course_ids
-                ]
-                if not selected_notes:
-                    selected_notes = [
-                        note
-                        for note in notes
-                        if note.course_id in selected_course_ids
-                    ]
+            selected_notes = list(
+                await self.courses.find_notes(
+                    course_ids=selected_course_ids,
+                    match_tokens=question_tokens,
+                    limit=MAX_CONTEXT_NOTES,
+                )
+            )
+            if not selected_notes:
+                selected_notes = list(
+                    await self.courses.find_notes(
+                        course_ids=selected_course_ids,
+                        limit=MAX_CONTEXT_NOTES,
+                    )
+                )
         else:
+            matched_notes = [
+                note
+                for note in await self.courses.find_notes(match_tokens=question_tokens)
+                if note.course_id in course_by_id
+            ]
             matched_course_ids = {note.course_id for note in matched_notes}
             if len(matched_course_ids) > 1:
                 selected_courses = [
@@ -362,7 +359,7 @@ class CourseContextService:
                 )
             selected_course_ids = matched_course_ids
             selected_notes = matched_notes
-            if note_intent and not matched_course_ids:
+            if not matched_course_ids:
                 if len(courses) > 1:
                     return CourseContextSelection(
                         courses=[
@@ -374,12 +371,12 @@ class CourseContextService:
                         requires_clarification=True,
                     )
                 selected_course_ids = {courses[0].id}
-                selected_notes = [
-                    note for note in notes if note.course_id == courses[0].id
-                ]
-
-        if not selected_course_ids:
-            return self._empty()
+                selected_notes = list(
+                    await self.courses.find_notes(
+                        course_ids=selected_course_ids,
+                        limit=MAX_CONTEXT_NOTES,
+                    )
+                )
 
         selected_courses = [
             course_by_id[course_id]
@@ -388,117 +385,61 @@ class CourseContextService:
                 key=lambda item: course_by_id[item].name.casefold(),
             )
         ]
-        selected_notes = selected_notes[:MAX_CONTEXT_NOTES]
-        if selected_notes:
-            selected_note_ids = [note.id for note in selected_notes]
-            loaded_notes = list(
-                await self.session.scalars(
-                    select(Note)
-                    .where(Note.id.in_(selected_note_ids))
-                    .options(
-                        selectinload(Note.slide_references).selectinload(
-                            NoteSourceLink.source
-                        )
-                    )
-                    .execution_options(populate_existing=True)
-                )
-            )
-            loaded_by_id = {note.id: note for note in loaded_notes}
-            selected_notes = [
-                loaded_by_id[note_id]
-                for note_id in selected_note_ids
-                if note_id in loaded_by_id
-            ]
-        note_payloads: list[dict[str, Any]] = []
-        remaining_note_chars = MAX_NOTE_CONTEXT_CHARS
-        for note in selected_notes:
-            body = note.body[: min(MAX_NOTE_BODY_CHARS, remaining_note_chars)]
-            remaining_note_chars -= len(body)
-            note_payloads.append(
+        context = await self.courses.get_note_context(
+            [note.id for note in selected_notes[:MAX_CONTEXT_NOTES]],
+            max_note_body_chars=MAX_NOTE_BODY_CHARS,
+            max_note_context_chars=MAX_NOTE_CONTEXT_CHARS,
+            max_slides=MAX_CONTEXT_SLIDES,
+            max_slide_text_chars=MAX_SLIDE_TEXT_CHARS,
+            max_slide_context_chars=MAX_SLIDE_CONTEXT_CHARS,
+        )
+
+        return CourseContextSelection(
+            courses=[self._serialize_course(item) for item in selected_courses],
+            notes=[
                 {
                     "id": str(note.id),
                     "course_id": str(note.course_id),
                     "title": redact_text(note.title),
-                    "body": redact_text(body, max_length=MAX_NOTE_BODY_CHARS),
+                    "body": redact_text(note.body, max_length=MAX_NOTE_BODY_CHARS),
                     "updated_at": note.updated_at.isoformat(),
                 }
-            )
-            if remaining_note_chars <= 0:
-                break
-
-        allowed_note_ids = {uuid.UUID(item["id"]) for item in note_payloads}
-        references: list[dict[str, Any]] = []
-        slide_text: list[dict[str, Any]] = []
-        remaining_slide_chars = MAX_SLIDE_CONTEXT_CHARS
-        for note in selected_notes:
-            if note.id not in allowed_note_ids:
-                continue
-            for reference in note.slide_references:
-                source = reference.source
-                if (
-                    source.source_type != CourseSourceType.SLIDES
-                    or source.extraction_status != ExtractionStatus.COMPLETED
-                ):
-                    continue
-                references.append(
-                    {
-                        "id": str(reference.id),
-                        "note_id": str(note.id),
-                        "source_id": str(source.id),
-                        "source_name": redact_text(source.display_name),
-                        "start_slide": reference.start_slide,
-                        "end_slide": reference.end_slide,
-                        "label": (
-                            redact_text(reference.label)
-                            if reference.label
-                            else None
-                        ),
-                    }
-                )
-                for content in sorted(
-                    source.extracted_contents,
-                    key=lambda item: item.page_or_slide_number,
-                ):
-                    if len(slide_text) >= MAX_CONTEXT_SLIDES:
-                        break
-                    if (
-                        reference.start_slide is not None
-                        and content.page_or_slide_number < reference.start_slide
-                    ) or (
-                        reference.end_slide is not None
-                        and content.page_or_slide_number > reference.end_slide
-                    ):
-                        continue
-                    text = content.text[: min(MAX_SLIDE_TEXT_CHARS, remaining_slide_chars)]
-                    if not text:
-                        continue
-                    slide_text.append(
-                        {
-                            "note_id": str(note.id),
-                            "source_id": str(source.id),
-                            "source_name": redact_text(source.display_name),
-                            "slide_number": content.page_or_slide_number,
-                            "text": redact_text(text),
-                        }
-                    )
-                    remaining_slide_chars -= len(text)
-                    if remaining_slide_chars <= 0:
-                        break
-                if len(slide_text) >= MAX_CONTEXT_SLIDES or remaining_slide_chars <= 0:
-                    break
-            if len(slide_text) >= MAX_CONTEXT_SLIDES or remaining_slide_chars <= 0:
-                break
-
-        return CourseContextSelection(
-            courses=[self._serialize_course(item) for item in selected_courses],
-            notes=note_payloads,
-            slide_references=references,
-            selected_slide_text=slide_text,
-            requires_clarification=requires_clarification,
+                for note in context.notes
+            ],
+            slide_references=[
+                {
+                    "id": str(reference.id),
+                    "note_id": str(reference.note_id),
+                    "source_id": str(reference.source_id),
+                    "source_name": redact_text(reference.source_name),
+                    "start_slide": reference.start_slide,
+                    "end_slide": reference.end_slide,
+                    "label": redact_text(reference.label) if reference.label else None,
+                }
+                for reference in context.slide_references
+            ],
+            selected_slide_text=[
+                {
+                    "note_id": str(slide.note_id),
+                    "source_id": str(slide.source_id),
+                    "source_name": redact_text(slide.source_name),
+                    "slide_number": slide.slide_number,
+                    "text": redact_text(slide.text),
+                }
+                for slide in context.slide_text
+            ],
+            requires_clarification=False,
         )
 
+    async def linked_calendar_ids(
+        self, selection: CourseContextSelection
+    ) -> set[uuid.UUID]:
+        """Calendar IDs associated with the selected courses, as Courses reports them."""
+
+        return set(await self.courses.list_linked_calendar_ids(selection.course_ids))
+
     @staticmethod
-    def _course_is_named(course: Course, normalized_question: str) -> bool:
+    def _course_is_named(course: CourseSummary, normalized_question: str) -> bool:
         normalized_name = _normalized(course.name)
         padded_question = f" {normalized_question} "
         if normalized_name and f" {normalized_name} " in padded_question:
@@ -507,7 +448,7 @@ class CourseContextService:
         return bool(normalized_code and f" {normalized_code} " in padded_question)
 
     @staticmethod
-    def _serialize_course(course: Course) -> dict[str, Any]:
+    def _serialize_course(course: CourseSummary) -> dict[str, Any]:
         return {
             "id": str(course.id),
             "name": redact_text(course.name),

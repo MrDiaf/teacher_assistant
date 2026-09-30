@@ -12,14 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.service import AiModelRegistry
 from app.codex_runtime.adapter import CodexAdapter
 from app.codex_runtime.workspace import create_summary_workspace
-from app.core.errors import (
-    ApplicationError,
+from app.core.errors import ApplicationError
+from app.course_sources.models import ExtractionStatus
+from app.courses.errors import (
     NoteSummaryBulletNotFoundError,
     NoteSummaryNotEditableError,
     NoteSummaryNotRetryableError,
     NoteSummarySourceUnavailableError,
 )
-from app.course_sources.models import ExtractionStatus
 from app.notes.models import Note
 from app.notes.repository import NoteRepository
 from app.notes.summary_models import NoteSummary, NoteSummaryStatus

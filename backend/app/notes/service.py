@@ -3,12 +3,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import (
-    CourseSourceNotFoundError,
-    InvalidNoteSlideReferenceError,
-)
 from app.course_sources.models import CourseSourceType
 from app.course_sources.repository import CourseSourceRepository
+from app.courses.errors import CourseSourceNotFoundError, InvalidNoteSlideReferenceError
 from app.courses.repository import CourseRepository
 from app.notes.models import Note
 from app.notes.repository import NoteRepository

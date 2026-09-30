@@ -273,6 +273,24 @@ async def test_chatgpt_device_login_exposes_only_safe_browser_details(
     assert signed_out_again.json()["authenticated"] is False
 
 
+async def test_assistant_rejects_a_model_outside_the_server_allowlist(
+    client: AsyncClient,
+    fake_codex: FakeCodexAdapter,
+) -> None:
+    conversation = await create_conversation(client)
+
+    rejected = await ask(
+        client,
+        conversation["id"],
+        "What is tomorrow?",
+        model="browser-invented-model",
+    )
+
+    assert rejected.status_code == 400
+    assert rejected.json()["code"] == "invalid_ai_model"
+    assert fake_codex.calls == []
+
+
 async def test_read_only_question_reaches_mocked_codex_with_private_calendar_context(
     client: AsyncClient,
     fake_codex: FakeCodexAdapter,

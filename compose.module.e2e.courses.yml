@@ -1,0 +1,4 @@
+services:
+  backend:
+    volumes: !override
+      - e2e-course-content:/data/course_content

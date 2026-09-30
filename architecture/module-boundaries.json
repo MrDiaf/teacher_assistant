@@ -56,28 +56,14 @@
       "inbox": "app.inbox.entry"
     },
     "public_contracts": {
-      "calendar": ["app.calendar.public"]
+      "calendar": ["app.calendar.public"],
+      "courses": ["app.courses.public"]
     },
     "legacy_exceptions": [
       {
         "importer": "backend/app/assistant/course_context.py",
-        "imported": "app.course_sources.models",
-        "remove_in": "M21E"
-      },
-      {
-        "importer": "backend/app/assistant/course_context.py",
-        "imported": "app.courses.models",
-        "remove_in": "M21E"
-      },
-      {
-        "importer": "backend/app/assistant/course_context.py",
         "imported": "app.diagnostics.redaction",
         "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/course_context.py",
-        "imported": "app.notes.models",
-        "remove_in": "M21E"
       },
       {
         "importer": "backend/app/assistant/routes.py",
@@ -113,11 +99,6 @@
         "importer": "backend/app/assistant/service.py",
         "imported": "app.codex_runtime.workspace",
         "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
-        "imported": "app.course_calendars.repository",
-        "remove_in": "M21E"
       },
       {
         "importer": "backend/app/assistant/service.py",

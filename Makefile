@@ -1,7 +1,7 @@
 COMPOSE := docker compose -f compose.yml -f compose.dev.yml
 TEST_COMPOSE := docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml
 E2E_COMPOSE := docker compose -p teacher-assistant-e2e -f compose.e2e.yml
-SUPPORTED_MODULE_HOSTS := calendar documents
+SUPPORTED_MODULE_HOSTS := calendar courses documents
 MODULE_BACKEND_PORT ?= 18000
 MODULE_FRONTEND_PORT ?= 15173
 MODULE_COMPOSE = MODULE_HOST=$(MODULE) BACKEND_PORT=$(MODULE_BACKEND_PORT) \
@@ -15,12 +15,15 @@ MODULE_TEST_COMPOSE = MODULE_HOST=$(MODULE) docker compose \
 MODULE_E2E_COMPOSE = MODULE_HOST=$(MODULE) docker compose \
 	-p teacher-assistant-module-$(MODULE)-e2e \
 	-f compose.e2e.yml -f compose.module.e2e.yml \
-	$(if $(filter documents,$(MODULE)),-f compose.module.e2e.documents.yml,)
-MODULE_BACKEND_TESTS_calendar := tests/test_module_host.py tests/test_module_registration.py tests/calendar tests/test_course_calendars.py tests/test_assistant_api.py
+	$(if $(wildcard compose.module.e2e.$(MODULE).yml),-f compose.module.e2e.$(MODULE).yml,)
+MODULE_BACKEND_TESTS_calendar := tests/test_module_host.py tests/test_module_registration.py tests/calendar tests/courses/test_course_calendars.py tests/test_assistant_api.py
+MODULE_BACKEND_TESTS_courses := tests/test_module_host.py tests/test_module_registration.py tests/courses tests/test_assistant_api.py tests/test_data_archive.py
 MODULE_BACKEND_TESTS_documents := tests/test_module_host.py tests/test_module_registration.py tests/documents
 MODULE_FRONTEND_TESTS_calendar := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/calendar src/features/courses/CourseCalendar.test.tsx
+MODULE_FRONTEND_TESTS_courses := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/courses
 MODULE_FRONTEND_TESTS_documents := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/documents
 MODULE_E2E_TEST_calendar := tests/calendar.spec.ts
+MODULE_E2E_TEST_courses := tests/courses.spec.ts
 MODULE_E2E_TEST_documents := tests/documents.spec.ts
 require-supported-module = \
 	$(if $(filter 1,$(words $(strip $(MODULE)))),,$(error MODULE must name exactly one supported module: $(SUPPORTED_MODULE_HOSTS))) \

@@ -99,8 +99,8 @@ route or response provider.
   infrastructure. Configuration, errors, database sessions, and models remain
   infrastructure rather than unrestricted feature service APIs.
 
-The Documents recovery contribution is implemented; equivalent ownership for
-other private roots remains with their later module milestones. Calendar's
+The Documents and Courses recovery contributions are implemented; mail storage
+ownership remains with M21G. Calendar's
 restricted Assistant port binds internally to the coordinator's transaction
 without exposing a session, repository, raw SQL, physical path, or credential.
 
@@ -117,8 +117,8 @@ boundary manifest; that root wiring is not permission for other Platform code
 to reach feature internals. Feature code consumes the Platform UI, persistence,
 API, and model-selection façades; Settings still imports Inbox internals.
 AI/diagnostic deeper separation belongs to M21F; mail Settings separation belongs
-to M21G. Courses, Assistant, and Inbox selectors remain deliberately mixed in
-the legacy stylesheet until their owner milestones extract them; Calendar and
+to M21G. Assistant and Inbox selectors remain deliberately mixed in the legacy
+stylesheet until their owner milestones extract them; Calendar, Courses, and
 Documents styles are feature-owned.
 
 ## Current commands
@@ -133,6 +133,8 @@ make check-module-contract
 make test
 make dev-module MODULE=calendar
 make test-module MODULE=calendar
+make dev-module MODULE=courses
+make test-module MODULE=courses
 make dev-module MODULE=documents
 make test-module MODULE=documents
 make logs-module MODULE=documents
@@ -143,7 +145,7 @@ make migrate
 make data-relocation-test
 ```
 
-Only `calendar` and `documents` are currently allowlisted; unknown and multiple
+Only `calendar`, `courses`, and `documents` are currently allowlisted; unknown and multiple
 IDs fail before Compose starts. The development defaults are UI `15173` and API `18000` and may
 be overridden with `MODULE_FRONTEND_PORT`/`MODULE_BACKEND_PORT`. The focused
 test command verifies dependency closure, real entries, routes, lifecycle

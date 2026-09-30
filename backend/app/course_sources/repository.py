@@ -4,7 +4,6 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import CourseSourceNotFoundError
 from app.course_sources.extraction import ExtractedSegment
 from app.course_sources.models import (
     CourseSource,
@@ -12,6 +11,7 @@ from app.course_sources.models import (
     ExtractedSourceText,
     ExtractionStatus,
 )
+from app.courses.errors import CourseSourceNotFoundError
 
 
 class CourseSourceRepository:

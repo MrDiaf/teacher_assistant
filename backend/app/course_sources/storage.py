@@ -15,17 +15,17 @@ from typing import TYPE_CHECKING
 
 from starlette.concurrency import run_in_threadpool
 
-from app.core.errors import (
-    CourseSourceContentUnavailableError,
-    CourseSourceFileTooLargeError,
-    CourseSourceStorageError,
-    InvalidCourseSourceFileError,
-)
 from app.course_sources.extraction import (
     PDF_MIME_TYPE,
     PPTX_MIME_TYPE,
 )
 from app.course_sources.models import CourseSourceType
+from app.courses.errors import (
+    CourseSourceContentUnavailableError,
+    CourseSourceFileTooLargeError,
+    CourseSourceStorageError,
+    InvalidCourseSourceFileError,
+)
 
 if TYPE_CHECKING:
     from app.course_sources.models import CourseSource

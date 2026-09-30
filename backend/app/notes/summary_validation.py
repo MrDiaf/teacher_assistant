@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from app.core.errors import InvalidNoteSummaryResponseError
+from app.courses.errors import InvalidNoteSummaryResponseError
 
 
 class SummarySourceReference(BaseModel):

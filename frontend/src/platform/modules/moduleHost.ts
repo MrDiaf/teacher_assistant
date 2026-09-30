@@ -1,4 +1,5 @@
 import { calendarModuleEntry } from "../../features/calendar/entry";
+import { coursesModuleEntry } from "../../features/courses/entry";
 import { documentsModuleEntry } from "../../features/documents/entry";
 import { platformModuleEntry } from "../entry";
 import { moduleCatalog } from "./catalog";
@@ -9,12 +10,17 @@ import {
   type RegisteredPage,
 } from "./frontendContract";
 
-export const SUPPORTED_MODULE_HOST_IDS = ["calendar", "documents"] as const;
+export const SUPPORTED_MODULE_HOST_IDS = [
+  "calendar",
+  "courses",
+  "documents",
+] as const;
 export type ModuleHostId = (typeof SUPPORTED_MODULE_HOST_IDS)[number];
 
 const moduleHostEntries = [
   platformModuleEntry,
   calendarModuleEntry,
+  coursesModuleEntry,
   documentsModuleEntry,
 ] as const satisfies readonly FrontendModuleEntry<ModuleId, PageId>[];
 

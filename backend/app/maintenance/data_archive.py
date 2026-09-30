@@ -12,16 +12,17 @@ import uuid
 from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
+from app.courses.entry import courses_recovery_contribution
 from app.documents.entry import documents_recovery_contribution
 from app.platform.recovery import StorageRecoveryContribution
 
 FORMAT_VERSION = 3
 DATABASE_FILE = "database.dump"
-COURSE_ARCHIVE_FILE = "course-content.tar.gz"
+COURSE_ARCHIVE_FILE = courses_recovery_contribution.archive_file
 MAIL_ARCHIVE_FILE = "mail-attachments.tar.gz"
 DOCUMENT_ARCHIVE_FILE = documents_recovery_contribution.archive_file
 MANIFEST_FILE = "manifest.json"
-COURSE_ARCHIVE_ROOT = "course_content"
+COURSE_ARCHIVE_ROOT = courses_recovery_contribution.archive_root
 MAIL_ARCHIVE_ROOT = "mail_attachments"
 DOCUMENT_ARCHIVE_ROOT = documents_recovery_contribution.archive_root
 BUFFER_SIZE = 1024 * 1024
@@ -78,7 +79,7 @@ def create_storage_archive(source: Path, output: BinaryIO, archive_root: str) ->
 
 
 def create_course_archive(source: Path, output: BinaryIO) -> None:
-    create_storage_archive(source, output, COURSE_ARCHIVE_ROOT)
+    create_contributed_archive(courses_recovery_contribution, source, output)
 
 
 def create_mail_archive(source: Path, output: BinaryIO) -> None:
@@ -214,7 +215,7 @@ def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[
             "bytes": database.stat().st_size,
             "sha256": sha256_file(database),
         },
-        "course_files": {
+        courses_recovery_contribution.manifest_key: {
             "file": COURSE_ARCHIVE_FILE,
             "root": COURSE_ARCHIVE_ROOT,
             "file_count": file_count,
@@ -292,7 +293,12 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     ):
         raise ArchiveValidationError("Backup manifest must exclude integration credentials.")
     database = _manifest_component(bundle, manifest, "database", DATABASE_FILE)
-    courses = _manifest_component(bundle, manifest, "course_files", COURSE_ARCHIVE_FILE)
+    courses = _manifest_component(
+        bundle,
+        manifest,
+        courses_recovery_contribution.manifest_key,
+        courses_recovery_contribution.archive_file,
+    )
     mail = _manifest_component(bundle, manifest, "mail_files", MAIL_ARCHIVE_FILE)
     documents = (
         _manifest_component(
@@ -305,7 +311,7 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
         else None
     )
     file_count = verify_course_archive(courses)
-    course_component = manifest["course_files"]
+    course_component = manifest[courses_recovery_contribution.manifest_key]
     assert isinstance(course_component, dict)
     if course_component.get("file_count") != file_count:
         raise ArchiveValidationError("Course archive file count does not match the manifest.")

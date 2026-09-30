@@ -13,7 +13,7 @@ state first and read its
 [archived milestone file](../../legacy/milestones/m21d-calendar-module-boundary.md)
 only if historical intent is required.
 
-This milestone is planned, not active, until the owner selects it.
+Status: complete. Selected by the owner and verified on 2026-09-30.
 
 ## Existing-state check
 
@@ -91,18 +91,18 @@ unsaved drafts, and course-scoped navigation state. Do not redesign the editor.
 
 ## Completion criteria
 
-- [ ] No other feature queries Courses-owned repositories/tables or imports its
+- [x] No other feature queries Courses-owned repositories/tables or imports its
   internal components; allowed public content queries remain bounded.
-- [ ] Every previously completed Course workflow passes locally and in the full
+- [x] Every previously completed Course workflow passes locally and in the full
   application, including cancellation, failed saves, and deleted/stale IDs.
-- [ ] Literature and Slides remain distinct; note links and validated citations
+- [x] Literature and Slides remain distinct; note links and validated citations
   preserve course ownership and provenance.
-- [ ] Removing a course or association cannot delete Calendar-owned events.
-- [ ] Shared AI access preserves isolation, explicit suggestion acceptance, and
+- [x] Removing a course or association cannot delete Calendar-owned events.
+- [x] Shared AI access preserves isolation, explicit suggestion acceptance, and
   existing data limits without real credentials in ordinary tests.
-- [ ] Course files remain recoverable with matching metadata and hashes through
+- [x] Course files remain recoverable with matching metadata and hashes through
   coordinated backup/restore; include recovery tests if those adapters move.
-- [ ] Focused/contract/integration tests, accessibility, lint/build, Docker
+- [x] Focused/contract/integration tests, accessibility, lint/build, Docker
   startup, migration compatibility, and diff checks pass.
 
 ## Verification

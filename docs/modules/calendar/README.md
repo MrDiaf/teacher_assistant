@@ -32,6 +32,9 @@ by other backend features:
 - `frontend/src/features/calendar/public.ts` exports only the Calendar workspace,
   bounded display types/sidebar contract, and read-only list operation needed
   by Courses. It does not export mutation APIs or Calendar internals.
+- The same file publishes `calendarEmbeddingClasses`: the class names an
+  embedding feature may target or reuse. Calendar must keep styling or
+  rendering each one. A contract test in Courses enforces both directions.
 
 Errors live in `app.calendar.errors` and remain explicit safe application
 errors: not found, read-only/source protected, invalid time/recurrence,
@@ -48,8 +51,8 @@ Courses and Assistant consume the exact `app.calendar.public` contract;
 Courses consumes the exact `features/calendar/public` frontend contract. No
 M21D exception remains in the boundary manifest. The generic `enum_values`
 helper lives in Platform database infrastructure. Calendar selectors live in
-`features/calendar/styles.css`; Courses retains only its embedded
-`.course-calendar .calendar-*` integration overrides until M21E.
+`features/calendar/styles.css`. Courses' embedded `.course-calendar .calendar-*`
+overrides are limited to the published `calendarEmbeddingClasses`.
 
 ## Current commands
 

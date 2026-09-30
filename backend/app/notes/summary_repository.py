@@ -4,8 +4,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NoteSummaryNotFoundError
 from app.course_sources.models import ExtractedSourceText
+from app.courses.errors import NoteSummaryNotFoundError
 from app.notes.summary_models import NoteSummary, NoteSummaryStatus
 
 

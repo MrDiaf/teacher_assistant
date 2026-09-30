@@ -9,12 +9,25 @@ from app.calendar.public import (
     EventSummary,
     calendar_query_port,
 )
-from app.core.errors import CourseCalendarNotLinkedError
 from app.course_calendars.repository import CourseCalendarRepository
+from app.courses.errors import CourseCalendarNotLinkedError
 from app.courses.repository import CourseRepository
 
 
 class CourseCalendarService:
+    """Coordinator for Courses-owned course-calendar associations.
+
+    Courses owns only the link rows.  Calendar existence, contents, and
+    permissions come from Calendar's public query port and are never read from
+    Calendar tables here.
+
+    Transaction boundary: a link or unlink locks the course row, asks Calendar
+    to lock and revalidate the calendar, changes the link, and commits once in
+    this service.  The port is read-only, so an association change can never
+    write, move, or delete a Calendar record; deleting a course or a link
+    removes the association only.
+    """
+
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.courses = CourseRepository(session)

@@ -1,12 +1,15 @@
-"""Public backend entry for Courses-owned routes."""
+"""Public backend entry for Courses code contributions."""
 
 from app.course_calendars.routes import router as course_calendar_router
 from app.course_sources.routes import router as course_source_router
+from app.courses.recovery import courses_recovery_contribution
 from app.courses.routes import router as course_router
 from app.notes.prettify_routes import router as note_prettify_router
 from app.notes.routes import router as note_router
 from app.notes.summary_routes import router as note_summary_router
 from app.platform.modules.backend_contract import BackendModuleEntry, RouterCodeContribution
+
+__all__ = ["courses_backend_entry", "courses_recovery_contribution"]
 
 courses_backend_entry = BackendModuleEntry(
     id="courses",

@@ -11,13 +11,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import CourseSourceFileTooLargeError
 from app.course_sources.models import (
     CourseSource,
     CourseSourceType,
     ExtractedSourceText,
 )
 from app.course_sources.storage import CourseStorage
+from app.courses.errors import CourseSourceFileTooLargeError
 from tests.helpers import (
     create_calendar,
     create_course,

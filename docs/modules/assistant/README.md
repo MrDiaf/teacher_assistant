@@ -38,8 +38,10 @@ before a separately committed safe failure record.
 
 Assistant's approved dependencies are Calendar, Courses, and Platform public
 contracts. M21D removed every direct Calendar ORM/repository/schema/service
-import; remaining direct Courses and Platform AI/diagnostic imports are M21E
-and M21F exceptions. Its frontend API error handling and shared model UI
+import and M21E removed every direct Courses model and repository import:
+`course_context.py` keeps the relevance and selection policy and asks
+`app.courses.public` for bounded, identified excerpts and linked calendar IDs.
+The remaining direct Platform AI/diagnostic imports are M21F exceptions. Its frontend API error handling and shared model UI
 now use Platform façades; deeper AI runtime/diagnostic internals remain M21F
 debt. Assistant CSS remains global until M21F.
 

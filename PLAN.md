@@ -6,8 +6,9 @@ dependencies, and the checkbox status of every milestone. Full instructions for
 each open milestone live in its own file under
 [`guidelines/milestones/`](guidelines/milestones/).
 
-**Active milestone: none.** The next planned milestone is M21E. A milestone
-becomes active only when the owner explicitly selects it.
+**Active milestone: M21F.** The owner selected M21E through M21I on 2026-09-30,
+to be completed in order. M21E is complete. A milestone becomes active only
+when the owner explicitly selects it.
 
 ## Rules for this file
 
@@ -37,13 +38,13 @@ decision.
 
 [Milestone file](guidelines/milestones/m21e-courses-module-boundary.md)
 
-- [ ] No other feature reaches Courses repositories, tables, or internals
-- [ ] Every completed Course workflow passes locally and in the full application
-- [ ] Literature and Slides stay distinct; note links and citations keep provenance
-- [ ] Removing a course or association cannot delete Calendar-owned events
-- [ ] Shared AI access keeps isolation, explicit acceptance, and data limits
-- [ ] Course files stay recoverable through coordinated backup/restore
-- [ ] Focused, contract, integration, accessibility, lint/build, Docker, migration, and diff checks pass
+- [x] No other feature reaches Courses repositories, tables, or internals
+- [x] Every completed Course workflow passes locally and in the full application
+- [x] Literature and Slides stay distinct; note links and citations keep provenance
+- [x] Removing a course or association cannot delete Calendar-owned events
+- [x] Shared AI access keeps isolation, explicit acceptance, and data limits
+- [x] Course files stay recoverable through coordinated backup/restore
+- [x] Focused, contract, integration, accessibility, lint/build, Docker, migration, and diff checks pass
 
 ### M21F — Assistant boundary, shared AI runtime, and diagnostics
 

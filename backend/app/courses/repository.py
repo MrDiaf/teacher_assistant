@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import CourseNotFoundError
+from app.courses.errors import CourseNotFoundError
 from app.courses.models import Course, CourseStatus
 
 

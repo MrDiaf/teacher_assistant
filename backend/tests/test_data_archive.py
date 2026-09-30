@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from app.courses.entry import courses_recovery_contribution
 from app.documents.entry import documents_recovery_contribution
 from app.maintenance.data_archive import (
     ArchiveValidationError,
@@ -73,6 +74,19 @@ def test_bundle_manifest_verifies_database_and_course_checksums(tmp_path: Path) 
     assert verified["mail_archive"] == "mail-attachments.tar.gz"
     assert verified["document_file_count"] == 1
     assert verified["document_archive"] == "document-projects.tar.gz"
+
+
+def test_courses_recovery_contribution_preserves_established_storage_identities() -> None:
+    # These identities predate the contribution; existing backups depend on them.
+    assert courses_recovery_contribution == StorageRecoveryContribution(
+        id="courses",
+        manifest_key="course_files",
+        archive_file="course-content.tar.gz",
+        archive_root="course_content",
+        introduced_in_format=1,
+        max_members=100_000,
+        max_bytes=100 * 1024 * 1024 * 1024,
+    )
 
 
 def test_documents_recovery_contribution_preserves_bounded_storage_identities() -> None:

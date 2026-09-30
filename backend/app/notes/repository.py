@@ -4,7 +4,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NoteNotFoundError
+from app.courses.errors import NoteNotFoundError
 from app.notes.models import Note, NoteSourceLink
 
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,9 +15,9 @@ from app.codex_runtime.adapter import (
     CodexRuntimeResult,
     get_codex_adapter,
 )
-from app.core.errors import AssistantRuntimeError, InvalidNoteSummaryResponseError
+from app.core.errors import AssistantRuntimeError
 from app.course_sources.models import ExtractedSourceText
-from app.main import app
+from app.courses.errors import InvalidNoteSummaryResponseError
 from app.notes.summary_models import NoteSummary
 from app.notes.summary_validation import parse_and_validate_summary
 from tests.helpers import create_course, create_note, upload_course_source
@@ -48,13 +49,13 @@ class FakeSummaryCodexAdapter:
 
 
 @pytest.fixture
-def fake_summary_codex() -> Iterator[FakeSummaryCodexAdapter]:
+def fake_summary_codex(host_app: FastAPI) -> Iterator[FakeSummaryCodexAdapter]:
     adapter = FakeSummaryCodexAdapter()
-    app.dependency_overrides[get_codex_adapter] = lambda: adapter
+    host_app.dependency_overrides[get_codex_adapter] = lambda: adapter
     try:
         yield adapter
     finally:
-        app.dependency_overrides.pop(get_codex_adapter, None)
+        host_app.dependency_overrides.pop(get_codex_adapter, None)
 
 
 def summary_payload(
@@ -101,7 +102,7 @@ def summary_payload(
     return json.dumps({"bullets": bullets})
 
 
-async def test_model_endpoint_is_server_authoritative_and_assistant_rejects_unknown_model(
+async def test_model_endpoint_is_server_authoritative_and_summary_rejects_unknown_model(
     client: AsyncClient,
     fake_summary_codex: FakeSummaryCodexAdapter,
 ) -> None:
@@ -113,18 +114,6 @@ async def test_model_endpoint_is_server_authoritative_and_assistant_rejects_unkn
         "gpt-5.6-terra",
         "gpt-5.6-luna",
     ]
-
-    conversation = await client.post(
-        "/api/v1/assistant/conversations",
-        json={"title": "Calendar conversation"},
-    )
-    rejected = await client.post(
-        f"/api/v1/assistant/conversations/{conversation.json()['id']}/messages",
-        json={"content": "What is tomorrow?", "model": "browser-invented-model"},
-    )
-    assert rejected.status_code == 400
-    assert rejected.json()["code"] == "invalid_ai_model"
-    assert fake_summary_codex.calls == []
 
     course = await create_course(client)
     note = await create_note(client, course["id"])

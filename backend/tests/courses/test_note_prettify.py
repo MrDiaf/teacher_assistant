@@ -4,11 +4,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient
 
 from app.codex_runtime.adapter import CodexRuntimeResult, get_codex_adapter
-from app.core.errors import AssistantRuntimeError, InvalidNotePrettifyResponseError
-from app.main import app
+from app.core.errors import AssistantRuntimeError
+from app.courses.errors import InvalidNotePrettifyResponseError
 from app.notes.prettify_service import parse_and_validate_prettify
 from tests.helpers import create_course, create_note
 
@@ -44,13 +45,13 @@ class FakePrettifyCodexAdapter:
 
 
 @pytest.fixture
-def fake_prettify_codex() -> Iterator[FakePrettifyCodexAdapter]:
+def fake_prettify_codex(host_app: FastAPI) -> Iterator[FakePrettifyCodexAdapter]:
     adapter = FakePrettifyCodexAdapter()
-    app.dependency_overrides[get_codex_adapter] = lambda: adapter
+    host_app.dependency_overrides[get_codex_adapter] = lambda: adapter
     try:
         yield adapter
     finally:
-        app.dependency_overrides.pop(get_codex_adapter, None)
+        host_app.dependency_overrides.pop(get_codex_adapter, None)
 
 
 async def test_prettify_uses_only_unsaved_draft_and_never_updates_stored_note(

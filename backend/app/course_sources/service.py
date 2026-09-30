@@ -10,7 +10,6 @@ from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import CourseSourceExtractionStateError, CourseSourceNotPdfError
 from app.course_sources.extraction import PDF_MIME_TYPE, ExtractionFailure, TextExtractionAdapter
 from app.course_sources.models import CourseSource, CourseSourceType, ExtractionStatus
 from app.course_sources.repository import CourseSourceRepository
@@ -19,6 +18,7 @@ from app.course_sources.storage import (
     ResolvedCourseFile,
     StoredCourseFileMissingError,
 )
+from app.courses.errors import CourseSourceExtractionStateError, CourseSourceNotPdfError
 from app.courses.repository import CourseRepository
 
 logger = logging.getLogger(__name__)

@@ -38,7 +38,6 @@ from app.core.errors import (
     AssistantRuntimeError,
     InvalidAssistantResponseError,
 )
-from app.course_calendars.repository import CourseCalendarRepository
 from app.diagnostics.redaction import redact, redact_text
 from app.diagnostics.service import DiagnosticService
 
@@ -84,7 +83,6 @@ class AssistantService:
         self.adapter = adapter
         self.assistant = AssistantRepository(session)
         self.calendar = assistant_calendar_port(session)
-        self.course_calendars = CourseCalendarRepository(session)
         self.course_context = CourseContextService(session)
         self.proposals = ProposalRepository(session)
         self.proposal_validator = ProposalValidator(self.calendar)
@@ -272,11 +270,9 @@ class AssistantService:
 
             scoped_calendar_ids: set[uuid.UUID] | None = None
             if course_context.has_context:
-                scoped_calendar_ids = set()
-                for course_id in course_context.course_ids:
-                    scoped_calendar_ids.update(
-                        await self.course_calendars.list_calendar_ids(course_id)
-                    )
+                scoped_calendar_ids = await self.course_context.linked_calendar_ids(
+                    course_context
+                )
             calendars, events, window = await self._calendar_context(
                 calendar_ids=scoped_calendar_ids
             )

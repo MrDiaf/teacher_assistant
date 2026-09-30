@@ -29,6 +29,15 @@ describe("shared module host", () => {
     ).toEqual([{ id: "calendar", moduleId: "calendar" }]);
   });
 
+  it("uses the real Courses entry and hides its Calendar dependency page", () => {
+    expect(
+      assembleModuleHostPages("courses").map(({ id, moduleId }) => ({
+        id,
+        moduleId,
+      })),
+    ).toEqual([{ id: "courses", moduleId: "courses" }]);
+  });
+
   it.each(["", "unknown", "../documents", "calendar,documents"])(
     "rejects unsupported module id %j",
     (moduleId) => {
@@ -89,5 +98,33 @@ describe("shared module host", () => {
     expect(screen.queryByRole("button", { name: "Documents" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Assistant" })).toBeNull();
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("renders Courses inside the real shell without unrelated navigation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Promise.resolve(
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      ),
+    );
+
+    render(<ModuleHost moduleId="courses" />);
+
+    expect(screen.getByRole("button", { name: "Courses" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.queryByRole("button", { name: "Calendar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Documents" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Inbox" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Assistant" })).toBeNull();
+    expect(
+      await screen.findByRole("heading", { name: "Create your first course" }),
+    ).toBeInTheDocument();
   });
 });
