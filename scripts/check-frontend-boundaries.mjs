@@ -127,6 +127,7 @@ function main() {
   );
   const frontend = config.frontend;
   const publicModuleEntries = frontend.public_module_entries;
+  const publicContracts = frontend.public_contracts ?? {};
   const exceptions = new Map(
     frontend.legacy_exceptions.map((item) => [
       `${item.importer}\0${item.imported}`,
@@ -154,6 +155,13 @@ function main() {
         continue;
       }
       if (importedOwner === importerOwner) continue;
+      if (
+        (config.declared_dependencies[importerOwner] ?? []).includes(
+          importedOwner,
+        ) &&
+        (publicContracts[importedOwner] ?? []).includes(imported)
+      )
+        continue;
       if (
         importerOwner === "platform" &&
         publicModuleEntries[importedOwner] === imported

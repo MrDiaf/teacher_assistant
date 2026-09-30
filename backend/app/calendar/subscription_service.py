@@ -6,16 +6,13 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calendar.errors import IcsSubscriptionNotFoundError, InvalidIcsError
 from app.calendar.ics import IcsIssue, ParsedIcsCalendar, parse_ics
 from app.calendar.ics_fetch import fetch_ics
 from app.calendar.import_service import IcsImportResult, IcsImportService
 from app.calendar.models import Calendar
 from app.calendar.repository import CalendarRepository, EventRepository
-from app.core.errors import (
-    ApplicationError,
-    IcsSubscriptionNotFoundError,
-    InvalidIcsError,
-)
+from app.core.errors import ApplicationError
 
 SYNC_INTERVAL = timedelta(days=1)
 

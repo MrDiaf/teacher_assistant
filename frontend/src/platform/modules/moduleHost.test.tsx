@@ -1,10 +1,11 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ModuleHost from "../../ModuleHost";
 import { assembleModuleHostPages } from "./moduleHost";
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -19,7 +20,16 @@ describe("shared module host", () => {
     ).toEqual([{ id: "documents", moduleId: "documents" }]);
   });
 
-  it.each(["", "calendar", "unknown", "../documents"])(
+  it("uses the real Calendar entry while omitting unselected pages", () => {
+    expect(
+      assembleModuleHostPages("calendar").map(({ id, moduleId }) => ({
+        id,
+        moduleId,
+      })),
+    ).toEqual([{ id: "calendar", moduleId: "calendar" }]);
+  });
+
+  it.each(["", "unknown", "../documents", "calendar,documents"])(
     "rejects unsupported module id %j",
     (moduleId) => {
       expect(() => assembleModuleHostPages(moduleId)).toThrowError(
@@ -52,6 +62,31 @@ describe("shared module host", () => {
     expect(screen.queryByRole("button", { name: "Calendar" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Courses" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Inbox" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Assistant" })).toBeNull();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("renders Calendar inside the real shell without unrelated navigation", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Promise.resolve(
+          new Response(JSON.stringify([]), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        ),
+      ),
+    );
+
+    render(<ModuleHost moduleId="calendar" />);
+
+    expect(screen.getByRole("button", { name: "Calendar" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(screen.queryByRole("button", { name: "Courses" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Documents" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Assistant" })).toBeNull();
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
   });

@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.database.session import engine, session_factory
-from app.main import app
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -79,6 +78,8 @@ async def session() -> AsyncIterator[AsyncSession]:
 
 @pytest_asyncio.fixture
 async def client() -> AsyncIterator[AsyncClient]:
+    from app.main import app
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as test_client:
         yield test_client

@@ -1,6 +1,6 @@
 # Documents handoff
 
-Current state: M21C is active and its first three checklist items are complete. M21
+Current state: M21C is complete. M21
 project/tag CRUD, private source creation/downloads, deletion compensation, and
 coordinated recovery behavior remain unchanged; M22-M24 remain unimplemented.
 The M21B public API/page entries remain the sole production composition imports,
@@ -29,25 +29,27 @@ UI/API ports `15173`/`18000`, so it can run beside the owner application.
 Verification: [M21A baseline](../baseline.md). Completed feature acceptance is
 in [M21](../../../milestones/m21-durable-documents-foundation.md).
 
-Current verification: Documents-focused backend tests passed 8 tests against
-isolated PostgreSQL/storage; its frontend suite passed 2 tests. `make test`
-passed 217 backend and 97 frontend tests plus boundary, catalog-drift, and
-data-safety gates. The focused archive suite passed 18 tests, including exact
-recovery identities, format-2 compatibility, unsafe contributions/archives,
-and document publish-failure rollback. `make data-relocation-test` reproduced
-the coordinated database/private-file restore, and `make lint` passed. The
-production frontend build and all 12 isolated E2E/accessibility scenarios last
-passed with the first M21C item.
+Final verification: `make test-module MODULE=documents` passed 34 backend, 29
+frontend, and 2 browser tests. Backend tests use the real focused host, truncate
+only Documents tables, and assign a private per-test source root. Unit Compose
+mounts no private roots; browser Compose mounts only isolated Documents storage.
+The test-only frontend provider and reversible browser route validate the
+Documents API surface and reject undeclared requests without production wiring.
 
-Item-3 verification passed 26 backend and 26 frontend focused host/contract
-tests. `make test` passed 228 backend and 107 frontend tests plus boundary,
-catalog-drift, and data-safety gates. `make lint`, full and module-mode frontend
-production builds, live isolated startup, route selection, and invalid-ID
-rejection passed. The focused stack was stopped and temporary test/build volumes
-were removed. The initial focused command does not yet own the Documents
-CRUD/storage fixture or browser/provider scenarios; that is item 4.
+The warm focused command measured 37.24 seconds outer wall time (8.40-second
+backend runner, 2.04-second frontend runner, and 3.7-second browser runner).
+This includes host contracts and browser startup beyond the M21A representative
+file timings, so no direct speedup is claimed. The boundary manifest contains
+no Documents exception, production scans passed, and the deliberate cross-owner
+fixtures were rejected.
 
-Next Documents work: continue M21C with its fourth checklist item—separate
-Documents fixtures and backend/frontend/browser scenarios while retaining real
-API/storage coverage and fake/provider contract checks. Do not begin boundary
-cleanup, M21D, or M22 automatically.
+Final full checks passed 228 backend and 108 frontend tests, all 13 full
+browser/accessibility scenarios, lint, full and module-mode production builds,
+data-safety checks, and the exact coordinated relocation/backup/restore drill.
+The relocation copier now ignores deleted tracked paths so an owned test-file
+move is reproducible from an uncommitted worktree. All temporary test stacks and
+volumes were removed.
+
+Next Documents work: none until a later Documents milestone is explicitly
+selected. M22-M24 remain inactive. The next planned project milestone is M21D,
+which requires explicit owner selection.

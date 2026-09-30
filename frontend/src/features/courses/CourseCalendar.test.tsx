@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { CalendarEvent, CalendarModel } from "../calendar/types";
+import type { CalendarEvent, CalendarModel } from "../calendar/public";
 import { CourseCalendar } from "./CourseCalendar";
 import type { CourseModel } from "./types";
 

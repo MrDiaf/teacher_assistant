@@ -6,8 +6,8 @@ from datetime import UTC, datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from app.calendar.errors import IcsFileTooLargeError, InvalidIcsError
 from app.calendar.models import EventStatus
-from app.core.errors import IcsFileTooLargeError, InvalidIcsError
 
 MAX_ICS_BYTES = 5 * 1024 * 1024
 MAX_ICS_EVENTS = 5000

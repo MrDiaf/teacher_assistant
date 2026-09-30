@@ -1,0 +1,18 @@
+services:
+  backend:
+    command:
+      - uvicorn
+      - app.module_host:create_module_host_from_environment
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --no-access-log
+    environment:
+      TEACHER_ASSISTANT_MODULE_HOST: ${MODULE_HOST:?MODULE_HOST is required}
+    volumes: !reset []
+
+  frontend:
+    environment:
+      VITE_MODULE_HOST: ${MODULE_HOST:?MODULE_HOST is required}

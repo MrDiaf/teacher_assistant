@@ -27,7 +27,7 @@ from app.assistant.proposal_repository import ProposalRepository
 from app.assistant.proposals import ASSISTANT_OUTPUT_SCHEMA, parse_assistant_answer
 from app.assistant.repository import AssistantRepository
 from app.assistant.validation import ProposalValidator
-from app.calendar.repository import CalendarRepository, EventRepository
+from app.calendar.public import assistant_calendar_port
 from app.codex_runtime.adapter import CodexAdapter
 from app.codex_runtime.workspace import create_runtime_workspace
 from app.core.config import get_settings
@@ -83,12 +83,11 @@ class AssistantService:
         self.session = session
         self.adapter = adapter
         self.assistant = AssistantRepository(session)
-        self.calendars = CalendarRepository(session)
-        self.events = EventRepository(session)
+        self.calendar = assistant_calendar_port(session)
         self.course_calendars = CourseCalendarRepository(session)
         self.course_context = CourseContextService(session)
         self.proposals = ProposalRepository(session)
-        self.proposal_validator = ProposalValidator(self.calendars, self.events)
+        self.proposal_validator = ProposalValidator(self.calendar)
         self.settings = get_settings()
         self.models = AiModelRegistry(self.settings)
 
@@ -617,10 +616,8 @@ class AssistantService:
         now = datetime.now(UTC)
         starts_at = now - timedelta(days=CONTEXT_PAST_DAYS)
         ends_at = now + timedelta(days=CONTEXT_FUTURE_DAYS)
-        calendars = await self.calendars.list()
-        if calendar_ids is not None:
-            calendars = [calendar for calendar in calendars if calendar.id in calendar_ids]
-        events = await self.events.list(
+        calendars = await self.calendar.list_calendars(calendar_ids=calendar_ids)
+        events = await self.calendar.list_events(
             calendar_ids=calendar_ids,
             starts_before=ends_at,
             ends_after=starts_at,

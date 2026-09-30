@@ -16,8 +16,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.calendar.models import EventStatus
-from app.calendar.schemas import HEX_COLOR_PATTERN
+from app.calendar.public import HEX_COLOR_PATTERN, EventStatus
 from app.core.errors import InvalidAssistantResponseError
 
 

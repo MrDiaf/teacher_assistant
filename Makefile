@@ -1,7 +1,7 @@
 COMPOSE := docker compose -f compose.yml -f compose.dev.yml
 TEST_COMPOSE := docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml
 E2E_COMPOSE := docker compose -p teacher-assistant-e2e -f compose.e2e.yml
-SUPPORTED_MODULE_HOSTS := documents
+SUPPORTED_MODULE_HOSTS := calendar documents
 MODULE_BACKEND_PORT ?= 18000
 MODULE_FRONTEND_PORT ?= 15173
 MODULE_COMPOSE = MODULE_HOST=$(MODULE) BACKEND_PORT=$(MODULE_BACKEND_PORT) \
@@ -10,7 +10,18 @@ MODULE_COMPOSE = MODULE_HOST=$(MODULE) BACKEND_PORT=$(MODULE_BACKEND_PORT) \
 	-f compose.yml -f compose.dev.yml -f compose.module.yml
 MODULE_TEST_COMPOSE = MODULE_HOST=$(MODULE) docker compose \
 	-p teacher-assistant-module-$(MODULE)-test --profile module-host \
-	-f compose.yml -f compose.module.yml -f compose.test.yml
+	-f compose.yml -f compose.module.yml -f compose.test.yml \
+	-f compose.module.test.yml
+MODULE_E2E_COMPOSE = MODULE_HOST=$(MODULE) docker compose \
+	-p teacher-assistant-module-$(MODULE)-e2e \
+	-f compose.e2e.yml -f compose.module.e2e.yml \
+	$(if $(filter documents,$(MODULE)),-f compose.module.e2e.documents.yml,)
+MODULE_BACKEND_TESTS_calendar := tests/test_module_host.py tests/test_module_registration.py tests/calendar tests/test_course_calendars.py tests/test_assistant_api.py
+MODULE_BACKEND_TESTS_documents := tests/test_module_host.py tests/test_module_registration.py tests/documents
+MODULE_FRONTEND_TESTS_calendar := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/calendar src/features/courses/CourseCalendar.test.tsx
+MODULE_FRONTEND_TESTS_documents := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/documents
+MODULE_E2E_TEST_calendar := tests/calendar.spec.ts
+MODULE_E2E_TEST_documents := tests/documents.spec.ts
 require-supported-module = \
 	$(if $(filter 1,$(words $(strip $(MODULE)))),,$(error MODULE must name exactly one supported module: $(SUPPORTED_MODULE_HOSTS))) \
 	$(if $(filter $(SUPPORTED_MODULE_HOSTS),$(strip $(MODULE))),,$(error Unsupported MODULE '$(MODULE)'; supported modules: $(SUPPORTED_MODULE_HOSTS)))
@@ -86,8 +97,8 @@ dev: data-guard
 dev-module:
 	$(require-supported-module)
 	$(MODULE_COMPOSE) up --build -d
-	@printf 'Documents module host: http://localhost:%s (API %s)\n' \
-		"$(MODULE_FRONTEND_PORT)" "$(MODULE_BACKEND_PORT)"
+	@printf '%s module host: http://localhost:%s (API %s)\n' \
+		"$(MODULE)" "$(MODULE_FRONTEND_PORT)" "$(MODULE_BACKEND_PORT)"
 
 down-module:
 	$(require-supported-module)
@@ -116,12 +127,13 @@ test: check-boundaries check-module-contract
 test-module:
 	$(require-supported-module)
 	@set -e; \
-	trap '$(MODULE_TEST_COMPOSE) down -v --remove-orphans' EXIT; \
+	trap '$(MODULE_TEST_COMPOSE) down -v --remove-orphans; $(MODULE_E2E_COMPOSE) down -v --remove-orphans' EXIT; \
 	$(MODULE_TEST_COMPOSE) run --build --rm backend pytest \
-		-q tests/test_module_host.py tests/test_module_registration.py; \
+		-q $(MODULE_BACKEND_TESTS_$(MODULE)); \
 	$(MODULE_TEST_COMPOSE) run --build --rm --no-deps frontend npm run test -- \
-		src/platform/modules/moduleHost.test.tsx \
-		src/platform/modules/contract.test.ts
+		$(MODULE_FRONTEND_TESTS_$(MODULE)); \
+	$(MODULE_E2E_COMPOSE) run --build --rm e2e npm test -- \
+		$(MODULE_E2E_TEST_$(MODULE))
 
 e2e:
 	@set -e; \

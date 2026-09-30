@@ -24,6 +24,32 @@ def test_documents_host_uses_dependency_closed_real_entries_without_other_hooks(
     ]
 
 
+def test_calendar_host_uses_real_routes_and_subscription_lifecycle() -> None:
+    entries = assemble_module_host("calendar")
+
+    assert [entry.id for entry in entries] == ["platform", "calendar"]
+    assert [
+        contribution.id for entry in entries for contribution in entry.lifecycle
+    ] == ["codex-auth", "ics-subscription-refresh"]
+    assert [contribution.id for entry in entries for contribution in entry.routers] == [
+        "ai-models",
+        "diagnostics",
+        "system-health",
+        "calendar",
+        "calendar-import",
+        "calendar-subscription",
+    ]
+
+    paths = {route.path for route in create_module_host("calendar").routes}
+    assert "/api/v1/calendars" in paths
+    assert "/api/v1/events" in paths
+    assert "/api/v1/calendar-imports/ics" in paths
+    assert "/api/v1/calendar-subscriptions/ics" in paths
+    assert "/api/v1/courses" not in paths
+    assert "/api/v1/document-projects" not in paths
+    assert "/api/v1/assistant/conversations" not in paths
+
+
 def test_documents_host_mounts_real_routes_and_omits_unselected_feature_routes() -> None:
     application = create_module_host("documents")
     paths = {route.path for route in application.routes}
@@ -36,7 +62,7 @@ def test_documents_host_mounts_real_routes_and_omits_unselected_feature_routes()
     assert "/api/v1/assistant/conversations" not in paths
 
 
-@pytest.mark.parametrize("module_id", ["", "calendar", "unknown", "../documents"])
+@pytest.mark.parametrize("module_id", ["", "unknown", "../documents", "calendar,documents"])
 def test_module_host_rejects_unapproved_module_ids(module_id: str) -> None:
     with pytest.raises(ModuleHostError, match="unsupported module host"):
         assemble_module_host(module_id)

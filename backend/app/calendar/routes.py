@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calendar.errors import InvalidRecurrenceError
 from app.calendar.schemas import (
     CalendarCreate,
     CalendarResponse,
@@ -15,7 +16,6 @@ from app.calendar.schemas import (
     EventUpdate,
 )
 from app.calendar.service import CalendarService
-from app.core.errors import InvalidRecurrenceError
 from app.database.session import get_session
 
 router = APIRouter()

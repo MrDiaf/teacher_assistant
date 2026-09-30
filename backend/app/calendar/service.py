@@ -4,17 +4,17 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calendar.errors import (
+    CalendarReadOnlyError,
+    CalendarSourceProtectedError,
+    InvalidEventTimeError,
+    InvalidRecurrenceError,
+)
 from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType, EventStatus
 from app.calendar.repository import (
     READ_ONLY_CALENDAR_FIELDS,
     CalendarRepository,
     EventRepository,
-)
-from app.core.errors import (
-    CalendarReadOnlyError,
-    CalendarSourceProtectedError,
-    InvalidEventTimeError,
-    InvalidRecurrenceError,
 )
 
 ALLOWED_RECURRENCE_FREQUENCIES = {"DAILY", "WEEKLY", "MONTHLY"}
@@ -131,6 +131,7 @@ class CalendarService:
         starts_before: datetime | None = None,
         ends_after: datetime | None = None,
         search: str | None = None,
+        limit: int | None = None,
     ) -> list[CalendarEvent]:
         if calendar_id is not None:
             await self.calendars.get(calendar_id)
@@ -139,6 +140,7 @@ class CalendarService:
             calendar_ids=calendar_ids,
             starts_before=starts_before,
             ends_after=ends_after,
+            limit=limit,
         )
         if not search:
             return events

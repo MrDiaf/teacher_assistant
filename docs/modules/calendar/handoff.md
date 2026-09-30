@@ -1,16 +1,25 @@
 # Calendar handoff
 
-Current state: completed Calendar behavior through M7 and linked Assistant
-proposal integration is preserved. M21A only mapped ownership and installed
-boundary checks; it did not change Calendar code, schema, permissions, or UI.
-M21B now routes Calendar API/page composition through explicit public entries;
-the backend entry registers the unchanged ICS subscription scheduler lifecycle.
+Current state: M21D is complete. Completed Calendar behavior through M7 and
+linked Assistant proposal integration is preserved. Calendar owns its errors,
+feature stylesheet, scoped backend/browser tests, typed query and restricted
+Assistant command ports, and focused Platform+Calendar host. Courses and
+Assistant consume Calendar through exact public contracts only.
 
 Verification: [M21A baseline](../baseline.md). Historical feature acceptance is
 owned by [M7](../../../milestones/m07-final-calendar-hardening.md) and
 [linked batches](../../../milestones/m07a-linked-proposal-batches.md).
 
-Next Calendar work: M21D, after M21B and M21C complete, implements the typed
-query/mutation contracts and removes the exact Calendar exceptions. The current
-application-wide next step is M21B's remaining composition-test and
-boundary-tightening subtask; do not begin M21D early.
+M21D verification passed provider, Courses, and Assistant integration coverage,
+the full backend/frontend suites, lint, production builds, focused and full
+browser/accessibility workflows, boundary rejection, migration-from-zero, and
+isolated focused startup. Read-only, recurrence, rollback, repeated
+confirmation, ICS import/subscription, filtering, view changes, editing, and
+undo behavior remain covered.
+The complete focused command passed 104 backend tests in 22.75 seconds, 53
+frontend tests in 3.84 seconds, and 2 browser tests in 4.0 seconds; outer wall
+time was 53.43 seconds including Compose startup, builds, and cleanup.
+
+Next Calendar work: none. M21E is the next planned application milestone and
+owns Courses boundaries. It requires explicit owner selection; do not start
+M22.

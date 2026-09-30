@@ -364,8 +364,8 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [x] [M21 — Durable Documents foundation and project overview](milestones/m21-durable-documents-foundation.md)
 - [x] [M21A - Module ownership, contracts, and refactoring baseline](milestones/m21a-module-ownership-and-baseline.md)
 - [x] [M21B - Application composition and shared platform boundaries](milestones/m21b-application-composition.md)
-- [ ] [M21C - Documents module and isolated development pilot](milestones/m21c-documents-module-pilot.md)
-- [ ] [M21D - Calendar ownership and public service contract](milestones/m21d-calendar-module-boundary.md)
+- [x] [M21C - Documents module and isolated development pilot](milestones/m21c-documents-module-pilot.md)
+- [x] [M21D - Calendar ownership and public service contract](milestones/m21d-calendar-module-boundary.md)
 - [ ] [M21E - Courses ownership and Calendar integration](milestones/m21e-courses-module-boundary.md)
 - [ ] [M21F - Assistant boundary, shared AI runtime, and diagnostics](milestones/m21f-assistant-and-ai-platform.md)
 - [ ] [M21G - Inbox ownership and contributed Settings panels](milestones/m21g-inbox-and-settings-boundary.md)
@@ -375,17 +375,16 @@ below. Update `handoff.md` with the new current state and exact next step.
 - [ ] [M23 — Isolated LaTeX compilation and PDF preview](milestones/m23-isolated-latex-compilation.md)
 - [ ] [M24 — Codex advice for LaTeX compilation errors](milestones/m24-codex-latex-error-advice.md)
 
-Current active milestone: **M21C - Documents module and isolated development
-pilot**.
+Most recently completed milestone: **M21D - Calendar ownership and public
+service contract**. No milestone is active.
 
-M21C's first three checklist items are implemented: the existing Documents public
-entries remain the sole production composition imports, Documents owns its
-application/storage errors and feature styles, and its bounded recovery
-contribution now supplies the established source-archive identities and limits
-to Platform's unchanged coordinated archive/restore flow. A dependency-closed
-Documents host now uses the real shell and public entries with isolated Docker
-ports/data through guarded root commands. The next M21C subtask is fixture and
-backend/frontend/browser scenario separation. M21D and M22 remain inactive.
+M21D is complete. Calendar owns its application errors, feature stylesheet,
+scoped backend/browser tests, typed query and restricted Assistant command
+ports, and dependency-closed focused host selection. Courses and Assistant now
+consume Calendar only through its public contracts, while Assistant proposal
+confirmation preserves one shared transaction. The boundary manifest contains
+no M21D exception. M21E and M22 remain inactive and require explicit owner
+selection.
 
 M21B established the typed common module contract, explicit
 frontend-page/backend-router assembly, bounded backend lifecycle hooks, shared
@@ -399,10 +398,9 @@ response correction, progress display, cancellation, and false course-note
 matching refinements are also complete and are recorded with M13 and in
 `handoff.md`.
 
-M21A and M21B are complete. M21C is active and incomplete; M21D-M21I remain
-planned and intentionally unchecked. Their required order remains Documents
-pilot, Calendar, Courses, Assistant and AI platform, Inbox/Settings, module
-controls, and final verification.
+M21A-M21D are complete; M21E-M21I remain planned and intentionally unchecked.
+Their required remaining order is Courses, Assistant and AI platform,
+Inbox/Settings, module controls, and final verification.
 These suffix IDs insert the refactoring without renumbering completed work or
 the existing feature specifications.
 

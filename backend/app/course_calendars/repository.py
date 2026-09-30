@@ -4,7 +4,6 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.calendar.models import Calendar
 from app.course_calendars.models import CourseCalendarLink
 
 
@@ -12,23 +11,13 @@ class CourseCalendarRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def list_calendars(self, course_id: uuid.UUID) -> list[Calendar]:
+    async def list_calendar_ids(self, course_id: uuid.UUID) -> tuple[uuid.UUID, ...]:
         statement = (
-            select(Calendar)
-            .join(
-                CourseCalendarLink,
-                CourseCalendarLink.calendar_id == Calendar.id,
-            )
+            select(CourseCalendarLink.calendar_id)
             .where(CourseCalendarLink.course_id == course_id)
-            .order_by(CourseCalendarLink.created_at, Calendar.name)
+            .order_by(CourseCalendarLink.created_at, CourseCalendarLink.id)
         )
-        return list(await self.session.scalars(statement))
-
-    async def list_calendar_ids(self, course_id: uuid.UUID) -> set[uuid.UUID]:
-        statement = select(CourseCalendarLink.calendar_id).where(
-            CourseCalendarLink.course_id == course_id
-        )
-        return set(await self.session.scalars(statement))
+        return tuple(await self.session.scalars(statement))
 
     async def link(self, course_id: uuid.UUID, calendar_id: uuid.UUID) -> None:
         statement = (

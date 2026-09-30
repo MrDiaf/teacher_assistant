@@ -8,15 +8,7 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DocumentsPage } from "./DocumentsPage";
-
-const now = "2026-09-08T10:00:00Z";
-
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
+import { createFakeDocumentsProvider } from "./testing/fakeDocumentsProvider";
 
 afterEach(() => {
   cleanup();
@@ -25,64 +17,8 @@ afterEach(() => {
 
 describe("DocumentsPage", () => {
   it("creates, opens, tags, renames, and confirms deletion", async () => {
-    let projects: Array<Record<string, unknown>> = [];
-    let tags: Array<Record<string, unknown>> = [];
-    const fetchMock = vi.fn(
-      async (input: string | URL | Request, init?: RequestInit) => {
-        const url = String(input);
-        const method = init?.method ?? "GET";
-        if (url.includes("/document-projects?") && method === "GET")
-          return json(projects);
-        if (url.endsWith("/document-tags") && method === "GET")
-          return json(tags);
-        if (url.endsWith("/document-projects") && method === "POST") {
-          const title = JSON.parse(String(init?.body)).title;
-          const project = {
-            id: "11111111-1111-4111-8111-111111111111",
-            title,
-            tags: [],
-            created_at: now,
-            updated_at: now,
-          };
-          projects = [project];
-          return json(project, 201);
-        }
-        if (url.endsWith("/document-tags") && method === "POST") {
-          const payload = JSON.parse(String(init?.body));
-          const tag = {
-            id: "22222222-2222-4222-8222-222222222222",
-            ...payload,
-            project_count: 0,
-            created_at: now,
-            updated_at: now,
-          };
-          tags = [tag];
-          return json(tag, 201);
-        }
-        if (url.includes("/tags/") && method === "PUT") {
-          projects = [
-            {
-              ...projects[0],
-              tags: [
-                { id: tags[0].id, name: tags[0].name, color: tags[0].color },
-              ],
-            },
-          ];
-          tags = [{ ...tags[0], project_count: 1 }];
-          return json(projects[0]);
-        }
-        if (url.includes("/document-projects/") && method === "PATCH") {
-          const title = JSON.parse(String(init?.body)).title;
-          projects = [{ ...projects[0], title }];
-          return json(projects[0]);
-        }
-        if (url.includes("/document-projects/") && method === "DELETE") {
-          projects = [];
-          return new Response(null, { status: 204 });
-        }
-        throw new Error(`Unexpected request: ${method} ${url}`);
-      },
-    );
+    const provider = createFakeDocumentsProvider();
+    const fetchMock = vi.fn(provider.fetch);
     vi.stubGlobal("fetch", fetchMock);
 
     render(<DocumentsPage />);
@@ -129,22 +65,19 @@ describe("DocumentsPage", () => {
   });
 
   it("composes search and tag filters and shows a readable empty state", async () => {
-    const fetchMock = vi.fn(async (input: string | URL | Request) => {
-      const url = String(input);
-      if (url.endsWith("/document-tags"))
-        return json([
-          {
-            id: "22222222-2222-4222-8222-222222222222",
-            name: "Research",
-            color: "#123456",
-            project_count: 0,
-            created_at: now,
-            updated_at: now,
-          },
-        ]);
-      if (url.includes("/document-projects?")) return json([]);
-      throw new Error(`Unexpected request: ${url}`);
+    const provider = createFakeDocumentsProvider({
+      tags: [
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          name: "Research",
+          color: "#123456",
+          project_count: 0,
+          created_at: "2026-09-08T10:00:00Z",
+          updated_at: "2026-09-08T10:00:00Z",
+        },
+      ],
     });
+    const fetchMock = vi.fn(provider.fetch);
     vi.stubGlobal("fetch", fetchMock);
     render(<DocumentsPage />);
 

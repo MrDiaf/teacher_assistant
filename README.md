@@ -11,20 +11,22 @@ Every mutation is revalidated by the backend and waits for owner confirmation.
 
 ## Development roadmap
 
-M1-M21, M21A, and M21B are implemented. M21C is active; its first three subtasks
-give Documents explicit internal error ownership, feature-scoped styling, and a
-bounded recovery contribution used by Platform's coordinated archive/restore
-flow, plus a dependency-closed shared module host with initial focused Docker
-commands. Its focused-fixture, boundary, and workflow subtasks remain incomplete.
-M21B-M21I precede the LaTeX editor/compiler/advice work in M22-M24. The
+M1-M21 and M21A-M21D are implemented. M21C gives Documents explicit internal
+error ownership, feature-scoped styling, a bounded recovery contribution, and
+owned backend/frontend/browser fixtures through a dependency-closed shared
+module host with isolated Docker commands. M21D gives Calendar typed public
+query/restricted-command contracts, owned errors/styles/tests, and a focused
+host while removing direct Courses/Assistant access to Calendar internals. No
+milestone is currently active. M21E-M21I precede the LaTeX
+editor/compiler/advice work in M22-M24. The
 refactoring sequence covers ownership and public contracts, application
 composition, a Documents pilot, the other existing modules, Settings module
 controls, and focused Docker testing with final recovery verification.
 
 See the [authoritative milestone index](instructions.md#milestone-status), the
-[module ownership index](docs/modules/README.md), and the active Documents pilot
-[M21C](milestones/m21c-documents-module-pilot.md). Runtime module switches remain
-planned for M21H; the Documents-only development host is available now.
+[module ownership index](docs/modules/README.md), and completed Calendar boundary
+[M21D](milestones/m21d-calendar-module-boundary.md). Runtime module switches remain
+planned for M21H; Calendar and Documents development hosts are available now.
 
 ## Application composition wiring
 
@@ -95,8 +97,10 @@ make logs      # follow application logs
 make migrate   # apply database migrations
 make check-boundaries # reject new cross-module imports and dependency cycles
 make test      # boundaries plus isolated backend and frontend tests
+make dev-module MODULE=calendar   # Calendar host on isolated ports/data
+make test-module MODULE=calendar  # focused Calendar + consumer tests
 make dev-module MODULE=documents  # Documents host on isolated ports/data
-make test-module MODULE=documents # initial focused host/contract tests
+make test-module MODULE=documents # focused host + backend/frontend/browser tests
 make down-module MODULE=documents # stop the focused host
 make logs-module MODULE=documents # follow focused-host logs
 make e2e       # isolated Playwright browser tests
@@ -106,12 +110,14 @@ make backup    # coordinated PostgreSQL + course/mail/document-file backup
 ```
 
 The test commands use separate temporary databases and remove their Docker
-volumes after the run. They never truncate the owner database. The Documents
-development host defaults to UI port `15173` and API port `18000`, uses its own
+volumes after the run. They never truncate the owner database. Focused
+development hosts default to UI port `15173` and API port `18000`, use their own
 Compose project and named volumes, and may run beside the full application.
-Unknown or multiple module IDs are rejected. Its current focused test command
-covers host and contract selection; M21C's next item adds the Documents-owned
-CRUD/storage and browser fixtures.
+Unknown or multiple module IDs are rejected. Calendar focused tests cover its
+real API, consumer contracts, UI, accessibility, and independently seeded
+browser workflows without private storage mounts. Documents focused tests cover
+real CRUD/storage and contract-checked fake scenarios; only its browser stack
+mounts isolated Documents storage.
 
 ## ChatGPT subscription authentication
 

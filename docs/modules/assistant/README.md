@@ -37,8 +37,9 @@ before a separately committed safe failure record.
 ## Dependencies and migration debt
 
 Assistant's approved dependencies are Calendar, Courses, and Platform public
-contracts. Current direct ORM/repository/schema/service imports are exact M21D,
-M21E, and M21F exceptions. Its frontend API error handling and shared model UI
+contracts. M21D removed every direct Calendar ORM/repository/schema/service
+import; remaining direct Courses and Platform AI/diagnostic imports are M21E
+and M21F exceptions. Its frontend API error handling and shared model UI
 now use Platform façades; deeper AI runtime/diagnostic internals remain M21F
 debt. Assistant CSS remains global until M21F.
 

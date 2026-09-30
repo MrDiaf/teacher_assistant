@@ -6,6 +6,7 @@ import os
 
 from fastapi import FastAPI
 
+from app.calendar.entry import calendar_backend_entry
 from app.documents.entry import documents_backend_entry
 from app.platform.application import create_application
 from app.platform.entry import platform_backend_entry
@@ -17,7 +18,7 @@ from app.platform.modules.catalog import module_catalog
 from app.platform.modules.contract import select_module_catalog
 
 MODULE_HOST_ENV = "TEACHER_ASSISTANT_MODULE_HOST"
-SUPPORTED_MODULE_HOST_IDS = ("documents",)
+SUPPORTED_MODULE_HOST_IDS = ("calendar", "documents")
 
 
 class ModuleHostError(ValueError):
@@ -31,9 +32,19 @@ def assemble_module_host(module_id: str) -> tuple[BackendModuleEntry, ...]:
             f"unsupported module host {module_id!r}; supported modules: {supported}"
         )
     selected_catalog = select_module_catalog(module_catalog, (module_id,))
+    selected_ids = {registration.id for registration in selected_catalog.registrations}
+    selected_entries = tuple(
+        entry
+        for entry in (
+            platform_backend_entry,
+            calendar_backend_entry,
+            documents_backend_entry,
+        )
+        if entry.id in selected_ids
+    )
     return assemble_backend_modules(
         selected_catalog,
-        (platform_backend_entry, documents_backend_entry),
+        selected_entries,
     )
 
 

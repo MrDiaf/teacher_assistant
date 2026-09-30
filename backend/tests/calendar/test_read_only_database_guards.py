@@ -6,9 +6,9 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calendar.errors import CalendarReadOnlyError
 from app.calendar.repository import CalendarRepository, EventRepository
 from app.calendar.service import CalendarService
-from app.core.errors import CalendarReadOnlyError
 from app.database.session import session_factory
 
 

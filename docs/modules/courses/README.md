@@ -20,8 +20,8 @@ These interfaces are specified but not yet implemented:
 - An Assistant context port accepts explicit intent/query and strict size/count
   bounds; it returns typed course/note/slide excerpts with source IDs and
   provenance, never ORM entities or unrestricted source queries.
-- A course-calendar association service owns list/link/unlink operations and
-  consumes Calendar's public existence/event-query port. It returns bounded
+- The course-calendar association service owns list/link/unlink operations and
+  now consumes Calendar's public existence/event-query port. It returns bounded
   Calendar values and preserves Calendar records when a course/link is removed.
 - `backend/app/courses/entry.py` and `frontend/src/features/courses/entry.ts`
   contribute the existing routes and page through Platform composition.
@@ -37,9 +37,10 @@ explicit coordinator rather than a shared Calendar repository/session.
 
 ## Dependencies and migration debt
 
-Courses depends on Platform and Calendar's future public contract. Direct
-Calendar models/repositories/services/schemas and UI imports are exact M21D
-exceptions. Assistant context currently queries Courses ORM models directly;
+Courses depends on Platform and Calendar's implemented public contracts. No
+Courses code imports Calendar models, repositories, services, or schemas;
+embedded UI imports the bounded Calendar frontend surface. Assistant context
+currently queries Courses ORM models directly;
 M21E replaces that access. Direct AI/Codex paths and the Assistant-owned error
 UI are M21F exceptions. Course feature CSS is global until M21E. Course storage
 and archive logic remains coordinated with Platform recovery.

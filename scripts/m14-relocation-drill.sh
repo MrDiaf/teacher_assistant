@@ -44,7 +44,12 @@ copy_worktree() {
   mkdir -p "$destination"
   (
     cd "$PROJECT_ROOT"
-    git ls-files -co --exclude-standard -z | tar --null -T - -cf -
+    while IFS= read -r -d '' path; do
+      [[ -e "$path" ]] && printf '%s\0' "$path"
+    done < <(git ls-files -co --exclude-standard -z)
+  ) | (
+    cd "$PROJECT_ROOT"
+    tar --null -T - -cf -
   ) | tar -C "$destination" -xf -
 }
 

@@ -1,6 +1,6 @@
 # Platform handoff
 
-Current state: M21B and the first three M21C items are complete. Matching strict
+Current state: M21B-M21D are complete. Matching strict
 Python and TypeScript catalogs define stable module/page order, dependency
 capabilities, route identities, Settings contribution identities, and lifecycle
 identities without import paths or executable names.
@@ -47,16 +47,16 @@ PostgreSQL coordination, restore order, and live paths remain Platform-owned.
 
 Platform now owns the shared FastAPI application factory used by both the full
 catalog and focused host. Dependency-closed selection accepts only an explicit
-allowlisted module ID; the Documents host assembles the real Platform and
-Documents backend entries and only their routes/lifecycle hooks. The frontend
+allowlisted module ID. Documents assembles Platform plus Documents; Calendar
+assembles Platform plus Calendar and its ICS refresh lifecycle. The frontend
 uses the same `RegisteredApplication` shell with matching real page entries.
 Ordinary startup remains the complete catalog and contains no fixture provider.
 
 Root `dev-module`, `logs-module`, `down-module`, and `test-module` commands use
-the existing images/configuration plus a bounded Compose override. Documents is
-the only supported ID. Its development stack uses ports `15173`/`18000`, a
-separate Compose project, isolated PostgreSQL, and project-scoped private-data
-volumes; invalid IDs fail before Compose starts.
+the existing images/configuration plus bounded Compose overrides. Calendar and
+Documents are the supported IDs. Each development stack uses ports
+`15173`/`18000`, a separate Compose project, isolated PostgreSQL, and
+project-scoped private-data volumes; invalid IDs fail before Compose starts.
 
 Feature code now imports the existing icon/modal, API error, browser persistence,
 and model-selection primitives through narrow Platform façades. Persistence no
@@ -70,9 +70,9 @@ and diagnostic interfaces for M21F to restructure behind. No M21B boundary
 exception remains. The backend Platform allowance now names exact consumed
 configuration, error, database, AI, diagnostic, and registration modules;
 negative fixtures reject feature imports of backend assembly or frontend shell
-internals. Documents-owned fixture/browser/provider separation, non-Documents
-scoped feature CSS, and deeper M21F AI/diagnostic separation are still
-unimplemented.
+internals. Documents and Calendar now own scoped test/browser coverage and
+feature CSS; deeper M21F AI/diagnostic separation is
+still unimplemented.
 
 Verification: [M21A baseline](../baseline.md). Shared cautions and active
 application status remain in the root `handoff.md`.
@@ -84,7 +84,21 @@ backend and 26 frontend host/contract tests. `make test` passed 228 backend and
 stack started beside the owner stack and exposed only Platform/Documents routes
 on its isolated ports; temporary containers and test/build volumes were removed.
 
-Next step: M21C is active. Its next incomplete checklist item is Documents-owned
-fixture and backend/frontend/browser scenario separation with real API/storage
-and fake/provider contract coverage. M22 remains inactive until the M21A-M21I
-refactoring sequence is complete.
+M21C final verification on 2026-09-24: the focused command passed 34 backend,
+29 frontend, and 2 browser tests in 37.24 seconds outer wall time. It uses the
+real dependency-closed host, scoped database/filesystem fixtures, a validated
+test-only provider, and an isolated browser stack with only Documents private
+storage. `make test` passed 228 backend and 108 frontend tests; lint, full and
+module builds, all 13 browser scenarios, boundary rejection, and coordinated
+relocation/recovery passed.
+
+M21D added exact Calendar backend/frontend public-contract allowances, removed
+all 20 M21D legacy exceptions, and generalized dependency-closed host selection
+to Calendar. Calendar focused tests attach only isolated PostgreSQL; its browser
+stack has no private filesystem volume. Full and focused hosts share the real
+application factory, shell, Calendar page/routes, and ICS lifecycle binding. A
+warm complete focused run passed 104 backend, 53 frontend, and 2 browser tests
+in 53.43 seconds outer wall time.
+
+Next step: no milestone is active. M21E is the next planned milestone and
+requires explicit owner selection. M22 remains inactive until M21I is complete.

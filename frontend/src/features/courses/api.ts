@@ -8,7 +8,7 @@ import type {
   NotePrettifySuggestion,
   NoteSummary,
 } from "./types";
-import type { CalendarEvent, CalendarModel } from "../calendar/types";
+import type { CalendarEvent, CalendarModel } from "../calendar/public";
 
 interface ApiErrorPayload {
   error_id?: string;

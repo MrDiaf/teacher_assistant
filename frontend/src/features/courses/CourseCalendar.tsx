@@ -11,9 +11,9 @@ import { Icon } from "../../platform/ui";
 import {
   CalendarWorkspace,
   type CalendarSidebarRenderProps,
-} from "../calendar/CalendarPage";
-import { calendarApi } from "../calendar/api";
-import type { CalendarModel } from "../calendar/types";
+  calendarConsumerApi,
+  type CalendarModel,
+} from "../calendar/public";
 import { courseApi } from "./api";
 import type { CourseModel } from "./types";
 
@@ -204,7 +204,7 @@ export function CourseCalendar({
   useEffect(() => {
     const controller = new AbortController();
     setAllCalendarsError(null);
-    calendarApi
+    calendarConsumerApi
       .listCalendars(controller.signal)
       .then(setAllCalendars)
       .catch((error: unknown) => {

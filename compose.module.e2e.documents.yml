@@ -1,0 +1,4 @@
+services:
+  backend:
+    volumes: !override
+      - e2e-document-projects:/data/document_projects

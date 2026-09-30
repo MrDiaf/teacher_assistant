@@ -3,10 +3,12 @@
 This is the ownership map for the current modular-monolith transition. M21A
 established the baseline and M21B implemented typed metadata, page/router
 assembly, bounded backend lifecycle registration, shared UI/platform entry
-points, and their enforcement tests. M21C is active; Documents now owns its
-internal errors and scoped feature stylesheet and has a dependency-closed shared
-host with isolated initial Docker commands. Its fixture, boundary, and workflow
-work and the other feature migrations remain incomplete. M21C-M21G remove the remaining
+points, and their enforcement tests. M21C is complete: Documents owns its
+internal errors, scoped feature stylesheet, recovery declaration, focused
+fixtures/scenarios, and dependency-closed shared host with isolated Docker
+commands. M21D is also complete: Calendar owns its public service ports,
+errors, styles, scoped tests, and focused host. Courses and Assistant no longer
+reach Calendar internals. M21E-M21G remove the remaining
 ownership debt and exact legacy exceptions in
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
@@ -62,8 +64,8 @@ public code entries. The canonical extension procedure and distinction between
 module-safe façades and root-only assembly surfaces are in the
 [Platform README](platform/README.md#implemented-composition-extension-points).
 
-Current exact exception count: 38 backend and 7 frontend imports. Removal is
-owned by M21D (20), M21E (4), M21F (19), and M21G (2). The manifest
+Current exact exception count: 22 backend and 3 frontend imports. Removal is
+owned by M21E, M21F, and M21G. The manifest
 is authoritative down to importer and imported module; this summary is not an
 allowlist. Platform composition may import only the exact public module entries
 listed in the manifest.
@@ -73,7 +75,7 @@ listed in the manifest.
 | Area | Owner | Current locations/data |
 | --- | --- | --- |
 | React/FastAPI assembly and shell | Platform | `frontend/src/{App,ModuleHost,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,module_host,platform}/` |
-| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents styles are scoped under its feature, while other feature selector families remain in `frontend/src/styles.css` until M21D-M21G |
+| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents and Calendar styles are scoped under their features, while remaining feature selector families stay in `frontend/src/styles.css` until M21E-M21G |
 | Configuration/errors/database | Platform | `backend/app/core/`, `database/`; PostgreSQL session creation is infrastructure, not a public business query API |
 | AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; internal paths become public Platform contracts in M21B/M21F |
 | Migrations/recovery | Platform coordination | `backend/alembic/`, `backend/app/maintenance/`, `scripts/`, Compose volumes and host bind roots |
@@ -83,9 +85,9 @@ listed in the manifest.
 | Mail implementation/data | Inbox | `backend/app/{inbox,integrations}/`, `frontend/src/features/inbox/`; mail tables, attachment root, credential root |
 | Mailbox settings UI | Inbox content, Platform host | currently `frontend/src/features/settings/SettingsPage.tsx`; becomes a registered Inbox contribution in M21G |
 | Documents implementation/data | Documents | `backend/app/documents/` including owned errors, `frontend/src/features/documents/` including `styles.css`; document tables and private document root |
-| Backend tests | Same feature owner; Platform fixture debt | `backend/tests/test_*.py`; `conftest.py` truncates every table and clears every storage root |
+| Backend tests | Same feature owner; Platform fixture debt outside Documents/Calendar | `backend/tests/test_*.py`; Documents and Calendar use owned subtrees with scoped fixtures while the root `conftest.py` still resets all owners for other tests |
 | Frontend tests | Same feature owner; Platform composition debt | colocated `*.test.*`, plus full-App persistence/Assistant tests |
-| Browser tests | Joint provider/consumer evidence | one combined `e2e/tests/calendar-assistant.spec.ts`; split ownership is scheduled in M21C-M21G |
+| Browser tests | Provider/consumer evidence | Documents and Calendar own `e2e/tests/documents.spec.ts` and `e2e/tests/calendar.spec.ts`; remaining combined scenarios stay in `calendar-assistant.spec.ts` until M21E-M21G |
 
 Migrations stay centrally ordered even when their tables have a feature owner:
 0001-0005 Calendar, 0006-0009 Assistant, 0010-0014 Courses, 0015-0017
@@ -105,8 +107,9 @@ Database foreign keys remain intact and do not authorize table queries:
   message, attachment, and quarantine foreign keys remain internal to Inbox.
 - Document project/tag join references remain internal to Documents.
 
-Current direct Calendar ORM/repository queries by Courses and Assistant are
-business access violations, not exceptions justified by these foreign keys.
+Courses and Assistant now use Calendar's typed public contracts. The retained
+course-calendar foreign key is an integrity reference, not permission for
+Courses to query Calendar tables.
 
 ## Transactions and filesystem coordination
 
@@ -114,10 +117,11 @@ Repositories currently flush; application services normally own commits.
 Manual single-owner operations remain under their owner. Three boundaries must
 be preserved during refactoring:
 
-- Assistant proposal confirmation revalidates and performs all Calendar
-  commands with `commit=False`, then commits proposal/action/job and Calendar
-  changes once. M21D/M21F must replace this shared-session coupling with an
-  explicit application coordinator, not partial commits or a public session.
+- Assistant proposal confirmation binds Calendar's restricted command port to
+  its application transaction. Calendar commands flush with `commit=False`,
+  then the coordinator commits proposal/action/job and Calendar changes once.
+  The public port exposes neither the session nor repositories; M21F may move
+  the coordinator without changing this atomicity.
 - Courses owns course-calendar association changes. Existence/permission checks
   come from Calendar's public query contract; the coordinator commits the link
   change atomically without granting Courses a Calendar repository.
@@ -133,7 +137,8 @@ be preserved during refactoring:
   `frontend/src/styles.css` still mixes the remaining shared-control and feature
   selectors. Platform owns shared button/form/dialog/error rules. Documents now
   owns `.documents-*`, `.document-*`, and its delete-dialog variants.
-  `.calendar-*`, `.month-*`, `.time-*`, `.event-*`, and `.ics-*` move in M21D;
+  Calendar now owns `.calendar-*`, `.month-*`, `.time-*`, `.event-*`, and
+  `.ics-*` in `features/calendar/styles.css`;
   `.course-*`, `.courses-*`, note/editor/summary/source
   families in M21E; `.assistant-*`, conversation/proposal/job/composer families
   in M21F; and `.inbox-*`, `.mail-*`, `.connection-*` plus mailbox Settings in
@@ -146,11 +151,11 @@ be preserved during refactoring:
   supplied entries, unwinds successful starts after startup failure, and bounds
   every shutdown hook. The shared Platform application factory receives an
   explicit entry set: `backend/app/main.py` supplies the complete registered set,
-  while the Documents host supplies only Platform and Documents.
-- `backend/tests/conftest.py` knows all tables and private roots; tests share one
-  database reset. The initial `test-module` command therefore still starts its
-  isolated PostgreSQL service; M21C's next item introduces owner fixtures without
-  weakening full tests.
+  while focused hosts supply Platform plus either Documents or Calendar.
+- `backend/tests/conftest.py` still knows all tables and private roots for the
+  assembled suite. Documents and Calendar own closer fixtures; Calendar
+  truncates only events/calendars and mounts the real focused host. Focused
+  unit commands use isolated PostgreSQL and no owner storage.
 - Recovery scripts retain Platform's coordinated quiescence, PostgreSQL dump,
   manifest verification, restore order, and rollback behavior. Documents now
   supplies its established manifest/archive/root identities and safety limits

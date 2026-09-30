@@ -22,129 +22,14 @@ function expectNoAccessibilityViolations(violations: AxeResults["violations"]) {
   ).toEqual([]);
 }
 
-test("creates, edits, and undoes a calendar event through the UI", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Set up calendar" }).click();
-  await expect(
-    page.getByRole("checkbox", { name: "Show Personal" }),
-  ).toBeVisible();
-
-  await page.getByRole("button", { name: "Create event", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await dialog.getByLabel("Title").fill("End-to-end planning");
-  await dialog.getByRole("button", { name: "Create event" }).click();
-  await expect(page.getByText("End-to-end planning")).toBeVisible();
-
-  await page.getByText("End-to-end planning").click();
-  await dialog.getByLabel("Title").fill("Edited end-to-end planning");
-  await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByText("Edited end-to-end planning")).toBeVisible();
-
-  await page.getByRole("button", { name: "Undo", exact: true }).click();
-  await expect(page.getByText("End-to-end planning")).toBeVisible();
-});
-
-test("keeps a protected event visible but immutable", async ({
+test("restores Calendar navigation and an unsent Assistant draft", async ({
   page,
   request,
 }) => {
-  const calendarResponse = await request.post("/api/v1/calendars", {
-    data: {
-      name: "Protected E2E",
-      description: "Read-only test",
-      color: "#5b7fa3",
-    },
+  const seed = await request.post("/api/v1/calendars", {
+    data: { name: "Persistence E2E", color: "#29584c" },
   });
-  expect(calendarResponse.ok()).toBeTruthy();
-  const calendar = (await calendarResponse.json()) as { id: string };
-  const start = new Date();
-  start.setDate(start.getDate() + 1);
-  start.setHours(10, 0, 0, 0);
-  const end = new Date(start.getTime() + 60 * 60 * 1000);
-  const eventResponse = await request.post("/api/v1/events", {
-    data: {
-      calendar_id: calendar.id,
-      title: "Protected E2E event",
-      description: null,
-      location: null,
-      start_at: start.toISOString(),
-      end_at: end.toISOString(),
-      all_day: false,
-      timezone: "Europe/Oslo",
-      recurrence_rule: null,
-      status: "confirmed",
-    },
-  });
-  expect(eventResponse.ok()).toBeTruthy();
-  const protectionResponse = await request.patch(
-    `/api/v1/calendars/${calendar.id}`,
-    { data: { is_read_only: true } },
-  );
-  expect(protectionResponse.ok()).toBeTruthy();
-
-  await page.goto("/");
-  await page.getByText("Protected E2E event").click();
-  const dialog = page.getByRole("dialog");
-  await expect(
-    dialog.getByText(/belongs to a read-only calendar/),
-  ).toBeVisible();
-  await expect(dialog.getByLabel("Title")).toBeDisabled();
-  await expect(
-    dialog.getByRole("button", { name: "Save changes" }),
-  ).toHaveCount(0);
-});
-
-test("creates, tags, downloads, finds, and deletes a private document project", async ({
-  page,
-}) => {
-  await page.getByRole("button", { name: "Documents" }).click();
-  await expect(page.getByRole("heading", { name: "Documents" })).toBeVisible();
-  await page.getByRole("button", { name: "New project" }).click();
-  const projectDialog = page.getByRole("dialog");
-  await projectDialog.getByLabel("Project title").fill("E2E teaching document");
-  await projectDialog.getByRole("button", { name: "Create project" }).click();
-  await expect(
-    page.getByRole("heading", { name: "E2E teaching document" }),
-  ).toBeVisible();
-
-  await page.getByLabel("Tag name").fill("E2E research");
-  await page.getByRole("button", { name: "Add tag" }).click();
-  await page.getByRole("checkbox", { name: /E2E research/ }).click();
-  await expect(
-    page.getByRole("checkbox", { name: /E2E research/ }),
-  ).toBeChecked();
-
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("link", { name: /Download main.tex/ }).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe("main.tex");
-
-  await page.getByLabel("Search projects").fill("no such document");
-  await expect(page.getByText("No projects match these filters")).toBeVisible();
-  await page.getByRole("button", { name: "Clear filters" }).click();
-  await expect(page.getByText("E2E teaching document").first()).toBeVisible();
-
-  expectNoAccessibilityViolations(
-    (await new AxeBuilder({ page }).include(".documents-page").analyze())
-      .violations,
-  );
-
-  await page.getByRole("button", { name: "Delete", exact: true }).click();
-  const deletion = page.getByRole("alertdialog", {
-    name: "Delete E2E teaching document?",
-  });
-  await expect(deletion).toContainText("private source files");
-  await deletion
-    .getByRole("button", { name: "Delete project", exact: true })
-    .click();
-  await expect(page.getByText("Start your first document")).toBeVisible();
-});
-
-test("restores Calendar navigation and an unsent Assistant draft", async ({
-  page,
-}) => {
+  expect(seed.ok()).toBeTruthy();
   const conversation = {
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     title: "Persistent E2E conversation",

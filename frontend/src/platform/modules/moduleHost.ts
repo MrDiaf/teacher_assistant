@@ -1,3 +1,4 @@
+import { calendarModuleEntry } from "../../features/calendar/entry";
 import { documentsModuleEntry } from "../../features/documents/entry";
 import { platformModuleEntry } from "../entry";
 import { moduleCatalog } from "./catalog";
@@ -8,11 +9,12 @@ import {
   type RegisteredPage,
 } from "./frontendContract";
 
-export const SUPPORTED_MODULE_HOST_IDS = ["documents"] as const;
+export const SUPPORTED_MODULE_HOST_IDS = ["calendar", "documents"] as const;
 export type ModuleHostId = (typeof SUPPORTED_MODULE_HOST_IDS)[number];
 
 const moduleHostEntries = [
   platformModuleEntry,
+  calendarModuleEntry,
   documentsModuleEntry,
 ] as const satisfies readonly FrontendModuleEntry<ModuleId, PageId>[];
 
@@ -25,9 +27,12 @@ export function assembleModuleHostPages(
     );
   }
   const selectedCatalog = selectModuleCatalog(moduleCatalog, [moduleId]);
+  const selectedIds = new Set(
+    selectedCatalog.registrations.map((registration) => registration.id),
+  );
   const pages = assembleFrontendPages<ModuleId, PageId>(
     selectedCatalog,
-    moduleHostEntries,
+    moduleHostEntries.filter((entry) => selectedIds.has(entry.id)),
   ).filter((page) => page.moduleId === moduleId);
   if (pages.length === 0) {
     throw new Error(`Module host ${JSON.stringify(moduleId)} has no page`);

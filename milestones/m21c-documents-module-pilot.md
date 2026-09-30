@@ -1,6 +1,6 @@
 # M21C - Documents module and isolated development pilot
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
@@ -45,11 +45,41 @@ Selective bootstrap must avoid unrelated schedulers and per-test storage wipes.
 - [x] Establish Documents public entry points, internal ownership, and scoped CSS.
 - [x] Connect Documents recovery through a tested platform contribution.
 - [x] Implement the shared module host and initial focused Docker commands.
-- [ ] Separate Documents fixtures and backend/frontend/browser scenarios while
+- [x] Separate Documents fixtures and backend/frontend/browser scenarios while
   retaining real API/storage coverage and fake/provider contract checks.
-- [ ] Remove Documents boundary exceptions and verify forbidden access fails.
-- [ ] Measure focused checks against M21A; document the module workflow, storage
+- [x] Remove Documents boundary exceptions and verify forbidden access fails.
+- [x] Measure focused checks against M21A; document the module workflow, storage
   contract, timings, limitations, and next step in its README/handoff.
+
+## Completion result
+
+Completed 2026-09-24. Documents API/storage tests now live under an owned test
+directory whose closer fixtures mount the real dependency-closed module host,
+truncate only Documents tables, and use a private per-test source root. The
+shared full-suite fixtures lazily import the full app, so focused collection no
+longer imports production full-app assembly through its client fixture.
+
+The Documents frontend uses a test-only, stateful fake provider that validates
+methods, paths, and JSON shapes and rejects undeclared requests. The owned
+browser file covers both the real isolated API/storage workflow and a reversible
+route-intercepted UI exercise. Focused unit Compose mounts no private roots;
+focused browser Compose mounts only its project-scoped Documents root and
+database. Neither fake is imported or enabled by ordinary startup.
+
+The boundary manifest has no Documents exception. Production scans pass, while
+the deliberate backend and frontend fixtures that import Documents across an
+undeclared boundary are rejected. The relocation drill now filters deleted
+tracked paths while copying a dirty worktree, preserving coverage after the
+owned test-file move.
+
+A warm `make test-module MODULE=documents` measured 37.24 seconds outer wall
+time: 34 backend tests in 8.40 seconds, 29 frontend tests in 2.04 seconds, and
+two browser tests in 3.7 seconds. This covers more layers than M21A's separate
+representative 8-backend-test and 2-frontend-test timings, so it is not a direct
+speedup comparison. Final verification also passed 228 backend tests, 108
+frontend tests, all 13 full browser/accessibility scenarios, lint, full and
+module production builds, data-safety checks, and the coordinated relocation
+and recovery drill.
 
 ## Acceptance criteria
 

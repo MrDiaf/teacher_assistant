@@ -64,8 +64,9 @@ M21G owns its code contribution and M21H owns module switches. Do not treat
 Production assembly intentionally requires an entry for every registration and
 keeps every current module enabled. The focused host accepts only an explicit
 allowlisted module ID, closes its declared dependency set, and assembles only
-matching real entries. `documents` therefore hosts Platform plus Documents,
-with no Calendar, Courses, Inbox, or Assistant routes or schedulers.
+matching real entries. `documents` hosts Platform plus Documents; `calendar`
+hosts Platform plus Calendar and its ICS refresh lifecycle. Neither includes
+unrelated feature routes, pages, or schedulers.
 
 The root `compose.module.yml` override retains the normal images/source mounts
 but selects the focused host through configuration. Its distinct Compose project,
@@ -99,10 +100,9 @@ route or response provider.
   infrastructure rather than unrestricted feature service APIs.
 
 The Documents recovery contribution is implemented; equivalent ownership for
-other private roots remains with their later module milestones. The explicit
-cross-module transaction coordinator also remains later-milestone work. Neither
-interface may expose an unrestricted session, physical private path, credential,
-or feature repository.
+other private roots remains with their later module milestones. Calendar's
+restricted Assistant port binds internally to the coordinator's transaction
+without exposing a session, repository, raw SQL, physical path, or credential.
 
 Platform owns configuration/database availability and safe diagnostic errors.
 Feature permissions stay with the feature owner. Database sessions remain
@@ -117,8 +117,9 @@ boundary manifest; that root wiring is not permission for other Platform code
 to reach feature internals. Feature code consumes the Platform UI, persistence,
 API, and model-selection façades; Settings still imports Inbox internals.
 AI/diagnostic deeper separation belongs to M21F; mail Settings separation belongs
-to M21G. Feature selectors remain deliberately mixed in the legacy stylesheet
-until their owner milestones extract them.
+to M21G. Courses, Assistant, and Inbox selectors remain deliberately mixed in
+the legacy stylesheet until their owner milestones extract them; Calendar and
+Documents styles are feature-owned.
 
 ## Current commands
 
@@ -130,6 +131,8 @@ make logs
 make check-boundaries
 make check-module-contract
 make test
+make dev-module MODULE=calendar
+make test-module MODULE=calendar
 make dev-module MODULE=documents
 make test-module MODULE=documents
 make logs-module MODULE=documents
@@ -140,10 +143,12 @@ make migrate
 make data-relocation-test
 ```
 
-Only `documents` is currently allowlisted; unknown and multiple IDs fail before
-Compose starts. The development defaults are UI `15173` and API `18000` and may
-be overridden with `MODULE_FRONTEND_PORT`/`MODULE_BACKEND_PORT`. The initial
-focused test command verifies dependency closure, real entries, routes,
-lifecycle selection, shell rendering, and invalid-ID rejection. Documents-owned
-CRUD/storage fixtures and browser/provider scenarios are the next M21C item.
+Only `calendar` and `documents` are currently allowlisted; unknown and multiple
+IDs fail before Compose starts. The development defaults are UI `15173` and API `18000` and may
+be overridden with `MODULE_FRONTEND_PORT`/`MODULE_BACKEND_PORT`. The focused
+test command verifies dependency closure, real entries, routes, lifecycle
+selection, shell rendering, and invalid-ID rejection. Calendar adds scoped API,
+provider/consumer, and independently seeded browser coverage without private
+mounts; Documents adds CRUD/storage, contract-checked fake behavior, and
+real/fake browser scenarios with only isolated Documents storage.
 See the [M21A baseline](../baseline.md).

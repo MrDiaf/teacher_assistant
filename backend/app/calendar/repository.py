@@ -8,8 +8,7 @@ from sqlalchemy import Select, and_, delete, or_, select
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType
-from app.core.errors import (
+from app.calendar.errors import (
     CalendarNotFoundError,
     CalendarReadOnlyError,
     CalendarSourceProtectedError,
@@ -18,6 +17,7 @@ from app.core.errors import (
     IcsSubscriptionNotFoundError,
     InvalidRecurrenceParentError,
 )
+from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType
 
 READ_ONLY_CALENDAR_FIELDS = {"name", "description", "color"}
 

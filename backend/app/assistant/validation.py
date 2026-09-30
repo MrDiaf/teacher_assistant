@@ -15,15 +15,17 @@ from app.assistant.proposals import (
     UpdateCalendarAction,
     UpdateEventAction,
 )
-from app.calendar.models import Calendar, CalendarEvent
-from app.calendar.repository import CalendarRepository, EventRepository
-from app.calendar.service import validate_recurrence_rule
+from app.calendar.public import (
+    AssistantCalendarPort,
+    CalendarReadOnlyError,
+    CalendarSummary,
+    EventSummary,
+    InvalidRecurrenceError,
+)
 from app.core.errors import (
     AssistantProposalLimitError,
     AssistantProposalStateError,
-    CalendarReadOnlyError,
     InvalidAssistantResponseError,
-    InvalidRecurrenceError,
 )
 
 
@@ -37,11 +39,8 @@ class PreparedProposal:
 
 
 class ProposalValidator:
-    def __init__(
-        self, calendars: CalendarRepository, events: EventRepository
-    ) -> None:
-        self.calendars = calendars
-        self.events = events
+    def __init__(self, calendar: AssistantCalendarPort) -> None:
+        self.calendar = calendar
 
     async def prepare(self, proposal: CalendarChangeProposal) -> PreparedProposal:
         try:
@@ -155,8 +154,8 @@ class ProposalValidator:
                         ],
                     )
                 calendar_targets.add(action.calendar_id)
-                calendar = await self.calendars.get(
-                    action.calendar_id, for_update=for_update
+                calendar = await self.calendar.get_calendar(
+                    action.calendar_id, lock_for_revalidation=for_update
                 )
                 self._ensure_writable(calendar)
                 previous = self._calendar_state(calendar)
@@ -188,11 +187,11 @@ class ProposalValidator:
                 continue
 
             if isinstance(action, CreateEventAction):
-                calendar = await self.calendars.get(
-                    action.calendar_id, for_update=for_update
+                calendar = await self.calendar.get_calendar(
+                    action.calendar_id, lock_for_revalidation=for_update
                 )
                 self._ensure_writable(calendar)
-                validate_recurrence_rule(action.event.recurrence_rule)
+                self.calendar.validate_recurrence(action.event.recurrence_rule)
                 event_count, action_warnings = self._affected_recurrence_count(
                     action.event.start_at, action.event.recurrence_rule
                 )
@@ -237,16 +236,19 @@ class ProposalValidator:
                     ],
                 )
             event_targets.add(action.event_id)
-            event = await self.events.get(action.event_id, for_update=for_update)
+            event = await self.calendar.get_event(
+                action.event_id, lock_for_revalidation=for_update
+            )
             parent = (
-                await self.events.get(
-                    event.recurrence_parent_id, for_update=for_update
+                await self.calendar.get_event(
+                    event.recurrence_parent_id,
+                    lock_for_revalidation=for_update,
                 )
                 if event.recurrence_parent_id
                 else event
             )
-            calendar = await self.calendars.get(
-                parent.calendar_id, for_update=for_update
+            calendar = await self.calendar.get_calendar(
+                parent.calendar_id, lock_for_revalidation=for_update
             )
             self._ensure_writable(calendar)
             if action.calendar_id != parent.calendar_id:
@@ -268,15 +270,15 @@ class ProposalValidator:
                 changes = action.changes.change_values()
                 target_calendar_id = changes.get("calendar_id")
                 if target_calendar_id is not None:
-                    target_calendar = await self.calendars.get(
-                        target_calendar_id, for_update=for_update
+                    target_calendar = await self.calendar.get_calendar(
+                        target_calendar_id, lock_for_revalidation=for_update
                     )
                     self._ensure_writable(target_calendar)
                 previous = self._event_state(parent)
                 proposed = dict(previous)
                 proposed.update(action.changes.change_values(mode="json"))
                 rule = proposed.get("recurrence_rule")
-                validate_recurrence_rule(rule)
+                self.calendar.validate_recurrence(rule)
                 event_count, action_warnings = self._mutation_affected_count(
                     parent, action.recurrence_scope, rule
                 )
@@ -332,7 +334,7 @@ class ProposalValidator:
         )
 
     @staticmethod
-    def _ensure_writable(calendar: Calendar) -> None:
+    def _ensure_writable(calendar: CalendarSummary) -> None:
         if calendar.is_read_only:
             raise CalendarReadOnlyError()
 
@@ -413,7 +415,7 @@ class ProposalValidator:
             )
 
     @staticmethod
-    def _calendar_state(calendar: Calendar) -> dict[str, Any]:
+    def _calendar_state(calendar: CalendarSummary) -> dict[str, Any]:
         return {
             "name": calendar.name,
             "description": calendar.description,
@@ -421,7 +423,7 @@ class ProposalValidator:
         }
 
     @staticmethod
-    def _event_state(event: CalendarEvent) -> dict[str, Any]:
+    def _event_state(event: EventSummary) -> dict[str, Any]:
         return {
             "calendar_id": str(event.calendar_id),
             "title": event.title,
@@ -437,7 +439,7 @@ class ProposalValidator:
 
     def _mutation_affected_count(
         self,
-        event: CalendarEvent,
+        event: EventSummary,
         scope: str | None,
         recurrence_rule: str | None,
     ) -> tuple[int, list[str]]:

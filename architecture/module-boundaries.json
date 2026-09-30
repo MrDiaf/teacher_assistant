@@ -55,6 +55,9 @@
       "documents": "app.documents.entry",
       "inbox": "app.inbox.entry"
     },
+    "public_contracts": {
+      "calendar": ["app.calendar.public"]
+    },
     "legacy_exceptions": [
       {
         "importer": "backend/app/assistant/course_context.py",
@@ -75,36 +78,6 @@
         "importer": "backend/app/assistant/course_context.py",
         "imported": "app.notes.models",
         "remove_in": "M21E"
-      },
-      {
-        "importer": "backend/app/assistant/proposal_service.py",
-        "imported": "app.calendar.models",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/proposal_service.py",
-        "imported": "app.calendar.repository",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/proposal_service.py",
-        "imported": "app.calendar.schemas",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/proposal_service.py",
-        "imported": "app.calendar.service",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/proposals.py",
-        "imported": "app.calendar.models",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/proposals.py",
-        "imported": "app.calendar.schemas",
-        "remove_in": "M21D"
       },
       {
         "importer": "backend/app/assistant/routes.py",
@@ -133,11 +106,6 @@
       },
       {
         "importer": "backend/app/assistant/service.py",
-        "imported": "app.calendar.repository",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
         "imported": "app.codex_runtime.adapter",
         "remove_in": "M21F"
       },
@@ -160,51 +128,6 @@
         "importer": "backend/app/assistant/service.py",
         "imported": "app.diagnostics.service",
         "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/validation.py",
-        "imported": "app.calendar.models",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/validation.py",
-        "imported": "app.calendar.repository",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/assistant/validation.py",
-        "imported": "app.calendar.service",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/course_calendars/models.py",
-        "imported": "app.calendar.models",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/course_calendars/repository.py",
-        "imported": "app.calendar.models",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/course_calendars/routes.py",
-        "imported": "app.calendar.schemas",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/course_calendars/service.py",
-        "imported": "app.calendar.models",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/course_calendars/service.py",
-        "imported": "app.calendar.repository",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "backend/app/course_calendars/service.py",
-        "imported": "app.calendar.service",
-        "remove_in": "M21D"
       },
       {
         "importer": "backend/app/notes/prettify_routes.py",
@@ -281,31 +204,14 @@
       "documents": "features/documents/entry",
       "inbox": "features/inbox/entry"
     },
+    "public_contracts": {
+      "calendar": ["features/calendar/public"]
+    },
     "legacy_exceptions": [
-      {
-        "importer": "frontend/src/features/courses/CourseCalendar.tsx",
-        "imported": "features/calendar/CalendarPage",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "frontend/src/features/courses/CourseCalendar.tsx",
-        "imported": "features/calendar/api",
-        "remove_in": "M21D"
-      },
-      {
-        "importer": "frontend/src/features/courses/CourseCalendar.tsx",
-        "imported": "features/calendar/types",
-        "remove_in": "M21D"
-      },
       {
         "importer": "frontend/src/features/courses/CourseMaterials.tsx",
         "imported": "features/assistant/ErrorAssistantAction",
         "remove_in": "M21F"
-      },
-      {
-        "importer": "frontend/src/features/courses/api.ts",
-        "imported": "features/calendar/types",
-        "remove_in": "M21D"
       },
       {
         "importer": "frontend/src/features/settings/SettingsPage.tsx",

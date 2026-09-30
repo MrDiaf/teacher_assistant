@@ -7,12 +7,12 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from app.calendar.ics import MAX_ICS_BYTES
-from app.core.errors import (
+from app.calendar.errors import (
     IcsFileTooLargeError,
     IcsSubscriptionFetchError,
     InvalidIcsSubscriptionUrlError,
 )
+from app.calendar.ics import MAX_ICS_BYTES
 
 FETCH_TIMEOUT_SECONDS = 15.0
 

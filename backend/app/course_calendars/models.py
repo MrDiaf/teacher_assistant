@@ -8,7 +8,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database.base import Base
 
 if TYPE_CHECKING:
-    from app.calendar.models import Calendar
     from app.courses.models import Course
 
 
@@ -42,4 +41,3 @@ class CourseCalendarLink(Base):
     )
 
     course: Mapped["Course"] = relationship(back_populates="calendar_links")
-    calendar: Mapped["Calendar"] = relationship(lazy="joined")

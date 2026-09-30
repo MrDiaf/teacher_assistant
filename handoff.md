@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-11
+Updated: 2026-09-28
 
 ## Start here
 
@@ -27,12 +27,15 @@ explicitly requested.
   bounded lifecycle handling, shared Platform entry points, compatible
   navigation state, enforcement tests, tightened boundaries, and documented
   extension procedure are implemented in the current uncommitted worktree.
-- M21C is active. Its first three checklist items establish Documents-owned
-  errors and scoped CSS, a typed recovery contribution consumed by Platform,
-  and the shared dependency-closed module host with initial focused Docker
-  commands; later M21C items remain incomplete.
+- M21C is complete. Documents owns its errors, scoped CSS, recovery declaration,
+  focused fixtures/provider/browser scenarios, and its dependency-closed module
+  host.
+- M21D is complete. Calendar owns its errors, scoped CSS, typed query/restricted
+  command ports, scoped backend/browser tests, and a dependency-closed focused
+  host. Courses and Assistant consume Calendar only through public contracts.
+  No milestone is currently active.
 - No feature behavior, schema, storage identity, private data, or visible design
-  was changed by M21C. M22 was not started.
+  was changed by M21C/M21D. M22 was not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
 - The observed migration head is `20260908_0021 (head)`.
 - The installation identity remains `teacher_assistant`, with its established
@@ -154,7 +157,7 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   healthy isolated database/backend/frontend startup, JSON validity, diff
   hygiene, and removal of isolated test volumes.
 
-## M21C current result
+## M21C final result
 
 - The existing `app.documents.entry` and `features/documents/entry` surfaces
   remain the only production imports used by Platform composition. The backend
@@ -200,26 +203,86 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   production frontend builds, live module API/UI startup, selected/absent route
   checks, invalid-ID command checks, and diff hygiene. The focused stack was
   stopped and temporary test/build volumes were removed.
+- Documents API/storage tests now live under `backend/tests/documents/`. Their
+  closer fixture mounts the real Platform+Documents host, truncates only
+  Documents tables, and uses a private per-test source root. The full-suite
+  client imports full application assembly lazily, so focused collection does
+  not import it through the root client fixture.
+- The stateful frontend fake provider validates Documents methods, paths, and
+  payloads and rejects undeclared requests. The owned browser file separately
+  exercises real isolated storage and a reversible route-local fake. Neither
+  fake is wired into production.
+- Focused unit Compose attaches only its isolated database; focused browser
+  Compose attaches the database and Documents storage only. A warm complete
+  focused run took 37.24 seconds: 34 backend tests in 8.40 seconds, 29 frontend
+  tests in 2.04 seconds, and 2 browser tests in 3.7 seconds. This is broader than
+  the M21A representative file measurements, so no direct speedup is claimed.
+- The boundary manifest has no Documents exception. Production scans passed and
+  the deliberate backend/frontend fixtures that import Documents across an
+  undeclared boundary were rejected.
+- Final M21C verification passed `make test` (228 backend and 108 frontend tests
+  plus boundary, contract, and data-safety gates), `make lint`, full and
+  module-mode frontend builds, all 13 full browser/accessibility scenarios, and
+  exact relocation/backup/restore. The relocation copier ignores deleted
+  tracked paths so moved tests are included from an uncommitted worktree.
+
+## M21D final result
+
+- Calendar publishes immutable `CalendarSummary`/`EventSummary` values, bounded
+  ID/range/search/availability queries, and a restricted Assistant command port
+  from `app.calendar.public`. The command surface omits calendar deletion,
+  protection changes, subscriptions, bulk deletion, raw repositories, SQL, and
+  a session escape hatch.
+- Calendar mutations still pass through `CalendarService`, including read-only,
+  source, recurrence, lock, and database guards. Assistant confirmation binds
+  the port to its coordinator transaction, flushes with `commit=False`, and
+  commits Calendar plus proposal/action/job state once; rollback and repeated
+  confirmation tests pass.
+- Courses now owns only course-calendar links and uses Calendar's public query
+  port for existence/events. Assistant validation, context reads, and execution
+  use Calendar's public ports. Calendar application errors moved from Platform
+  into `app.calendar.errors` without changing safe codes/statuses/messages.
+- The boundary checker permits only the exact declared backend/frontend public
+  contracts to graph-approved consumers. All 16 backend and 4 frontend M21D
+  legacy exceptions were removed; 22 backend and 3 frontend exceptions remain
+  for M21E-M21G.
+- Calendar feature selectors moved from the legacy global stylesheet into
+  `features/calendar/styles.css`; the Calendar entry loads them. Courses retains
+  only its owned embedded-Calendar integration overrides until M21E. The
+  existing shell and Calendar visual behavior are unchanged.
+- Calendar backend tests now live under `backend/tests/calendar/` with a scoped
+  real-host fixture that truncates only events/calendars. The owned browser spec
+  independently seeds each workflow and covers create/edit/filter/view/undo,
+  accessibility, and read-only event controls.
+- The shared focused host now accepts `calendar` and `documents`. Calendar
+  assembles only Platform plus Calendar routes/page and the ICS refresh
+  lifecycle. Its focused unit/browser stacks attach isolated PostgreSQL and no
+  private filesystem storage; subscription networking remains mocked.
+- A complete focused Calendar run passed 104 backend tests in 22.75 seconds, 53
+  frontend tests in 3.84 seconds, and 2 browser tests in 4.0 seconds. Outer wall
+  time was 53.43 seconds including Compose startup, image checks, and cleanup.
+- Final full verification passed `make test` (231 backend and 110 frontend tests
+  plus boundary, catalog-drift, and data-safety gates), `make lint`, and all 13
+  isolated browser/accessibility scenarios in 29.6 seconds. Migration-from-zero
+  reached the unchanged `20260908_0021 (head)`.
 
 ## Shared cautions
 
-- M21C is active; M21D-M21I remain separate planned milestones. Documents owns
-  its feature CSS and is the only currently supported focused host. Other
-  feature CSS, other module-host IDs, and Settings module controls do not exist
-  yet.
+- M21C and M21D are complete; M21E-M21I remain separate planned milestones.
+  Documents and Calendar own their feature CSS and are the supported focused
+  hosts. Other feature CSS, other module-host IDs, and Settings module controls
+  do not exist yet.
 - M22-M24 remain unimplemented: Documents has no editor, compilation, preview,
   or Codex compilation advice.
 - The exact boundary manifest is a burn-down list. Remove entries as owning
   milestones migrate them; never broaden an exception to accommodate new code.
-- Assistant confirmation currently relies on one shared SQLAlchemy transaction
-  for proposal/job/action and Calendar changes. Course-calendar links also use
-  direct Calendar access. Preserve atomicity via the documented coordinator.
-- `backend/tests/conftest.py` still resets all tables/private roots, so the
-  initial focused test command starts isolated PostgreSQL and limits itself to
-  host/contract coverage. Documents-owned CRUD/storage fixtures, focused browser
-  scenarios, and fake/provider contract checks are intentionally deferred to
-  item 4. The combined E2E file, global non-Documents feature CSS, and remaining
-  recovery assembly are also intentional debt.
+- Assistant confirmation binds Calendar's restricted port to one shared
+  SQLAlchemy transaction for proposal/job/action and Calendar changes. Preserve
+  this atomicity when M21F moves the coordinator; never expose the session.
+- `backend/tests/conftest.py` still resets all tables/private roots for the
+  assembled suite. Documents and Calendar override it with scoped fixtures in
+  their owned subtrees. Other owner-specific fixtures, remaining feature CSS,
+  and recovery contributions are later-milestone debt.
 - `alembic check` reports deliberately retained retired integration tables and
   four known enum/VARCHAR length differences. It reports no Documents drift.
 - A real mailbox-provider check was not run; local fakes cover TLS/read-only,
@@ -236,16 +299,11 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21C is active and its first three checklist items are complete. The exact next
-step is its fourth checklist item: separate Documents fixtures and
-backend/frontend/browser scenarios while retaining real API/storage coverage and
-fake/provider contract checks. Do not start boundary cleanup, M21D, or M22.
+No milestone is active. M21E is the next planned milestone, but it must be
+explicitly selected before implementation. Do not start M22.
 
 Recommended next prompt:
 
 ```text
-Continue M21C with checklist item 4 only: separate Documents fixtures and
-backend/frontend/browser scenarios while retaining real API/storage coverage
-and fake/provider contract checks. Preserve the shared host and isolated
-ports/data, and do not start boundary cleanup, M21D, or M22.
+Start implementing M21E to completion.
 ```

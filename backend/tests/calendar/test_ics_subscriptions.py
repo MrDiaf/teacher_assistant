@@ -4,10 +4,10 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calendar.errors import IcsSubscriptionFetchError
 from app.calendar.models import Calendar
 from app.calendar.subscription_scheduler import refresh_due_subscriptions
-from app.core.errors import IcsSubscriptionFetchError
-from tests.test_ics_import import VALID_ICS
+from tests.calendar.test_ics_import import VALID_ICS
 
 REFRESHED_ICS = b"""BEGIN:VCALENDAR
 VERSION:2.0

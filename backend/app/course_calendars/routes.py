@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.calendar.schemas import CalendarResponse, EventResponse
+from app.calendar.public import CalendarSummary, EventSummary
 from app.course_calendars.schemas import CourseCalendarLinkCreate
 from app.course_calendars.service import CourseCalendarService
 from app.database.session import get_session
@@ -17,31 +17,31 @@ SessionDependency = Annotated[AsyncSession, Depends(get_session)]
 
 @router.get(
     "/courses/{course_id}/calendars",
-    response_model=list[CalendarResponse],
+    response_model=list[CalendarSummary],
 )
 async def list_course_calendars(
     course_id: uuid.UUID,
     session: SessionDependency,
-) -> list[CalendarResponse]:
+) -> list[CalendarSummary]:
     calendars = await CourseCalendarService(session).list_calendars(course_id)
-    return [CalendarResponse.model_validate(calendar) for calendar in calendars]
+    return list(calendars)
 
 
 @router.post(
     "/courses/{course_id}/calendars",
-    response_model=CalendarResponse,
+    response_model=CalendarSummary,
     status_code=HTTPStatus.CREATED,
 )
 async def link_course_calendar(
     course_id: uuid.UUID,
     payload: CourseCalendarLinkCreate,
     session: SessionDependency,
-) -> CalendarResponse:
+) -> CalendarSummary:
     calendar = await CourseCalendarService(session).link_calendar(
         course_id,
         payload.calendar_id,
     )
-    return CalendarResponse.model_validate(calendar)
+    return calendar
 
 
 @router.delete(
@@ -59,7 +59,7 @@ async def unlink_course_calendar(
 
 @router.get(
     "/courses/{course_id}/events",
-    response_model=list[EventResponse],
+    response_model=list[EventSummary],
 )
 async def list_course_events(
     course_id: uuid.UUID,
@@ -68,7 +68,7 @@ async def list_course_events(
     starts_before: Annotated[datetime | None, Query()] = None,
     ends_after: Annotated[datetime | None, Query()] = None,
     search: Annotated[str | None, Query(min_length=1, max_length=240)] = None,
-) -> list[EventResponse]:
+) -> list[EventSummary]:
     events = await CourseCalendarService(session).list_events(
         course_id,
         calendar_id=calendar_id,
@@ -76,4 +76,4 @@ async def list_course_events(
         ends_after=ends_after,
         search=search,
     )
-    return [EventResponse.model_validate(event) for event in events]
+    return list(events)

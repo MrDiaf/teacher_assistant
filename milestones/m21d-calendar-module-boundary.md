@@ -1,13 +1,13 @@
 # M21D - Calendar ownership and public service contract
 
-- [ ] This milestone
+- [x] This milestone
 
 ## Outcome
 
 Make Calendar the sole owner of its business data and mutation rules, with a
 public contract supporting its existing UI, Courses, and Assistant consumers.
 
-Dependency: [M21C](m21c-documents-module-pilot.md). Planning only. Preserve all
+Dependency: [M21C](m21c-documents-module-pilot.md). Preserve all
 completed Calendar behavior; no new scheduling or subscription features.
 
 ## Scope
@@ -39,14 +39,14 @@ created calendar or persistent UI state.
 
 ## Ordered checklist
 
-- [ ] Implement Calendar query/mutation contracts and provider contract tests.
-- [ ] Migrate external Calendar access and generic helper imports; remove the
+- [x] Implement Calendar query/mutation contracts and provider contract tests.
+- [x] Migrate external Calendar access and generic helper imports; remove the
   corresponding dependency exceptions without broadening permissions.
-- [ ] Separate Calendar feature styles and UI orchestration where necessary.
-- [ ] Register subscription lifecycle and focused Calendar test/dev selection.
-- [ ] Preserve recurrence, permissions, proposal transactions, and imports with
+- [x] Separate Calendar feature styles and UI orchestration where necessary.
+- [x] Register subscription lifecycle and focused Calendar test/dev selection.
+- [x] Preserve recurrence, permissions, proposal transactions, and imports with
   module tests plus real Courses/Assistant contract integration tests.
-- [ ] Update Calendar README/handoff, ownership index, timings, and root status.
+- [x] Update Calendar README/handoff, ownership index, timings, and root status.
 
 ## Acceptance criteria
 

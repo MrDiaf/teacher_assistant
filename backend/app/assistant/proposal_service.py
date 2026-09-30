@@ -19,10 +19,13 @@ from app.assistant.proposals import (
 )
 from app.assistant.repository import AssistantRepository
 from app.assistant.validation import ProposalValidator
-from app.calendar.models import CalendarSourceType
-from app.calendar.repository import CalendarRepository, EventRepository
-from app.calendar.schemas import CalendarResponse, EventResponse
-from app.calendar.service import CalendarService
+from app.calendar.public import (
+    AssistantCalendarCreate,
+    AssistantCalendarUpdate,
+    AssistantEventCreate,
+    AssistantEventUpdate,
+    assistant_calendar_port,
+)
 from app.core.errors import ApplicationError, AssistantProposalStateError
 
 logger = logging.getLogger(__name__)
@@ -33,8 +36,8 @@ class ProposalService:
         self.session = session
         self.proposals = ProposalRepository(session)
         self.assistant = AssistantRepository(session)
-        self.calendar_service = CalendarService(session)
-        self.validator = ProposalValidator(CalendarRepository(session), EventRepository(session))
+        self.calendar = assistant_calendar_port(session)
+        self.validator = ProposalValidator(self.calendar)
 
     async def get(self, proposal_id: uuid.UUID) -> AssistantProposal:
         proposal = await self.proposals.get(proposal_id)
@@ -150,67 +153,47 @@ class ProposalService:
 
     async def _execute_action(self, action: ProposalAction) -> dict[str, Any]:
         if isinstance(action, CreateCalendarAction):
-            calendar = await self.calendar_service.create_calendar(
-                {
-                    "name": action.name,
-                    "description": action.description,
-                    "color": action.color,
-                    "is_visible": True,
-                    "is_read_only": False,
-                    "source_type": CalendarSourceType.LOCAL,
-                },
-                commit=False,
+            calendar = await self.calendar.create_calendar(
+                AssistantCalendarCreate(
+                    name=action.name,
+                    description=action.description,
+                    color=action.color,
+                )
             )
-            return {"calendar": CalendarResponse.model_validate(calendar).model_dump(mode="json")}
+            return {"calendar": calendar.model_dump(mode="json")}
 
         if isinstance(action, UpdateCalendarAction):
-            calendar = await self.calendar_service.update_calendar(
+            calendar = await self.calendar.update_calendar(
                 action.calendar_id,
-                action.changes.change_values(),
-                commit=False,
+                AssistantCalendarUpdate.model_validate(action.changes.change_values()),
             )
-            return {"calendar": CalendarResponse.model_validate(calendar).model_dump(mode="json")}
+            return {"calendar": calendar.model_dump(mode="json")}
 
         if isinstance(action, CreateEventAction):
-            event = await self.calendar_service.create_event(
-                {
-                    "calendar_id": action.calendar_id,
+            event = await self.calendar.create_event(
+                AssistantEventCreate(
+                    calendar_id=action.calendar_id,
                     **action.event.model_dump(),
-                },
-                commit=False,
+                )
             )
-            return {"event": EventResponse.model_validate(event).model_dump(mode="json")}
+            return {"event": event.model_dump(mode="json")}
 
         if isinstance(action, UpdateEventAction):
             changes = action.changes.change_values()
-            if action.recurrence_scope == "occurrence":
-                event = await self.calendar_service.update_event_occurrence(
-                    action.event_id,
-                    action.occurrence_start_at,
-                    changes,
-                    commit=False,
-                )
-            elif action.recurrence_scope == "series":
-                event = await self.calendar_service.update_event_series(
-                    action.event_id, changes, commit=False
-                )
-            else:
-                event = await self.calendar_service.update_event(
-                    action.event_id, changes, commit=False
-                )
-            return {"event": EventResponse.model_validate(event).model_dump(mode="json")}
+            event = await self.calendar.update_event(
+                action.event_id,
+                AssistantEventUpdate.model_validate(changes),
+                recurrence_scope=action.recurrence_scope or "single",
+                occurrence_start_at=action.occurrence_start_at,
+            )
+            return {"event": event.model_dump(mode="json")}
 
         if isinstance(action, DeleteEventAction):
-            if action.recurrence_scope == "occurrence":
-                await self.calendar_service.delete_event_occurrence(
-                    action.event_id,
-                    action.occurrence_start_at,
-                    commit=False,
-                )
-            elif action.recurrence_scope == "series":
-                await self.calendar_service.delete_event_series(action.event_id, commit=False)
-            else:
-                await self.calendar_service.delete_event(action.event_id, commit=False)
+            await self.calendar.delete_event(
+                action.event_id,
+                recurrence_scope=action.recurrence_scope or "single",
+                occurrence_start_at=action.occurrence_start_at,
+            )
             return {"event_id": str(action.event_id), "deleted": True}
 
         raise AssistantProposalStateError("The proposal contains an unknown action.")

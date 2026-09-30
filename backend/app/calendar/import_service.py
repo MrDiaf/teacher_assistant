@@ -6,10 +6,10 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.calendar.errors import CalendarReadOnlyError, InvalidIcsError
 from app.calendar.ics import ParsedIcsCalendar, ParsedIcsEvent
 from app.calendar.models import Calendar, CalendarEvent, CalendarSourceType
 from app.calendar.repository import CalendarRepository, EventRepository
-from app.core.errors import CalendarReadOnlyError, InvalidIcsError
 
 
 @dataclass(frozen=True)

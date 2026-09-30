@@ -2,9 +2,9 @@ services:
   database:
     profiles: [module-host]
     environment:
-      POSTGRES_DB: teacher_assistant_documents_module
-      POSTGRES_USER: teacher_assistant_documents_module
-      POSTGRES_PASSWORD: teacher_assistant_documents_module
+      POSTGRES_DB: teacher_assistant_${MODULE_HOST:?MODULE_HOST is required}_module
+      POSTGRES_USER: teacher_assistant_module
+      POSTGRES_PASSWORD: teacher_assistant_module
     volumes:
       - module-database-data:/var/lib/postgresql/data
     restart: "no"
@@ -22,7 +22,7 @@ services:
       - --reload
       - --no-access-log
     environment:
-      DATABASE_URL: postgresql+asyncpg://teacher_assistant_documents_module:teacher_assistant_documents_module@database:5432/teacher_assistant_documents_module
+      DATABASE_URL: postgresql+asyncpg://teacher_assistant_module:teacher_assistant_module@database:5432/teacher_assistant_${MODULE_HOST:?MODULE_HOST is required}_module
       TEACHER_ASSISTANT_MODULE_HOST: ${MODULE_HOST:?MODULE_HOST is required}
       TESTING: "false"
       OPENAI_API_KEY: ""
