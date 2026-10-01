@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon, useModalDialog } from "../../platform/ui";
-import { ErrorAssistantAction } from "../assistant/ErrorAssistantAction";
+import { DiagnosticAssistantAction } from "../../platform/diagnostics";
 import { CourseApiError, courseApi } from "./api";
 import type {
   CourseMaterialType,
@@ -465,7 +465,9 @@ export function CourseMaterials({
       {error && (
         <div className="course-materials-error" role="alert">
           <p>{error.message}</p>
-          {error.errorId && <ErrorAssistantAction errorId={error.errorId} />}
+          {error.errorId && (
+            <DiagnosticAssistantAction errorId={error.errorId} />
+          )}
         </div>
       )}
 

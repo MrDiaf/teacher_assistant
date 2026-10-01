@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Icon } from "../../platform/ui";
+import { AiAccountSettings } from "../ai/AiAccountSettings";
 import { mailApi } from "../inbox/api";
 import type { MailConnectionInput, MailConnectionStatus } from "../inbox/types";
 
@@ -77,6 +78,8 @@ export function SettingsPage() {
           <p>Connect one dedicated forwarding mailbox for your local Inbox.</p>
         </div>
       </header>
+
+      <AiAccountSettings />
 
       <section
         className="mail-settings-card"

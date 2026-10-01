@@ -7,6 +7,10 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.assistant.errors import (
+    AssistantConversationNotFoundError,
+    AssistantJobNotFoundError,
+)
 from app.assistant.models import (
     AssistantContextAudit,
     AssistantConversation,
@@ -14,10 +18,6 @@ from app.assistant.models import (
     AssistantJobStatus,
     AssistantMessage,
     AssistantMessageRole,
-)
-from app.core.errors import (
-    AssistantConversationNotFoundError,
-    AssistantJobNotFoundError,
 )
 
 

@@ -1,5 +1,6 @@
 import type { FrontendModuleEntry } from "../../platform/modules/frontendContract";
 import { AssistantPage } from "./AssistantPage";
+import "./styles.css";
 
 export const assistantModuleEntry = {
   id: "assistant",

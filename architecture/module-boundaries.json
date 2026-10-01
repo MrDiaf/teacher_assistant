@@ -59,98 +59,7 @@
       "calendar": ["app.calendar.public"],
       "courses": ["app.courses.public"]
     },
-    "legacy_exceptions": [
-      {
-        "importer": "backend/app/assistant/course_context.py",
-        "imported": "app.diagnostics.redaction",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/routes.py",
-        "imported": "app.ai.service",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/routes.py",
-        "imported": "app.codex_runtime.adapter",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/routes.py",
-        "imported": "app.diagnostics.schemas",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/routes.py",
-        "imported": "app.diagnostics.service",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
-        "imported": "app.ai.service",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
-        "imported": "app.codex_runtime.adapter",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
-        "imported": "app.codex_runtime.workspace",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
-        "imported": "app.diagnostics.redaction",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/assistant/service.py",
-        "imported": "app.diagnostics.service",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/prettify_routes.py",
-        "imported": "app.codex_runtime.adapter",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/prettify_service.py",
-        "imported": "app.ai.service",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/prettify_service.py",
-        "imported": "app.codex_runtime.adapter",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/prettify_service.py",
-        "imported": "app.codex_runtime.workspace",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/summary_routes.py",
-        "imported": "app.codex_runtime.adapter",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/summary_service.py",
-        "imported": "app.ai.service",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/summary_service.py",
-        "imported": "app.codex_runtime.adapter",
-        "remove_in": "M21F"
-      },
-      {
-        "importer": "backend/app/notes/summary_service.py",
-        "imported": "app.codex_runtime.workspace",
-        "remove_in": "M21F"
-      }
-    ]
+    "legacy_exceptions": []
   },
   "frontend": {
     "path_owners": [
@@ -174,6 +83,7 @@
     "allowed_platform_paths": [
       "platform/ai",
       "platform/api",
+      "platform/diagnostics",
       "platform/modules/frontendContract",
       "platform/persistence",
       "platform/ui"
@@ -189,11 +99,6 @@
       "calendar": ["features/calendar/public"]
     },
     "legacy_exceptions": [
-      {
-        "importer": "frontend/src/features/courses/CourseMaterials.tsx",
-        "imported": "features/assistant/ErrorAssistantAction",
-        "remove_in": "M21F"
-      },
       {
         "importer": "frontend/src/features/settings/SettingsPage.tsx",
         "imported": "features/inbox/api",

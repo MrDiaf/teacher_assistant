@@ -8,12 +8,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.assistant.errors import AssistantProposalNotFoundError
 from app.assistant.models import (
     AssistantProposal,
     AssistantProposalAction,
     AssistantProposalStatus,
 )
-from app.core.errors import AssistantProposalNotFoundError
 
 
 class ProposalRepository:

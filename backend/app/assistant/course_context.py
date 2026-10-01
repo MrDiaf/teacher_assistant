@@ -14,7 +14,7 @@ from app.courses.public import (
     NoteReference,
     course_context_query_port,
 )
-from app.diagnostics.redaction import redact_text
+from app.platform.diagnostics import redact_text
 
 MAX_CONTEXT_NOTES = 8
 MAX_CONTEXT_SLIDES = 40

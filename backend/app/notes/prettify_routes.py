@@ -2,9 +2,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from app.codex_runtime.adapter import CodexAdapter, get_codex_adapter
 from app.notes.prettify_schemas import NotePrettifyRequest, NotePrettifyResponse
 from app.notes.prettify_service import NotePrettifyService
+from app.platform.ai import CodexAdapter, get_codex_adapter
 
 router = APIRouter()
 AdapterDependency = Annotated[CodexAdapter, Depends(get_codex_adapter)]

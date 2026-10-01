@@ -65,8 +65,9 @@ Production assembly intentionally requires an entry for every registration and
 keeps every current module enabled. The focused host accepts only an explicit
 allowlisted module ID, closes its declared dependency set, and assembles only
 matching real entries. `documents` hosts Platform plus Documents; `calendar`
-hosts Platform plus Calendar and its ICS refresh lifecycle. Neither includes
-unrelated feature routes, pages, or schedulers.
+hosts Platform plus Calendar; `courses` adds Courses; and `assistant` adds
+Assistant over its real Calendar/Courses providers. Each focused UI presents
+only the selected page.
 
 The root `compose.module.yml` override retains the normal images/source mounts
 but selects the focused host through configuration. Its distinct Compose project,
@@ -78,7 +79,7 @@ route or response provider.
 ## Shared Platform entry points
 
 - Frontend feature code may use `platform/ui`, `platform/api`,
-  `platform/persistence`, `platform/ai`, and
+  `platform/persistence`, `platform/ai`, `platform/diagnostics`, and
   `platform/modules/frontendContract` as permitted by the boundary manifest.
   `platform/shell` and `platform/entry` are root-composition surfaces, not
   business-feature imports. Persistence retains the exact
@@ -89,12 +90,15 @@ route or response provider.
   Documents supplies its stable archive identities and limits through its public
   entry; Platform retains coordinated archive/restore behavior and no live path,
   session, repository, or executable callback appears in the declaration.
-- `app.platform.ai` publishes existing model listing/validation,
-  authentication, Codex execution, and bounded private-workspace interfaces.
-  M21F may restructure their implementations behind this surface.
+- `app.platform.ai` publishes model listing/validation, authentication, Codex
+  execution, and bounded private-workspace interfaces. Platform-owned
+  `/api/v1/ai/auth*` routes and the Settings panel use the same auth manager as
+  the compatible Assistant sign-in routes.
 - `app.platform.diagnostics` publishes safe schemas, redaction helpers, and the
-  diagnostic service interface. Credentials and raw provider output remain
-  forbidden; M21F owns removal of its remaining persistence coupling.
+  diagnostic service interface. `record_diagnostic_error` accepts no feature
+  session and returns a bounded value from its own transaction. Credentials and
+  raw provider output remain forbidden. Frontend consumers use the matching
+  `platform/diagnostics` contribution.
 - Generic database enum serialization lives in `app.database.types` as Platform
   infrastructure. Configuration, errors, database sessions, and models remain
   infrastructure rather than unrestricted feature service APIs.
@@ -116,9 +120,8 @@ may import only the exact module `entry.py`/`entry.ts` files declared in the
 boundary manifest; that root wiring is not permission for other Platform code
 to reach feature internals. Feature code consumes the Platform UI, persistence,
 API, and model-selection façades; Settings still imports Inbox internals.
-AI/diagnostic deeper separation belongs to M21F; mail Settings separation belongs
-to M21G. Assistant and Inbox selectors remain deliberately mixed in the legacy
-stylesheet until their owner milestones extract them; Calendar, Courses, and
+Mail Settings separation belongs to M21G. Inbox selectors remain deliberately
+mixed in the legacy stylesheet until M21G; Assistant, Calendar, Courses, and
 Documents styles are feature-owned.
 
 ## Current commands
@@ -131,6 +134,8 @@ make logs
 make check-boundaries
 make check-module-contract
 make test
+make dev-module MODULE=assistant
+make test-module MODULE=assistant
 make dev-module MODULE=calendar
 make test-module MODULE=calendar
 make dev-module MODULE=courses
@@ -145,12 +150,13 @@ make migrate
 make data-relocation-test
 ```
 
-Only `calendar`, `courses`, and `documents` are currently allowlisted; unknown and multiple
+Only `assistant`, `calendar`, `courses`, and `documents` are currently allowlisted; unknown and multiple
 IDs fail before Compose starts. The development defaults are UI `15173` and API `18000` and may
 be overridden with `MODULE_FRONTEND_PORT`/`MODULE_BACKEND_PORT`. The focused
 test command verifies dependency closure, real entries, routes, lifecycle
 selection, shell rendering, and invalid-ID rejection. Calendar adds scoped API,
 provider/consumer, and independently seeded browser coverage without private
-mounts; Documents adds CRUD/storage, contract-checked fake behavior, and
-real/fake browser scenarios with only isolated Documents storage.
+mounts; Assistant adds mocked-Codex runtime/contract coverage plus a bounded
+fixture browser scenario; Documents adds CRUD/storage, contract-checked fake
+behavior, and real/fake browser scenarios with only isolated Documents storage.
 See the [M21A baseline](../baseline.md).

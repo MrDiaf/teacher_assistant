@@ -33,6 +33,7 @@ Full-suite results are in the root handoff. Feature evidence remains in
 [M18](../../../legacy/milestones/m18-codex-note-prettify.md) and its dependency
 milestones rather than being copied here.
 
-Next Courses work: M21F restructures the shared AI runtime behind the Platform
-interfaces, which removes Courses' remaining direct `app.ai` and
-`app.codex_runtime` imports and the borrowed Assistant error action.
+M21F moved Courses' shared AI/runtime and diagnostic use behind Platform
+interfaces. Notes summary/prettify no longer imports Assistant internals, and
+the diagnostic action is Platform-owned. Next Courses work: none; M21G owns the
+Inbox and contributed Settings boundary.

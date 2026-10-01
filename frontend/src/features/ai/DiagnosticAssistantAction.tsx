@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { Icon } from "../../platform/ui";
-import { assistantApi } from "./api";
+import { aiApi } from "./api";
 import type { DiagnosticExplanation } from "./types";
 
-export function ErrorAssistantAction({ errorId }: { errorId: string }) {
+export function DiagnosticAssistantAction({ errorId }: { errorId: string }) {
   const [explanation, setExplanation] = useState<DiagnosticExplanation | null>(
     null,
   );
@@ -15,7 +15,7 @@ export function ErrorAssistantAction({ errorId }: { errorId: string }) {
     setIsLoading(true);
     setSafeError(null);
     try {
-      setExplanation(await assistantApi.explainError(errorId));
+      setExplanation(await aiApi.explainError(errorId));
     } catch (error) {
       setSafeError(
         error instanceof Error
@@ -31,7 +31,7 @@ export function ErrorAssistantAction({ errorId }: { errorId: string }) {
     return (
       <section
         aria-label="Assistant error explanation"
-        className="assistant-error-explanation"
+        className="diagnostic-error-explanation"
       >
         <header>
           <Icon name="assistant" size={15} />
@@ -41,7 +41,7 @@ export function ErrorAssistantAction({ errorId }: { errorId: string }) {
         <p>
           <strong>Likely cause:</strong> {explanation.likely_cause}
         </p>
-        <div className="assistant-error-columns">
+        <div className="diagnostic-error-columns">
           <div>
             <strong>Changes to your input</strong>
             {explanation.input_fixes.length ? (
@@ -76,7 +76,7 @@ export function ErrorAssistantAction({ errorId }: { errorId: string }) {
   }
 
   return (
-    <div className="assistant-error-action">
+    <div className="diagnostic-error-action">
       <button disabled={isLoading} onClick={() => void explain()} type="button">
         <Icon name="assistant" size={14} />
         {isLoading ? "Asking Assistant…" : "Ask Assistant about this error"}

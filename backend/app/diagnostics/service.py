@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.service import AiModelRegistry
 from app.codex_runtime.adapter import CodexAdapter
 from app.codex_runtime.workspace import create_diagnostic_workspace
+from app.database.session import session_factory
 from app.diagnostics.models import DiagnosticError
 from app.diagnostics.redaction import redact, redact_text
 from app.diagnostics.repository import DiagnosticRepository
@@ -17,6 +19,15 @@ from app.diagnostics.schemas import (
     DiagnosticExplanation,
     parse_diagnostic_explanation,
 )
+
+
+@dataclass(frozen=True)
+class DiagnosticRecord:
+    """Bounded result returned to a feature that records a sanitized failure."""
+
+    id: uuid.UUID
+    request_id: uuid.UUID
+    code: str
 
 
 class DiagnosticService:
@@ -127,3 +138,34 @@ class DiagnosticService:
         await self.session.commit()
         await self.session.refresh(error)
         return error, explanation
+
+
+async def record_diagnostic_error(
+    *,
+    request_id: uuid.UUID,
+    code: str,
+    message: str,
+    operation: str,
+    details: dict[str, Any],
+    exception_type: str | None = None,
+) -> DiagnosticRecord:
+    """Record sanitized diagnostics in a transaction owned by Platform.
+
+    Feature sessions are deliberately not accepted. A diagnostic failure can
+    therefore neither commit nor roll back the caller's business transaction.
+    """
+
+    async with session_factory() as session:
+        error = await DiagnosticService(session).record_error(
+            request_id=request_id,
+            code=code,
+            message=message,
+            operation=operation,
+            details=details,
+            exception_type=exception_type,
+        )
+        return DiagnosticRecord(
+            id=error.id,
+            request_id=error.request_id,
+            code=error.code,
+        )

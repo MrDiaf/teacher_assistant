@@ -4,7 +4,6 @@ import type {
   AssistantConversation,
   AssistantConversationDetail,
   AssistantDeviceLogin,
-  DiagnosticExplanation,
   AssistantJob,
   AssistantProposal,
   AssistantTurn,
@@ -137,15 +136,5 @@ export const assistantApi = {
       body: JSON.stringify({ content, model }),
       signal,
     });
-  },
-
-  explainError(errorId: string, model?: string) {
-    return request<DiagnosticExplanation>(
-      `/assistant/errors/${encodeURIComponent(errorId)}/explain`,
-      {
-        method: "POST",
-        body: JSON.stringify(model ? { model } : {}),
-      },
-    );
   },
 };

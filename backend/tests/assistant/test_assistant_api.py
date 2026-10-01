@@ -9,6 +9,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
+from fastapi import FastAPI
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +23,6 @@ from app.codex_runtime.adapter import (
     get_codex_auth_manager,
 )
 from app.core.errors import AssistantRuntimeError
-from app.main import app
 from tests.helpers import create_calendar, create_event
 
 
@@ -113,23 +113,23 @@ class FakeCodexAuth:
 
 
 @pytest.fixture
-def fake_codex() -> Iterator[FakeCodexAdapter]:
+def fake_codex(host_app: FastAPI) -> Iterator[FakeCodexAdapter]:
     adapter = FakeCodexAdapter()
-    app.dependency_overrides[get_codex_adapter] = lambda: adapter
+    host_app.dependency_overrides[get_codex_adapter] = lambda: adapter
     try:
         yield adapter
     finally:
-        app.dependency_overrides.pop(get_codex_adapter, None)
+        host_app.dependency_overrides.pop(get_codex_adapter, None)
 
 
 @pytest.fixture
-def fake_codex_auth() -> Iterator[FakeCodexAuth]:
+def fake_codex_auth(host_app: FastAPI) -> Iterator[FakeCodexAuth]:
     auth = FakeCodexAuth()
-    app.dependency_overrides[get_codex_auth_manager] = lambda: auth
+    host_app.dependency_overrides[get_codex_auth_manager] = lambda: auth
     try:
         yield auth
     finally:
-        app.dependency_overrides.pop(get_codex_auth_manager, None)
+        host_app.dependency_overrides.pop(get_codex_auth_manager, None)
 
 
 async def create_conversation(client: AsyncClient) -> dict[str, Any]:
@@ -242,10 +242,10 @@ async def test_chatgpt_device_login_exposes_only_safe_browser_details(
     client: AsyncClient,
     fake_codex_auth: FakeCodexAuth,
 ) -> None:
-    signed_out = await client.get("/api/v1/assistant/auth")
+    signed_out = await client.get("/api/v1/ai/auth")
     started = await client.post("/api/v1/assistant/auth/device-code")
     completed = await client.get(
-        f"/api/v1/assistant/auth/device-code/{fake_codex_auth.attempt.login_id}"
+        f"/api/v1/ai/auth/device-code/{fake_codex_auth.attempt.login_id}"
     )
     signed_in = await client.get("/api/v1/assistant/auth")
 
@@ -269,7 +269,7 @@ async def test_chatgpt_device_login_exposes_only_safe_browser_details(
     assert signed_in.json()["plan_type"] == "plus"
     assert "token" not in signed_in.text.lower()
 
-    signed_out_again = await client.delete("/api/v1/assistant/auth")
+    signed_out_again = await client.delete("/api/v1/ai/auth")
     assert signed_out_again.json()["authenticated"] is False
 
 
@@ -589,6 +589,7 @@ async def test_owner_can_cancel_an_active_assistant_request(
     assert detail.status_code == 200, detail.text
     assert detail.json()["jobs"][-1]["status"] == "cancelled"
     assert [item["role"] for item in detail.json()["messages"]] == ["owner"]
+    assert not Path(fake_codex.calls[0]["root"]).exists()
 
     fake_codex.started_event = None
     fake_codex.release_event = None

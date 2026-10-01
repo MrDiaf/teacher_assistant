@@ -10,8 +10,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.service import AiModelRegistry
 from app.assistant.course_context import CourseContextSelection, CourseContextService
+from app.assistant.errors import AssistantJobNotCancellableError, AssistantJobNotRetryableError
 from app.assistant.execution import assistant_execution_registry
 from app.assistant.models import (
     AssistantContextAudit,
@@ -28,18 +28,14 @@ from app.assistant.proposals import ASSISTANT_OUTPUT_SCHEMA, parse_assistant_ans
 from app.assistant.repository import AssistantRepository
 from app.assistant.validation import ProposalValidator
 from app.calendar.public import assistant_calendar_port
-from app.codex_runtime.adapter import CodexAdapter
-from app.codex_runtime.workspace import create_runtime_workspace
 from app.core.config import get_settings
 from app.core.errors import (
     ApplicationError,
-    AssistantJobNotCancellableError,
-    AssistantJobNotRetryableError,
     AssistantRuntimeError,
     InvalidAssistantResponseError,
 )
-from app.diagnostics.redaction import redact, redact_text
-from app.diagnostics.service import DiagnosticService
+from app.platform.ai import AiModelRegistry, CodexAdapter, create_runtime_workspace
+from app.platform.diagnostics import record_diagnostic_error, redact, redact_text
 
 logger = logging.getLogger(__name__)
 CONTEXT_PAST_DAYS = 30
@@ -477,7 +473,7 @@ class AssistantService:
         )
         diagnostic_error_id: uuid.UUID | None = None
         try:
-            diagnostic = await DiagnosticService(self.session).record_error(
+            diagnostic = await record_diagnostic_error(
                 request_id=job_id,
                 code=safe_error_code,
                 message=safe_error,

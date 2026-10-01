@@ -1,4 +1,5 @@
 import { SettingsPage } from "../features/settings/SettingsPage";
+import "../features/ai/styles.css";
 import type { FrontendModuleEntry } from "./modules/frontendContract";
 import { DashboardPage, StudyPlanPage } from "./pages/PlaceholderPages";
 

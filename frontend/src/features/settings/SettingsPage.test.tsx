@@ -40,6 +40,51 @@ afterEach(() => {
 });
 
 describe("Settings mail connection", () => {
+  it("offers shared ChatGPT authentication independently of Assistant", async () => {
+    const requests: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+        const url = String(input);
+        requests.push(`${init?.method ?? "GET"} ${url}`);
+        if (url.endsWith("/api/v1/ai/auth/device-code")) {
+          return response(
+            {
+              login_id: "login-1",
+              verification_url: "https://example.com/device",
+              user_code: "ABCD-EFGH",
+              status: "pending",
+              safe_error: null,
+            },
+            201,
+          );
+        }
+        if (url.endsWith("/api/v1/ai/auth")) {
+          return response({
+            authenticated: false,
+            auth_type: null,
+            email: null,
+            plan_type: null,
+          });
+        }
+        return response(disconnected);
+      }),
+    );
+
+    render(<SettingsPage />);
+    expect(
+      await screen.findByRole("heading", { name: "ChatGPT connection" }),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sign in with ChatGPT" }),
+    );
+    expect(await screen.findByText("ABCD-EFGH")).toBeInTheDocument();
+    expect(requests).toContain("POST /api/v1/ai/auth/device-code");
+    expect(
+      requests.some((request) => request.includes("/api/v1/assistant")),
+    ).toBe(false);
+  });
+
   it("connects through the backend and never renders or persists the returned password", async () => {
     const requests: { url: string; body?: string | null }[] = [];
     const connected = {

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from app.assistant.errors import AssistantProposalLimitError, AssistantProposalStateError
 from app.assistant.models import AssistantProposal
 from app.assistant.proposals import (
     CalendarChangeProposal,
@@ -22,11 +23,7 @@ from app.calendar.public import (
     EventSummary,
     InvalidRecurrenceError,
 )
-from app.core.errors import (
-    AssistantProposalLimitError,
-    AssistantProposalStateError,
-    InvalidAssistantResponseError,
-)
+from app.core.errors import InvalidAssistantResponseError
 
 
 @dataclass(frozen=True)

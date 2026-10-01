@@ -7,6 +7,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.assistant.errors import AssistantProposalStateError
 from app.assistant.models import AssistantJobStatus, AssistantProposal, AssistantProposalStatus
 from app.assistant.proposal_repository import ProposalRepository
 from app.assistant.proposals import (
@@ -26,7 +27,7 @@ from app.calendar.public import (
     AssistantEventUpdate,
     assistant_calendar_port,
 )
-from app.core.errors import ApplicationError, AssistantProposalStateError
+from app.core.errors import ApplicationError
 
 logger = logging.getLogger(__name__)
 

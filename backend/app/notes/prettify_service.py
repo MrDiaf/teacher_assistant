@@ -6,11 +6,9 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from app.ai.service import AiModelRegistry
-from app.codex_runtime.adapter import CodexAdapter
-from app.codex_runtime.workspace import create_prettify_workspace
 from app.courses.errors import InvalidNotePrettifyResponseError, NotePrettifyInputTooLargeError
 from app.notes.prettify_schemas import NotePrettifyResponse
+from app.platform.ai import AiModelRegistry, CodexAdapter, create_prettify_workspace
 
 MAX_PRETTIFY_CHARACTERS = 40_000
 

@@ -26,6 +26,20 @@ import type {
 } from "./types";
 
 vi.mock("../ai/api", () => ({
+  aiApi: {
+    explainError: vi.fn(async (errorId: string) => {
+      const response = await fetch(
+        `/api/v1/diagnostics/errors/${encodeURIComponent(errorId)}/explain`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+      if (!response.ok) throw new Error("The explanation failed safely.");
+      return response.json();
+    }),
+  },
   getAiModels: vi.fn(async () => ({
     default_model: "gpt-5.6-sol",
     models: [
@@ -907,7 +921,9 @@ describe("CoursesPage", () => {
           );
         }
         if (
-          url.endsWith("/api/v1/assistant/errors/diagnostic-error-1/explain") &&
+          url.endsWith(
+            "/api/v1/diagnostics/errors/diagnostic-error-1/explain",
+          ) &&
           method === "POST"
         ) {
           return jsonResponse({
@@ -971,7 +987,7 @@ describe("CoursesPage", () => {
     ).toBeInTheDocument();
     const explainCall = fetchMock.mock.calls.find(([url]) =>
       String(url).endsWith(
-        "/api/v1/assistant/errors/diagnostic-error-1/explain",
+        "/api/v1/diagnostics/errors/diagnostic-error-1/explain",
       ),
     );
     expect(JSON.parse(String(explainCall?.[1]?.body))).toEqual({});

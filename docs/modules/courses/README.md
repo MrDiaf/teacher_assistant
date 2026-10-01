@@ -80,10 +80,11 @@ element carries both a shared class and a Courses class, the Courses selector
 names both (for example `.primary-button.create-course-button`) so it wins by
 specificity rather than by source order.
 
-Remaining debt, all scheduled for M21F: the direct `app.ai` and
-`app.codex_runtime` imports in summary and prettify, and the Assistant-owned
-`ErrorAssistantAction` used by course materials. `CoursesPage.tsx` was left as
-one orchestration component; splitting it was not needed to isolate the module.
+Summary and prettify consume Platform's shared AI runtime through
+`app.platform.ai`; they do not load Assistant internals. Course-material errors
+use the Platform-owned sanitized diagnostic contribution. `CoursesPage.tsx`
+remains one orchestration component because splitting it was not needed to
+isolate the module.
 
 ## Current commands
 

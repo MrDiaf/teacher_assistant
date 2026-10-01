@@ -6,6 +6,7 @@ import os
 
 from fastapi import FastAPI
 
+from app.assistant.entry import assistant_backend_entry
 from app.calendar.entry import calendar_backend_entry
 from app.courses.entry import courses_backend_entry
 from app.documents.entry import documents_backend_entry
@@ -19,7 +20,7 @@ from app.platform.modules.catalog import module_catalog
 from app.platform.modules.contract import select_module_catalog
 
 MODULE_HOST_ENV = "TEACHER_ASSISTANT_MODULE_HOST"
-SUPPORTED_MODULE_HOST_IDS = ("calendar", "courses", "documents")
+SUPPORTED_MODULE_HOST_IDS = ("assistant", "calendar", "courses", "documents")
 
 
 class ModuleHostError(ValueError):
@@ -38,6 +39,7 @@ def assemble_module_host(module_id: str) -> tuple[BackendModuleEntry, ...]:
         entry
         for entry in (
             platform_backend_entry,
+            assistant_backend_entry,
             calendar_backend_entry,
             courses_backend_entry,
             documents_backend_entry,

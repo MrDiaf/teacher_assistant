@@ -14,7 +14,7 @@ from app.codex_runtime.adapter import (
 )
 from app.diagnostics.models import DiagnosticAuditRecord, DiagnosticError
 from app.diagnostics.redaction import REDACTED, redact
-from app.diagnostics.service import DiagnosticService
+from app.diagnostics.service import DiagnosticService, record_diagnostic_error
 from app.main import app
 
 
@@ -120,6 +120,28 @@ async def test_diagnostic_record_persists_only_redacted_context(
     assert "/app/" not in serialized
 
 
+async def test_public_diagnostic_recorder_owns_its_transaction(
+    client: AsyncClient,
+) -> None:
+    request_id = uuid.uuid4()
+    report = await record_diagnostic_error(
+        request_id=request_id,
+        code="bounded_failure",
+        message="The operation failed safely.",
+        operation="test_operation",
+        details={"authorization": "secret", "safe": "value"},
+    )
+
+    assert report.request_id == request_id
+    assert report.code == "bounded_failure"
+    stored = await client.get(f"/api/v1/diagnostics/errors/{report.id}")
+    assert stored.status_code == 200
+    assert stored.json()["details"] == {
+        "authorization": REDACTED,
+        "safe": "value",
+    }
+
+
 async def test_validation_error_can_be_explained_from_isolated_sanitized_context(
     client: AsyncClient,
     session: AsyncSession,
@@ -152,7 +174,7 @@ async def test_validation_error_can_be_explained_from_isolated_sanitized_context
     assert stored.json()["operation"] == "POST /api/v1/courses"
 
     explained = await client.post(
-        f"/api/v1/assistant/errors/{error_body['error_id']}/explain",
+        f"/api/v1/diagnostics/errors/{error_body['error_id']}/explain",
         json={"model": "gpt-5.6-terra"},
     )
 

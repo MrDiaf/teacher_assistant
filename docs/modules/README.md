@@ -10,8 +10,10 @@ commands. M21D is also complete: Calendar owns its public service ports,
 errors, styles, scoped tests, and focused host. Courses and Assistant no longer
 reach Calendar internals. M21E is complete as well: Courses owns its public
 context contract, errors, styles, recovery declaration, scoped tests, and
-focused host, and Assistant no longer reaches Courses internals. M21F-M21G
-remove the remaining ownership debt and exact legacy exceptions in
+focused host, and Assistant no longer reaches Courses internals. M21F is
+complete: Assistant owns its feature boundary and consumes Platform's shared
+AI/diagnostic contracts. M21G removes the remaining Inbox/Settings ownership
+debt and exact legacy exceptions in
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
 ## Reading workflow
@@ -67,8 +69,8 @@ public code entries. The canonical extension procedure and distinction between
 module-safe façades and root-only assembly surfaces are in the
 [Platform README](platform/README.md#implemented-composition-extension-points).
 
-Current exact exception count: 18 backend and 3 frontend imports. Removal is
-owned by M21F and M21G. The manifest
+Current exact exception count: 0 backend and 2 frontend imports. Removal is
+owned by M21G. The manifest
 is authoritative down to importer and imported module; this summary is not an
 allowlist. Platform composition may import only the exact public module entries
 listed in the manifest.
@@ -78,9 +80,9 @@ listed in the manifest.
 | Area | Owner | Current locations/data |
 | --- | --- | --- |
 | React/FastAPI assembly and shell | Platform | `frontend/src/{App,ModuleHost,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,module_host,platform}/` |
-| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents, Calendar, and Courses styles are scoped under their features, while remaining feature selector families stay in `frontend/src/styles.css` until M21F-M21G |
+| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents, Calendar, Courses, and Assistant styles are scoped under their features, while Inbox selector families stay in `frontend/src/styles.css` until M21G |
 | Configuration/errors/database | Platform | `backend/app/core/`, `database/`; PostgreSQL session creation is infrastructure, not a public business query API |
-| AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; internal paths become public Platform contracts in M21B/M21F |
+| AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; public Platform contracts serve Assistant, Courses, and Settings independently |
 | Migrations/recovery | Platform coordination | `backend/alembic/`, `backend/app/maintenance/`, `scripts/`, Compose volumes and host bind roots |
 | Calendar implementation/data | Calendar | `backend/app/calendar/`, `frontend/src/features/calendar/`; `calendars`, `events` |
 | Courses implementation/data | Courses | `backend/app/{courses,course_sources,course_calendars,notes}/`, `frontend/src/features/courses/`; Courses tables and private course-content root |
@@ -88,9 +90,9 @@ listed in the manifest.
 | Mail implementation/data | Inbox | `backend/app/{inbox,integrations}/`, `frontend/src/features/inbox/`; mail tables, attachment root, credential root |
 | Mailbox settings UI | Inbox content, Platform host | currently `frontend/src/features/settings/SettingsPage.tsx`; becomes a registered Inbox contribution in M21G |
 | Documents implementation/data | Documents | `backend/app/documents/` including owned errors, `frontend/src/features/documents/` including `styles.css`; document tables and private document root |
-| Backend tests | Same feature owner; Platform fixture debt outside Documents/Calendar/Courses | `backend/tests/test_*.py`; Documents, Calendar, and Courses use owned subtrees with scoped fixtures while the root `conftest.py` still resets all owners for other tests |
+| Backend tests | Same feature owner; Platform fixture debt outside Documents/Calendar/Courses/Assistant | `backend/tests/test_*.py`; Documents, Calendar, Courses, and Assistant use owned subtrees with scoped fixtures while the root `conftest.py` still resets all owners for other tests |
 | Frontend tests | Same feature owner; Platform composition debt | colocated `*.test.*`, plus full-App persistence/Assistant tests |
-| Browser tests | Provider/consumer evidence | Documents, Calendar, and Courses own `e2e/tests/documents.spec.ts`, `e2e/tests/calendar.spec.ts`, and `e2e/tests/courses.spec.ts`; remaining combined scenarios stay in `calendar-assistant.spec.ts` until M21F-M21G |
+| Browser tests | Provider/consumer evidence | Documents, Calendar, Courses, and Assistant own focused specs; cross-module regression scenarios remain in `calendar-assistant.spec.ts` |
 
 Migrations stay centrally ordered even when their tables have a feature owner:
 0001-0005 Calendar, 0006-0009 Assistant, 0010-0014 Courses, 0015-0017
@@ -124,8 +126,8 @@ be preserved during refactoring:
 - Assistant proposal confirmation binds Calendar's restricted command port to
   its application transaction. Calendar commands flush with `commit=False`,
   then the coordinator commits proposal/action/job and Calendar changes once.
-  The public port exposes neither the session nor repositories; M21F may move
-  the coordinator without changing this atomicity.
+  The public port exposes neither the session nor repositories; M21F preserved
+  this atomicity while separating diagnostic recording into its own transaction.
 - Courses owns course-calendar association changes. Existence/permission checks
   come from Calendar's public query contract; the coordinator commits the link
   change atomically without granting Courses a Calendar repository.
@@ -144,17 +146,19 @@ be preserved during refactoring:
   Calendar now owns `.calendar-*`, `.month-*`, `.time-*`, `.event-*`, and
   `.ics-*` in `features/calendar/styles.css`. Courses now owns `.course-*`,
   `.courses-*`, and its note/editor/summary/source/PDF-viewer families in
-  `features/courses/styles.css`. Still to extract: `.assistant-*`,
-  conversation/proposal/job/composer families in M21F; and `.inbox-*`,
-  `.mail-*`, `.connection-*` plus mailbox Settings in M21G. The cross-feature
+  `features/courses/styles.css`. Assistant owns its conversation, proposal,
+  job, and composer families; Platform owns shared AI/diagnostic selectors.
+  Still to extract: `.inbox-*`, `.mail-*`, `.connection-*` plus mailbox
+  Settings in M21G. The cross-feature
   `.course-calendar .calendar-*` selectors are now an explicit contract:
   Calendar publishes `calendarEmbeddingClasses` and a contract test holds
-  Courses to it. The `.assistant-error-action` used inside Courses still needs
-  its shared-primitive decision in M21F.
+  Courses to it. The diagnostic action used by Courses is now a Platform-owned
+  shared component.
 - Feature stylesheets load before the Platform and global sheets, so a feature
   rule cannot out-rank a shared rule of equal specificity by source order.
   Courses names both classes where it refines a shared primitive on the same
-  element. The same tie exists, unresolved, for four Calendar elements and one
+  element. Assistant now owns its selectors and Platform owns shared AI and
+  diagnostic selectors. The same tie exists, unresolved, for four Calendar elements and one
   Documents element extracted earlier (for example `.create-event-button`
   against `.primary-button`); M21I owns restoring their original appearance.
 - `event-dialog` and `event-form` are defined in Calendar's stylesheet but are
@@ -166,10 +170,10 @@ be preserved during refactoring:
   supplied entries, unwinds successful starts after startup failure, and bounds
   every shutdown hook. The shared Platform application factory receives an
   explicit entry set: `backend/app/main.py` supplies the complete registered set,
-  while focused hosts supply the dependency closure of Documents, Calendar, or
-  Courses.
+  while focused hosts supply the dependency closure of Documents, Calendar,
+  Courses, or Assistant.
 - `backend/tests/conftest.py` still knows all tables and private roots for the
-  assembled suite. Documents, Calendar, and Courses own closer fixtures;
+  assembled suite. Documents, Calendar, Courses, and Assistant own closer fixtures;
   Calendar truncates only events/calendars, Courses truncates only Courses and
   Calendar tables with a private per-test course root, and each mounts its real
   focused host. Focused

@@ -1,10 +1,15 @@
-"""Stable Platform imports for the existing shared AI runtime interfaces.
+"""Stable Platform imports for shared AI and private-workspace interfaces.
 
-M21F may restructure the implementation behind these names. Feature modules
-should not depend on the current ``app.ai`` or ``app.codex_runtime`` layout.
+Feature modules depend on this public surface rather than the internal
+``app.ai`` or ``app.codex_runtime`` package layout.
 """
 
-from app.ai.schemas import AiModelListResponse, AiModelOption
+from app.ai.schemas import (
+    AiAuthStatusResponse,
+    AiDeviceLoginResponse,
+    AiModelListResponse,
+    AiModelOption,
+)
 from app.ai.service import AiModelRegistry
 from app.codex_runtime.adapter import (
     CodexAccountStatus,
@@ -26,6 +31,8 @@ from app.codex_runtime.workspace import (
 
 __all__ = [
     "WORKSPACE_RETENTION_POLICY",
+    "AiAuthStatusResponse",
+    "AiDeviceLoginResponse",
     "AiModelListResponse",
     "AiModelOption",
     "AiModelRegistry",

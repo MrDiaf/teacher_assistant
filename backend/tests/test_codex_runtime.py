@@ -14,7 +14,7 @@ from app.codex_runtime.adapter import (
 from app.codex_runtime.parser import READ_ONLY_OUTPUT_SCHEMA, parse_read_only_answer
 from app.codex_runtime.workspace import create_runtime_workspace
 from app.core.config import Settings
-from app.core.errors import InvalidAssistantResponseError
+from app.core.errors import AssistantRuntimeError, InvalidAssistantResponseError
 
 
 async def test_sdk_adapter_uses_read_only_sandbox_and_scrubbed_environment(
@@ -101,6 +101,60 @@ async def test_sdk_adapter_uses_read_only_sandbox_and_scrubbed_environment(
         )
         assert '\"request_document\":\"# Request\"' in captured["prompt"]
     assert not Path(root).exists()
+
+
+async def test_sdk_timeout_is_safe_and_runtime_workspace_is_deleted(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    class FakeThread:
+        async def run(self, _prompt, **_options):
+            return CodexRuntimeResult(final_response="unreachable")
+
+    class FakeAsyncCodex:
+        def __init__(self, _config):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def thread_start(self, **_options):
+            return FakeThread()
+
+    class ImmediateTimeout:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            raise TimeoutError
+
+    monkeypatch.setattr("app.codex_runtime.adapter.AsyncCodex", FakeAsyncCodex)
+    monkeypatch.setattr(
+        "app.codex_runtime.adapter.asyncio.timeout",
+        lambda _seconds: ImmediateTimeout(),
+    )
+    adapter = CodexSdkAdapter(
+        Settings(
+            codex_auth_home=tmp_path / "codex-auth",
+            codex_timeout_seconds=10,
+            openai_api_key="test-api-key",
+        )
+    )
+
+    with create_runtime_workspace(
+        request_markdown="# Request",
+        calendars=[],
+        events=[],
+        output_schema=READ_ONLY_OUTPUT_SCHEMA,
+    ) as workspace:
+        root = workspace.root
+        with pytest.raises(AssistantRuntimeError, match="timed out"):
+            await adapter.answer(workspace)
+
+    assert not root.exists()
 
 
 def test_runtime_tool_detection_fails_closed() -> None:

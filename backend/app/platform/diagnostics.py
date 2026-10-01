@@ -1,7 +1,7 @@
-"""Stable Platform imports for existing bounded diagnostic interfaces.
+"""Stable Platform imports for bounded, sanitized diagnostic interfaces.
 
-M21F owns separating their implementation from persistence details. This module
-only publishes the already-enforced schemas, redaction, and service behavior.
+This module exposes schemas, redaction, explanation behavior, and an
+independently transacted recording function without leaking persistence details.
 """
 
 from app.diagnostics.redaction import (
@@ -21,7 +21,11 @@ from app.diagnostics.schemas import (
     DiagnosticExplanationResponse,
     parse_diagnostic_explanation,
 )
-from app.diagnostics.service import DiagnosticService
+from app.diagnostics.service import (
+    DiagnosticRecord,
+    DiagnosticService,
+    record_diagnostic_error,
+)
 
 __all__ = [
     "DIAGNOSTIC_OUTPUT_SCHEMA",
@@ -33,9 +37,11 @@ __all__ = [
     "DiagnosticExplainRequest",
     "DiagnosticExplanation",
     "DiagnosticExplanationResponse",
+    "DiagnosticRecord",
     "DiagnosticService",
     "is_sensitive_key",
     "parse_diagnostic_explanation",
     "redact",
     "redact_text",
+    "record_diagnostic_error",
 ]

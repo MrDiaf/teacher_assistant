@@ -1,3 +1,4 @@
+import { assistantModuleEntry } from "../../features/assistant/entry";
 import { calendarModuleEntry } from "../../features/calendar/entry";
 import { coursesModuleEntry } from "../../features/courses/entry";
 import { documentsModuleEntry } from "../../features/documents/entry";
@@ -11,6 +12,7 @@ import {
 } from "./frontendContract";
 
 export const SUPPORTED_MODULE_HOST_IDS = [
+  "assistant",
   "calendar",
   "courses",
   "documents",
@@ -19,6 +21,7 @@ export type ModuleHostId = (typeof SUPPORTED_MODULE_HOST_IDS)[number];
 
 const moduleHostEntries = [
   platformModuleEntry,
+  assistantModuleEntry,
   calendarModuleEntry,
   coursesModuleEntry,
   documentsModuleEntry,

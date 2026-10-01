@@ -72,6 +72,30 @@ def test_courses_host_closes_over_calendar_and_omits_unrelated_features() -> Non
     assert "/api/v1/document-projects" not in paths
 
 
+def test_assistant_host_closes_over_real_calendar_and_courses_providers() -> None:
+    entries = assemble_module_host("assistant")
+
+    assert [entry.id for entry in entries] == [
+        "platform",
+        "calendar",
+        "courses",
+        "assistant",
+    ]
+    assert [
+        contribution.id for entry in entries for contribution in entry.lifecycle
+    ] == ["codex-auth", "ics-subscription-refresh", "assistant-execution"]
+
+    paths = {route.path for route in create_module_host("assistant").routes}
+    assert "/api/v1/assistant/conversations" in paths
+    assert "/api/v1/assistant/proposals/{proposal_id}/confirm" in paths
+    assert "/api/v1/calendars" in paths
+    assert "/api/v1/courses" in paths
+    assert "/api/v1/ai/auth" in paths
+    assert "/api/v1/diagnostics/errors/{error_id}/explain" in paths
+    assert "/api/v1/inbox" not in paths
+    assert "/api/v1/document-projects" not in paths
+
+
 def test_documents_host_mounts_real_routes_and_omits_unselected_feature_routes() -> None:
     application = create_module_host("documents")
     paths = {route.path for route in application.routes}

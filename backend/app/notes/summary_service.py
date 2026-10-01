@@ -9,9 +9,6 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.service import AiModelRegistry
-from app.codex_runtime.adapter import CodexAdapter
-from app.codex_runtime.workspace import create_summary_workspace
 from app.core.errors import ApplicationError
 from app.course_sources.models import ExtractionStatus
 from app.courses.errors import (
@@ -31,6 +28,7 @@ from app.notes.summary_validation import (
     normalize_stored_summary,
     parse_and_validate_summary,
 )
+from app.platform.ai import AiModelRegistry, CodexAdapter, create_summary_workspace
 
 logger = logging.getLogger(__name__)
 

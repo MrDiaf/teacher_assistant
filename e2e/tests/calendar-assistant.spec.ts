@@ -137,7 +137,7 @@ test("explains a sanitized course-material error without exposing private input"
     },
   );
   await page.route(
-    "**/api/v1/assistant/errors/e2e-sanitized-error/explain",
+    "**/api/v1/diagnostics/errors/e2e-sanitized-error/explain",
     async (route) => {
       await route.fulfill({
         status: 200,

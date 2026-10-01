@@ -6,9 +6,9 @@ dependencies, and the checkbox status of every milestone. Full instructions for
 each open milestone live in its own file under
 [`guidelines/milestones/`](guidelines/milestones/).
 
-**Active milestone: M21F.** The owner selected M21E through M21I on 2026-09-30,
-to be completed in order. M21E is complete. A milestone becomes active only
-when the owner explicitly selects it.
+**Active milestone: M21G.** The owner selected M21E through M21I on 2026-09-30,
+to be completed in order. M21E and M21F are complete. A milestone becomes
+active only when the owner explicitly selects it.
 
 ## Rules for this file
 
@@ -50,13 +50,13 @@ decision.
 
 [Milestone file](guidelines/milestones/m21f-assistant-and-ai-platform.md)
 
-- [ ] Assistant mounts in the shared host with fake and real capabilities
-- [ ] Ordinary tests use no Codex credentials and no real model requests
-- [ ] Summaries/prettify work without Assistant internals; shared auth and diagnostics are independent
-- [ ] Runtime jobs keep their isolation; cancellation/timeout deletes workspaces
-- [ ] Unknown, read-only, bulk, delete-calendar, invalid, and repeated requests keep enforced behavior
-- [ ] Drafts survive navigation/failure; completed status follows backend execution
-- [ ] Focused, runtime, contract, cross-module E2E, accessibility, lint/build, Docker, migration, and diff checks pass
+- [x] Assistant mounts in the shared host with fake and real capabilities
+- [x] Ordinary tests use no Codex credentials and no real model requests
+- [x] Summaries/prettify work without Assistant internals; shared auth and diagnostics are independent
+- [x] Runtime jobs keep their isolation; cancellation/timeout deletes workspaces
+- [x] Unknown, read-only, bulk, delete-calendar, invalid, and repeated requests keep enforced behavior
+- [x] Drafts survive navigation/failure; completed status follows backend execution
+- [x] Focused, runtime, contract, cross-module E2E, accessibility, lint/build, Docker, migration, and diff checks pass
 
 ### M21G — Inbox ownership and contributed Settings panels
 

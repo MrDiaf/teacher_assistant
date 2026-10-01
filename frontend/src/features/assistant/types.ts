@@ -52,18 +52,6 @@ export interface AssistantCitation {
   slide_number: number | null;
 }
 
-export interface DiagnosticExplanation {
-  error_id: string;
-  request_id: string;
-  model: string;
-  explained_at: string;
-  plain_explanation: string;
-  likely_cause: string;
-  input_fixes: string[];
-  application_improvements: string[];
-  retry_is_safe: boolean;
-}
-
 export interface AssistantJob {
   id: string;
   conversation_id: string;

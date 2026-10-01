@@ -5,11 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.service import AiModelRegistry
 from app.assistant.proposal_service import ProposalService
 from app.assistant.schemas import (
-    AssistantAuthStatusResponse,
-    AssistantDeviceLoginResponse,
     AssistantJobResponse,
     AssistantMessageCreate,
     AssistantMessageResponse,
@@ -20,19 +17,22 @@ from app.assistant.schemas import (
     ConversationResponse,
 )
 from app.assistant.service import AssistantService, AssistantTurn
-from app.codex_runtime.adapter import (
+from app.database.session import get_session
+from app.platform.ai import (
+    AiAuthStatusResponse,
+    AiDeviceLoginResponse,
+    AiModelRegistry,
     CodexAdapter,
     CodexAuth,
     CodexDeviceLoginAttempt,
     get_codex_adapter,
     get_codex_auth_manager,
 )
-from app.database.session import get_session
-from app.diagnostics.schemas import (
+from app.platform.diagnostics import (
     DiagnosticExplainRequest,
     DiagnosticExplanationResponse,
+    DiagnosticService,
 )
-from app.diagnostics.service import DiagnosticService
 
 router = APIRouter()
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]
@@ -40,8 +40,8 @@ AdapterDependency = Annotated[CodexAdapter, Depends(get_codex_adapter)]
 AuthDependency = Annotated[CodexAuth, Depends(get_codex_auth_manager)]
 
 
-def device_login_response(attempt: CodexDeviceLoginAttempt) -> AssistantDeviceLoginResponse:
-    return AssistantDeviceLoginResponse(
+def device_login_response(attempt: CodexDeviceLoginAttempt) -> AiDeviceLoginResponse:
+    return AiDeviceLoginResponse(
         login_id=attempt.login_id,
         verification_url=attempt.verification_url,
         user_code=attempt.user_code,
@@ -71,36 +71,38 @@ def turn_response(turn: AssistantTurn) -> AssistantTurnResponse:
     )
 
 
-@router.get("/assistant/auth", response_model=AssistantAuthStatusResponse)
-async def get_assistant_auth(auth: AuthDependency) -> AssistantAuthStatusResponse:
-    return AssistantAuthStatusResponse.model_validate(
+@router.get("/assistant/auth", response_model=AiAuthStatusResponse)
+async def get_assistant_auth(auth: AuthDependency) -> AiAuthStatusResponse:
+    """Compatibility delegate to the Platform-owned AI authentication service."""
+
+    return AiAuthStatusResponse.model_validate(
         await auth.account_status(), from_attributes=True
     )
 
 
 @router.post(
     "/assistant/auth/device-code",
-    response_model=AssistantDeviceLoginResponse,
+    response_model=AiDeviceLoginResponse,
     status_code=HTTPStatus.CREATED,
 )
-async def start_assistant_device_login(auth: AuthDependency) -> AssistantDeviceLoginResponse:
+async def start_assistant_device_login(auth: AuthDependency) -> AiDeviceLoginResponse:
     return device_login_response(await auth.start_device_login())
 
 
 @router.get(
     "/assistant/auth/device-code/{login_id}",
-    response_model=AssistantDeviceLoginResponse,
+    response_model=AiDeviceLoginResponse,
 )
 async def get_assistant_device_login(
     login_id: str,
     auth: AuthDependency,
-) -> AssistantDeviceLoginResponse:
+) -> AiDeviceLoginResponse:
     return device_login_response(await auth.get_device_login(login_id))
 
 
-@router.delete("/assistant/auth", response_model=AssistantAuthStatusResponse)
-async def logout_assistant(auth: AuthDependency) -> AssistantAuthStatusResponse:
-    return AssistantAuthStatusResponse.model_validate(await auth.logout(), from_attributes=True)
+@router.delete("/assistant/auth", response_model=AiAuthStatusResponse)
+async def logout_assistant(auth: AuthDependency) -> AiAuthStatusResponse:
+    return AiAuthStatusResponse.model_validate(await auth.logout(), from_attributes=True)
 
 
 @router.get("/assistant/conversations", response_model=list[ConversationResponse])

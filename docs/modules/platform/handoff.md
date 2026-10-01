@@ -1,6 +1,6 @@
 # Platform handoff
 
-Current state: M21B-M21D are complete. Matching strict
+Current state: M21B-M21F are complete. Matching strict
 Python and TypeScript catalogs define stable module/page order, dependency
 capabilities, route identities, Settings contribution identities, and lifecycle
 identities without import paths or executable names.
@@ -53,8 +53,8 @@ uses the same `RegisteredApplication` shell with matching real page entries.
 Ordinary startup remains the complete catalog and contains no fixture provider.
 
 Root `dev-module`, `logs-module`, `down-module`, and `test-module` commands use
-the existing images/configuration plus bounded Compose overrides. Calendar and
-Documents are the supported IDs. Each development stack uses ports
+the existing images/configuration plus bounded Compose overrides. Assistant,
+Calendar, Courses, and Documents are the supported IDs. Each development stack uses ports
 `15173`/`18000`, a separate Compose project, isolated PostgreSQL, and
 project-scoped private-data volumes; invalid IDs fail before Compose starts.
 
@@ -65,14 +65,13 @@ unchanged, and focused tests cover legacy state restoration. Root tokens,
 shell/navigation, accessibility, responsive-shell, and placeholder styling now
 have a Platform-owned stylesheet; feature CSS remains in the legacy stylesheet.
 Generic enum serialization moved out of Calendar and into Platform database
-infrastructure. Thin backend Platform façades publish the existing AI/runtime
-and diagnostic interfaces for M21F to restructure behind. No M21B boundary
+infrastructure. Thin backend Platform façades publish the shared AI/runtime
+and diagnostic interfaces completed in M21F. No M21B boundary
 exception remains. The backend Platform allowance now names exact consumed
 configuration, error, database, AI, diagnostic, and registration modules;
 negative fixtures reject feature imports of backend assembly or frontend shell
-internals. Documents and Calendar now own scoped test/browser coverage and
-feature CSS; deeper M21F AI/diagnostic separation is
-still unimplemented.
+internals. Documents, Calendar, Courses, and Assistant own scoped test/browser
+coverage and feature CSS; shared AI and diagnostic UI belongs to Platform.
 
 Verification: [M21A baseline](../baseline.md). Shared cautions and active
 application status remain in the root `handoff.md`.
@@ -100,5 +99,12 @@ application factory, shell, Calendar page/routes, and ICS lifecycle binding. A
 warm complete focused run passed 104 backend, 53 frontend, and 2 browser tests
 in 53.43 seconds outer wall time.
 
-Next step: no milestone is active. M21E is the next planned milestone and
-requires explicit owner selection. M22 remains inactive until M21I is complete.
+M21F moved all Assistant/Courses AI and diagnostic imports behind Platform
+façades, added Platform-owned AI auth and diagnostic-explanation routes, and
+made diagnostic recording own its transaction. Settings can manage ChatGPT
+authentication without Assistant. The Assistant focused host closes over real
+Calendar/Courses providers; Assistant styles/tests are locally owned. No M21F
+boundary exception remains.
+
+Next step: M21G is selected and owns Inbox plus contributed Settings
+boundaries. M22 remains inactive until M21I is complete.

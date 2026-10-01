@@ -61,8 +61,11 @@ tests, schema, or Makefile target changed.
   contract, recovery declaration, scoped backend/browser tests, and a
   dependency-closed focused host. Assistant consumes Courses only through its
   public contract.
+- M21F is complete. Assistant owns its errors, styles, focused tests, and UI
+  orchestration components; shared AI authentication/runtime/workspaces and
+  sanitized diagnostics are Platform contracts available independently.
 - The owner selected M21E through M21I on 2026-09-30, to be completed in order.
-  M21F is the active milestone.
+  M21G is the active milestone.
 - No feature behavior, schema, storage identity, private data, or visible design
   was changed by M21C/M21D/M21E. M22 was not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
@@ -338,12 +341,38 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   Courses run passed 154 backend, 59 frontend, and 7 browser tests in 81
   seconds.
 
+## M21F final result
+
+- Assistant now owns its errors, styles, conversation/proposal UI components,
+  scoped backend fixture, and focused browser scenario. Its focused host uses
+  real Calendar and Courses providers while Codex remains mocked in ordinary
+  tests.
+- Platform now exposes reusable AI authentication/runtime/workspace and
+  sanitized diagnostic contracts. Settings can manage AI authentication
+  without Assistant, while the existing `/assistant/auth*` endpoints remain
+  compatible delegates.
+- Courses note summary/prettify and both Courses and Assistant diagnostics use
+  Platform contracts; no feature imports Assistant internals for shared AI or
+  error actions. All 18 M21F backend and the one M21F frontend legacy boundary
+  exceptions were removed.
+- Assistant proposal execution still shares one transaction with Calendar.
+  Diagnostic recording uses an independent transaction, so it cannot commit or
+  roll back Assistant state. Cancellation and timeout cleanup immediately
+  remove private runtime workspaces.
+- Verification on 2026-09-30: `make test-module MODULE=assistant` passed 106
+  backend tests, 44 frontend tests, and 1 browser scenario; `make test` passed
+  251 backend and 117 frontend tests plus boundary, contract, and data-safety
+  gates; `make lint` passed; full and module-mode frontend builds passed; and
+  `make e2e` passed all 19 browser/accessibility scenarios. The focused Docker
+  host started successfully, both ports responded, and a fresh database reached
+  `20260908_0021 (head)`. `git diff --check` passed.
+
 ## Shared cautions
 
-- M21C, M21D, and M21E are complete; M21F-M21I are selected and remain to be
-  done in order. Documents, Calendar, and Courses own their feature CSS and are
-  the supported focused hosts. Assistant and Inbox CSS, their module-host IDs,
-  and Settings module controls do not exist yet.
+- M21C through M21F are complete; M21G-M21I are selected and remain to be done
+  in order. Documents, Calendar, Courses, and Assistant own their feature CSS
+  and are supported focused hosts. Inbox CSS and its module-host ID remain M21G
+  work; Settings module controls remain M21H work.
 - Feature stylesheets load before the shared sheets. The earlier Calendar and
   Documents extractions left five elements where a shared rule now wins an
   equal-specificity tie it used to lose (for example `.create-event-button`
@@ -360,11 +389,11 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   milestones migrate them; never broaden an exception to accommodate new code.
 - Assistant confirmation binds Calendar's restricted port to one shared
   SQLAlchemy transaction for proposal/job/action and Calendar changes. Preserve
-  this atomicity when M21F moves the coordinator; never expose the session.
+  this atomicity; never expose the session.
 - `backend/tests/conftest.py` still resets all tables/private roots for the
-  assembled suite. Documents, Calendar, and Courses override it with scoped
-  fixtures in their owned subtrees. Other owner-specific fixtures, remaining feature CSS,
-  and recovery contributions are later-milestone debt.
+  assembled suite. Documents, Calendar, Courses, and Assistant override it with
+  scoped fixtures in their owned subtrees. Other owner-specific fixtures,
+  remaining feature CSS, and recovery contributions are later-milestone debt.
 - `alembic check` reports deliberately retained retired integration tables and
   four known enum/VARCHAR length differences. It reports no Documents drift.
 - A real mailbox-provider check was not run; local fakes cover TLS/read-only,
@@ -384,43 +413,12 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21F is active (`guidelines/milestones/m21f-assistant-and-ai-platform.md`). Its
-existing-state check is done and no M21F code is in the worktree: all seven
-criteria are still unmet. The owner selected M21E-M21I; M21G, M21H, and M21I
-follow in order. Do not start M22.
-
-Findings from the M21F existing-state check, to avoid re-deriving them:
-
-- The 17 remaining M21F backend exceptions are direct imports of `app.ai`,
-  `app.codex_runtime`, and `app.diagnostics` from `app/assistant/` and
-  `app/notes/`. The `app.platform.ai` and `app.platform.diagnostics` facades
-  already export every name those files need, so most exceptions close by
-  switching the import.
-- Sign-in routes exist only under `/api/v1/assistant/auth*`. M21F needs
-  Platform-owned equivalents (planned: `/api/v1/ai/auth*` in `app/ai/`) with the
-  Assistant routes kept as delegates to the same auth manager, plus a
-  Platform-owned AI panel in Settings.
-- The error-explanation route exists only at
-  `/api/v1/assistant/errors/{id}/explain` and the UI component is
-  `features/assistant/ErrorAssistantAction.tsx`, imported by Courses (the one
-  M21F frontend exception). Both need a Platform-owned home so Courses works
-  without Assistant.
-- `AssistantService._fail_job` records diagnostics through the Assistant
-  session, and `record_error` commits that session. Diagnostics needs a
-  recording function that uses its own session and returns a bounded value.
-- Assistant-only error classes still live in `app.core.errors`.
-  `InvalidAssistantResponseError` and the runtime/auth errors are used by
-  `app/codex_runtime/` and must stay Platform-owned.
-- `AssistantPage.tsx` (1,528 lines) already contains separable
-  `AssistantJobErrorCard` and `ProposalCard` components. Assistant CSS is still
-  in the global stylesheet; extracting it needs the same equal-specificity
-  check used for Courses (see `docs/modules/README.md`).
-- The remaining combined browser spec is `e2e/tests/calendar-assistant.spec.ts`;
-  its sanitized course-error scenario depends only on Courses plus the
-  explanation route.
+M21G is active (`guidelines/milestones/m21g-inbox-and-settings-boundary.md`).
+M21F is complete and all seven criteria are verified. The owner selected
+M21E-M21I; M21H and M21I follow M21G. Do not start M22.
 
 Recommended next prompt:
 
 ```text
-Continue with M21F.
+Continue with M21G.
 ```

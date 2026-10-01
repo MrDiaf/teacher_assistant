@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.assistant.models import (
     AssistantJobStatus,
@@ -126,18 +126,3 @@ class AssistantProposalResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     action_records: list[ProposalActionRecordResponse]
-
-
-class AssistantAuthStatusResponse(BaseModel):
-    authenticated: bool
-    auth_type: Literal["chatgpt", "api_key"] | None
-    email: str | None
-    plan_type: str | None
-
-
-class AssistantDeviceLoginResponse(BaseModel):
-    login_id: str = Field(min_length=1, max_length=200)
-    verification_url: HttpUrl
-    user_code: str = Field(min_length=1, max_length=40)
-    status: Literal["pending", "completed", "failed"]
-    safe_error: str | None

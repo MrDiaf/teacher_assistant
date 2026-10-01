@@ -5,10 +5,10 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.codex_runtime.adapter import CodexAdapter, get_codex_adapter
 from app.database.session import get_session
 from app.notes.summary_schemas import NoteSummaryCreate, NoteSummaryResponse
 from app.notes.summary_service import NoteSummaryService, SummaryResult
+from app.platform.ai import CodexAdapter, get_codex_adapter
 
 router = APIRouter()
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]

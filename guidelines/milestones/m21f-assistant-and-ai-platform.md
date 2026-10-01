@@ -87,20 +87,20 @@ idempotent confirmation, and transaction rollback through Calendar's contract.
 
 ## Completion criteria
 
-- [ ] Assistant can mount in the shared host with contract-checked fake
+- [x] Assistant can mount in the shared host with contract-checked fake
   capabilities and with real selected providers; unavailable capabilities fail
   explicitly.
-- [ ] Ordinary tests use no Codex credentials and no real model requests.
-- [ ] Notes summaries/prettify work without loading Assistant feature internals;
+- [x] Ordinary tests use no Codex credentials and no real model requests.
+- [x] Notes summaries/prettify work without loading Assistant feature internals;
   shared authentication and diagnostics remain available independently.
-- [ ] Runtime jobs still receive no repository, shell, Docker socket,
+- [x] Runtime jobs still receive no repository, shell, Docker socket,
   credentials, or unbounded filesystem/data access; cancellation/timeout deletes
   workspaces.
-- [ ] Unknown actions, read-only mutations, bulk/delete-calendar requests,
+- [x] Unknown actions, read-only mutations, bulk/delete-calendar requests,
   invalid references, and repeated confirmation retain their enforced behavior.
-- [ ] Drafts survive navigation/failure as before; completed status follows
+- [x] Drafts survive navigation/failure as before; completed status follows
   actual backend execution and never a speculative model response.
-- [ ] Focused/runtime/contract tests, cross-module E2E, accessibility,
+- [x] Focused/runtime/contract tests, cross-module E2E, accessibility,
   lint/build, Docker startup, migration compatibility, and diff checks pass.
 
 ## Verification
