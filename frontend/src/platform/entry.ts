@@ -10,4 +10,5 @@ export const platformModuleEntry = {
     { id: "study-plan", icon: "checklist", component: StudyPlanPage },
     { id: "settings", icon: "settings", component: SettingsPage },
   ],
+  settingsPanels: [],
 } as const satisfies FrontendModuleEntry;

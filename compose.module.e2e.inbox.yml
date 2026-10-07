@@ -1,0 +1,5 @@
+services:
+  backend:
+    volumes: !override
+      - e2e-integration-credentials:/data/integration_credentials
+      - e2e-mail-attachments:/data/mail_attachments

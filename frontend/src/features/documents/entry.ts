@@ -5,4 +5,5 @@ import "./styles.css";
 export const documentsModuleEntry = {
   id: "documents",
   pages: [{ id: "documents", icon: "file", component: DocumentsPage }],
+  settingsPanels: [],
 } as const satisfies FrontendModuleEntry;

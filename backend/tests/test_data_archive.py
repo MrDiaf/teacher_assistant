@@ -11,6 +11,7 @@ import pytest
 
 from app.courses.entry import courses_recovery_contribution
 from app.documents.entry import documents_recovery_contribution
+from app.inbox.entry import inbox_recovery_contribution
 from app.maintenance.data_archive import (
     ArchiveValidationError,
     build_manifest,
@@ -107,6 +108,27 @@ def test_documents_recovery_contribution_preserves_bounded_storage_identities() 
         "introduced_in_format",
         "max_members",
         "max_bytes",
+    }
+
+
+def test_inbox_recovery_contribution_preserves_attachments_and_excludes_credentials(
+    tmp_path: Path,
+) -> None:
+    assert inbox_recovery_contribution == StorageRecoveryContribution(
+        id="inbox",
+        manifest_key="mail_files",
+        archive_file="mail-attachments.tar.gz",
+        archive_root="mail_attachments",
+        introduced_in_format=1,
+        max_members=100_000,
+        max_bytes=100 * 1024 * 1024 * 1024,
+    )
+
+    bundle, _ = create_bundle(tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["integration_credentials"] == {
+        "included": False,
+        "recovery": "Reconnect the dedicated mailbox after a clean restore.",
     }
 
 

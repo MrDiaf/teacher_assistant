@@ -5,17 +5,17 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.errors import MailConnectionError, MailReconnectRequiredError
-from app.integrations.credentials import (
+from app.inbox.errors import MailConnectionError, MailReconnectRequiredError
+from app.inbox.integrations.credentials import (
     CredentialUnavailableError,
     IntegrationCredentialStore,
     MailCredential,
 )
-from app.integrations.mail.client import ImapMailboxClient
-from app.integrations.mail.schemas import MailboxConfiguration
-from app.integrations.models import IntegrationConnection, IntegrationStatus
-from app.integrations.repository import IntegrationRepository
-from app.integrations.schemas import MailConnectionInput, MailConnectionResponse
+from app.inbox.integrations.mail.client import ImapMailboxClient
+from app.inbox.integrations.mail.schemas import MailboxConfiguration
+from app.inbox.integrations.models import IntegrationConnection, IntegrationStatus
+from app.inbox.integrations.repository import IntegrationRepository
+from app.inbox.integrations.schemas import MailConnectionInput, MailConnectionResponse
 
 
 class MailIntegrationService:

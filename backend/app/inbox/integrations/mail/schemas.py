@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from app.inbox.integrations.models import MailTlsMode
 from app.inbox.models import MailAddressKind
-from app.integrations.models import MailTlsMode
 
 
 @dataclass(frozen=True)

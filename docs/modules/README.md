@@ -12,8 +12,9 @@ reach Calendar internals. M21E is complete as well: Courses owns its public
 context contract, errors, styles, recovery declaration, scoped tests, and
 focused host, and Assistant no longer reaches Courses internals. M21F is
 complete: Assistant owns its feature boundary and consumes Platform's shared
-AI/diagnostic contracts. M21G removes the remaining Inbox/Settings ownership
-debt and exact legacy exceptions in
+AI/diagnostic contracts. M21G is complete: Inbox owns mail integrations,
+Settings contribution, recovery declaration, styles, and focused tests, and it
+removed the remaining exact legacy exceptions from
 [`architecture/module-boundaries.json`](../../architecture/module-boundaries.json).
 
 ## Reading workflow
@@ -69,8 +70,7 @@ public code entries. The canonical extension procedure and distinction between
 module-safe façades and root-only assembly surfaces are in the
 [Platform README](platform/README.md#implemented-composition-extension-points).
 
-Current exact exception count: 0 backend and 2 frontend imports. Removal is
-owned by M21G. The manifest
+Current exact exception count: 0 backend and 0 frontend imports. The manifest
 is authoritative down to importer and imported module; this summary is not an
 allowlist. Platform composition may import only the exact public module entries
 listed in the manifest.
@@ -80,19 +80,19 @@ listed in the manifest.
 | Area | Owner | Current locations/data |
 | --- | --- | --- |
 | React/FastAPI assembly and shell | Platform | `frontend/src/{App,ModuleHost,main}.tsx`, `frontend/src/platform/`, `components/`, `hooks/`, `persistence/`, `backend/app/{main,module_host,platform}/` |
-| Shared UI/CSS | Platform host with feature debt | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents, Calendar, Courses, and Assistant styles are scoped under their features, while Inbox selector families stay in `frontend/src/styles.css` until M21G |
+| Shared UI/CSS | Platform host and feature-owned styles | `frontend/src/platform/ui.ts`, `frontend/src/platform/styles.css`; Documents, Calendar, Courses, Assistant, and Inbox styles are scoped under their features |
 | Configuration/errors/database | Platform | `backend/app/core/`, `database/`; PostgreSQL session creation is infrastructure, not a public business query API |
 | AI/runtime/diagnostics | Platform | `backend/app/{ai,codex_runtime,diagnostics}/`, `frontend/src/features/ai/`; public Platform contracts serve Assistant, Courses, and Settings independently |
 | Migrations/recovery | Platform coordination | `backend/alembic/`, `backend/app/maintenance/`, `scripts/`, Compose volumes and host bind roots |
 | Calendar implementation/data | Calendar | `backend/app/calendar/`, `frontend/src/features/calendar/`; `calendars`, `events` |
 | Courses implementation/data | Courses | `backend/app/{courses,course_sources,course_calendars,notes}/`, `frontend/src/features/courses/`; Courses tables and private course-content root |
 | Assistant implementation/data | Assistant | `backend/app/assistant/`, `frontend/src/features/assistant/`; Assistant conversation/job/proposal/audit tables |
-| Mail implementation/data | Inbox | `backend/app/{inbox,integrations}/`, `frontend/src/features/inbox/`; mail tables, attachment root, credential root |
-| Mailbox settings UI | Inbox content, Platform host | currently `frontend/src/features/settings/SettingsPage.tsx`; becomes a registered Inbox contribution in M21G |
+| Mail implementation/data | Inbox | `backend/app/inbox/` including internal `integrations/`, `frontend/src/features/inbox/`; mail tables, attachment root, credential root |
+| Mailbox settings UI | Inbox content, Platform host | Inbox-owned `MailInboxSettingsPanel` registered through `features/inbox/entry.ts`; generic host in `features/settings/` |
 | Documents implementation/data | Documents | `backend/app/documents/` including owned errors, `frontend/src/features/documents/` including `styles.css`; document tables and private document root |
-| Backend tests | Same feature owner; Platform fixture debt outside Documents/Calendar/Courses/Assistant | `backend/tests/test_*.py`; Documents, Calendar, Courses, and Assistant use owned subtrees with scoped fixtures while the root `conftest.py` still resets all owners for other tests |
+| Backend tests | Same feature owner; remaining Platform fixture debt | `backend/tests/test_*.py`; Documents, Calendar, Courses, Assistant, and Inbox use owned subtrees with scoped fixtures while the root `conftest.py` still resets all owners for other tests |
 | Frontend tests | Same feature owner; Platform composition debt | colocated `*.test.*`, plus full-App persistence/Assistant tests |
-| Browser tests | Provider/consumer evidence | Documents, Calendar, Courses, and Assistant own focused specs; cross-module regression scenarios remain in `calendar-assistant.spec.ts` |
+| Browser tests | Provider/consumer evidence | Documents, Calendar, Courses, Assistant, and Inbox own focused specs; cross-module regression scenarios remain in `calendar-assistant.spec.ts` |
 
 Migrations stay centrally ordered even when their tables have a feature owner:
 0001-0005 Calendar, 0006-0009 Assistant, 0010-0014 Courses, 0015-0017
@@ -148,8 +148,8 @@ be preserved during refactoring:
   `.courses-*`, and its note/editor/summary/source/PDF-viewer families in
   `features/courses/styles.css`. Assistant owns its conversation, proposal,
   job, and composer families; Platform owns shared AI/diagnostic selectors.
-  Still to extract: `.inbox-*`, `.mail-*`, `.connection-*` plus mailbox
-  Settings in M21G. The cross-feature
+  Inbox now owns `.inbox-*`, `.mail-*`, `.connection-*`, and its mailbox
+  Settings selectors. The cross-feature
   `.course-calendar .calendar-*` selectors are now an explicit contract:
   Calendar publishes `calendarEmbeddingClasses` and a contract test holds
   Courses to it. The diagnostic action used by Courses is now a Platform-owned
@@ -171,18 +171,20 @@ be preserved during refactoring:
   every shutdown hook. The shared Platform application factory receives an
   explicit entry set: `backend/app/main.py` supplies the complete registered set,
   while focused hosts supply the dependency closure of Documents, Calendar,
-  Courses, or Assistant.
+  Courses, Assistant, or Inbox. The Inbox host also includes Platform Settings
+  so its contributed panel can be exercised.
 - `backend/tests/conftest.py` still knows all tables and private roots for the
-  assembled suite. Documents, Calendar, Courses, and Assistant own closer fixtures;
+  assembled suite. Documents, Calendar, Courses, Assistant, and Inbox own closer fixtures;
   Calendar truncates only events/calendars, Courses truncates only Courses and
   Calendar tables with a private per-test course root, and each mounts its real
   focused host. Focused
-  unit commands use isolated PostgreSQL and no owner storage.
+  unit commands use isolated PostgreSQL and no owner storage. Inbox additionally
+  uses isolated test credential and attachment roots.
 - Recovery scripts retain Platform's coordinated quiescence, PostgreSQL dump,
   manifest verification, restore order, and rollback behavior. Documents and
   Courses supply their established manifest/archive/root identities and safety
-  limits through typed contributions; mail storage remains named directly in
-  `data_archive.py` until M21G.
+  limits through typed contributions. Inbox supplies the same bounded recovery
+  metadata for mail attachments; renewable mail credentials remain excluded.
 
 ## Verification baseline
 

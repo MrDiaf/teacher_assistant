@@ -5,4 +5,5 @@ import "./styles.css";
 export const assistantModuleEntry = {
   id: "assistant",
   pages: [{ id: "assistant", icon: "assistant", component: AssistantPage }],
+  settingsPanels: [],
 } as const satisfies FrontendModuleEntry;

@@ -81,20 +81,20 @@ The shell continues to own the unchanged Dashboard and Study Plan placeholders.
 
 ## Completion criteria
 
-- [ ] Inbox list/detail/search/read/archive/delete, attachments, and every
+- [x] Inbox list/detail/search/read/archive/delete, attachments, and every
   mailbox Settings action pass through the same real module entry in full and
   focused apps.
-- [ ] Mail credentials never return to the browser after submission or enter
+- [x] Mail credentials never return to the browser after submission or enter
   logs, diagnostics, Codex context, source control, or backup bundles.
-- [ ] Missing credentials, TLS/auth errors, malformed mail, UIDVALIDITY changes,
+- [x] Missing credentials, TLS/auth errors, malformed mail, UIDVALIDITY changes,
   scheduler/manual races, and attachment cleanup failures remain recoverable.
-- [ ] Remote mailbox state is never modified by local read/archive/delete
+- [x] Remote mailbox state is never modified by local read/archive/delete
   actions.
-- [ ] Settings contains no Inbox business logic; its registered panels retain
+- [x] Settings contains no Inbox business logic; its registered panels retain
   accessible layout, errors, and behavior. Placeholders remain placeholders.
-- [ ] No unscheduled legacy boundary allowance remains for the migrated
+- [x] No unscheduled legacy boundary allowance remains for the migrated
   features.
-- [ ] Focused/contract tests, Settings/full-app smoke, accessibility,
+- [x] Focused/contract tests, Settings/full-app smoke, accessibility,
   lint/build, Docker startup, relevant backup/restore checks, and diff checks
   pass.
 

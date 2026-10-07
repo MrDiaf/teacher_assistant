@@ -12,6 +12,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app.access.routes import require_owner_access
+from app.access.routes import router as access_router
 from app.core.errors import ApplicationError
 from app.database.session import session_factory
 from app.diagnostics.redaction import redact_text
@@ -216,7 +218,10 @@ def create_application(entries: tuple[BackendModuleEntry, ...]) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+    application.include_router(access_router)
     include_module_routers(application, entries)
+    # Registered first so attach_request_id stays the outermost middleware.
+    application.middleware("http")(require_owner_access)
     application.middleware("http")(attach_request_id)
     application.exception_handler(ApplicationError)(handle_application_error)
     application.exception_handler(RequestValidationError)(handle_request_validation_error)

@@ -25,7 +25,8 @@ async def clean_database() -> AsyncIterator[None]:
             )
         await connection.execute(
             text(
-                "TRUNCATE TABLE diagnostic_audit_records, diagnostic_errors, "
+                "TRUNCATE TABLE access_password, access_login_throttles, "
+                "diagnostic_audit_records, diagnostic_errors, "
                 "document_project_tags, document_tags, document_projects, "
                 "mail_cleanup_audits, mail_quarantines, mail_attachments, "
                 "mail_addresses, mail_messages, mail_sync_cursors, "

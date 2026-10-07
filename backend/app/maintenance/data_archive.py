@@ -14,16 +14,17 @@ from typing import BinaryIO
 
 from app.courses.entry import courses_recovery_contribution
 from app.documents.entry import documents_recovery_contribution
+from app.inbox.entry import inbox_recovery_contribution
 from app.platform.recovery import StorageRecoveryContribution
 
 FORMAT_VERSION = 3
 DATABASE_FILE = "database.dump"
 COURSE_ARCHIVE_FILE = courses_recovery_contribution.archive_file
-MAIL_ARCHIVE_FILE = "mail-attachments.tar.gz"
+MAIL_ARCHIVE_FILE = inbox_recovery_contribution.archive_file
 DOCUMENT_ARCHIVE_FILE = documents_recovery_contribution.archive_file
 MANIFEST_FILE = "manifest.json"
 COURSE_ARCHIVE_ROOT = courses_recovery_contribution.archive_root
-MAIL_ARCHIVE_ROOT = "mail_attachments"
+MAIL_ARCHIVE_ROOT = inbox_recovery_contribution.archive_root
 DOCUMENT_ARCHIVE_ROOT = documents_recovery_contribution.archive_root
 BUFFER_SIZE = 1024 * 1024
 MAX_ARCHIVE_MEMBERS = 100_000
@@ -83,7 +84,7 @@ def create_course_archive(source: Path, output: BinaryIO) -> None:
 
 
 def create_mail_archive(source: Path, output: BinaryIO) -> None:
-    create_storage_archive(source, output, MAIL_ARCHIVE_ROOT)
+    create_contributed_archive(inbox_recovery_contribution, source, output)
 
 
 def create_document_archive(source: Path, output: BinaryIO) -> None:
@@ -158,7 +159,7 @@ def verify_course_archive(path: Path) -> int:
 
 
 def verify_mail_archive(path: Path) -> int:
-    return verify_storage_archive(path, MAIL_ARCHIVE_ROOT)
+    return verify_contributed_archive(inbox_recovery_contribution, path)
 
 
 def verify_document_archive(path: Path) -> int:
@@ -196,7 +197,7 @@ def verify_contributed_archive(
 def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[str, object]:
     database = bundle / DATABASE_FILE
     courses = bundle / COURSE_ARCHIVE_FILE
-    mail = bundle / MAIL_ARCHIVE_FILE
+    mail = bundle / inbox_recovery_contribution.archive_file
     documents = bundle / documents_recovery_contribution.archive_file
     if not all(item.is_file() for item in (database, courses, mail, documents)):
         raise ArchiveValidationError(
@@ -222,9 +223,9 @@ def build_manifest(bundle: Path, installation_id: str, created_at: str) -> dict[
             "bytes": courses.stat().st_size,
             "sha256": sha256_file(courses),
         },
-        "mail_files": {
-            "file": MAIL_ARCHIVE_FILE,
-            "root": MAIL_ARCHIVE_ROOT,
+        inbox_recovery_contribution.manifest_key: {
+            "file": inbox_recovery_contribution.archive_file,
+            "root": inbox_recovery_contribution.archive_root,
             "file_count": mail_file_count,
             "bytes": mail.stat().st_size,
             "sha256": sha256_file(mail),
@@ -299,7 +300,12 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
         courses_recovery_contribution.manifest_key,
         courses_recovery_contribution.archive_file,
     )
-    mail = _manifest_component(bundle, manifest, "mail_files", MAIL_ARCHIVE_FILE)
+    mail = _manifest_component(
+        bundle,
+        manifest,
+        inbox_recovery_contribution.manifest_key,
+        inbox_recovery_contribution.archive_file,
+    )
     documents = (
         _manifest_component(
             bundle,
@@ -316,7 +322,7 @@ def verify_bundle(bundle: Path) -> dict[str, object]:
     if course_component.get("file_count") != file_count:
         raise ArchiveValidationError("Course archive file count does not match the manifest.")
     mail_file_count = verify_mail_archive(mail)
-    mail_component = manifest["mail_files"]
+    mail_component = manifest[inbox_recovery_contribution.manifest_key]
     assert isinstance(mail_component, dict)
     if mail_component.get("file_count") != mail_file_count:
         raise ArchiveValidationError("Mail archive file count does not match the manifest.")
@@ -437,8 +443,12 @@ def restore_course_archive(
 def restore_mail_archive(
     archive_path: Path, parent: Path, directory_name: str, rollback_suffix: str
 ) -> Path | None:
-    return restore_storage_archive(
-        archive_path, parent, directory_name, rollback_suffix, MAIL_ARCHIVE_ROOT
+    return restore_contributed_archive(
+        inbox_recovery_contribution,
+        archive_path,
+        parent,
+        directory_name,
+        rollback_suffix,
     )
 
 

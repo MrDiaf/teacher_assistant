@@ -4,9 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { RegisteredApplication } from "../RegisteredApplication";
 import { moduleCatalog } from "./catalog";
 import { parseModuleCatalog } from "./contract";
-import { registeredPages } from "./frontendCatalog";
+import { registeredPages, registeredSettingsPanels } from "./frontendCatalog";
 import {
   assembleFrontendPages,
+  assembleFrontendSettingsPanels,
   type FrontendModuleEntry,
 } from "./frontendContract";
 
@@ -57,6 +58,7 @@ describe("frontend module composition", () => {
     const fixtureEntry = {
       id: "fixture",
       pages: [{ id: "fixture-page", icon: "leaf", component: FixturePage }],
+      settingsPanels: [],
     } as const satisfies FrontendModuleEntry<"fixture", "fixture-page">;
     const pages = assembleFrontendPages(fixtureCatalog, [fixtureEntry]);
 
@@ -65,6 +67,7 @@ describe("frontend module composition", () => {
         activePage="fixture-page"
         onNavigate={vi.fn()}
         pages={pages}
+        settingsPanels={[]}
       />,
     );
 
@@ -82,6 +85,7 @@ describe("frontend module composition", () => {
     const mismatched = {
       id: "platform",
       pages: [],
+      settingsPanels: [],
     } as const satisfies FrontendModuleEntry;
 
     expect(() =>
@@ -112,13 +116,16 @@ describe("frontend module composition", () => {
     const fixtureEntry = {
       id: "fixture",
       pages: [],
+      settingsPanels: [],
     } as const satisfies FrontendModuleEntry<"fixture", never>;
 
     expect(() => assembleFrontendPages(fixtureCatalog, [])).toThrowError(
       "Missing frontend module entry",
     );
     expect(() =>
-      assembleFrontendPages(fixtureCatalog, [{ id: "unknown", pages: [] }]),
+      assembleFrontendPages(fixtureCatalog, [
+        { id: "unknown", pages: [], settingsPanels: [] },
+      ]),
     ).toThrowError("Unknown frontend module entry");
     expect(() =>
       assembleFrontendPages(fixtureCatalog, [fixtureEntry, fixtureEntry]),
@@ -156,13 +163,75 @@ describe("frontend module composition", () => {
 
     expect(() =>
       assembleFrontendPages(fixtureCatalog, [
-        { id: "fixture", pages: [{ ...page, id: "unknown-page" }] },
+        {
+          id: "fixture",
+          pages: [{ ...page, id: "unknown-page" }],
+          settingsPanels: [],
+        },
       ]),
     ).toThrowError("Unknown frontend page code contribution");
     expect(() =>
       assembleFrontendPages(fixtureCatalog, [
-        { id: "fixture", pages: [page, page] },
+        { id: "fixture", pages: [page, page], settingsPanels: [] },
       ]),
     ).toThrowError("Duplicate frontend page code contribution");
+  });
+
+  it("binds Inbox Settings metadata to its real module contribution", () => {
+    expect(
+      registeredSettingsPanels.map(({ id, label, moduleId }) => ({
+        id,
+        label,
+        moduleId,
+      })),
+    ).toEqual([{ id: "mail-inbox", label: "Mail inbox", moduleId: "inbox" }]);
+  });
+
+  it("rejects missing, unknown, and duplicate Settings panel code", () => {
+    function FixturePanel() {
+      return <section>Fixture settings</section>;
+    }
+    const fixtureCatalog = parseModuleCatalog({
+      schema_version: 1,
+      registrations: [
+        {
+          id: "fixture",
+          display_name: "Fixture",
+          order: 0,
+          enabled_by_default: true,
+          capabilities: ["settings-panel"],
+          dependencies: [],
+          contributions: {
+            routes: [],
+            pages: [],
+            settings_panels: [
+              { id: "fixture-panel", label: "Fixture", order: 0 },
+            ],
+            lifecycle: [],
+          },
+        },
+      ],
+    });
+    const panel = { id: "fixture-panel", component: FixturePanel } as const;
+
+    expect(() =>
+      assembleFrontendSettingsPanels(fixtureCatalog, [
+        { id: "fixture", pages: [], settingsPanels: [] },
+      ]),
+    ).toThrowError("Missing frontend Settings panel code contribution");
+    expect(() =>
+      assembleFrontendSettingsPanels(fixtureCatalog, [
+        {
+          id: "fixture",
+          pages: [],
+          settingsPanels: [{ ...panel, id: "unknown-panel" }],
+        },
+      ]),
+    ).toThrowError("Unknown frontend Settings panel code contribution");
+    expect(() =>
+      assembleFrontendSettingsPanels(fixtureCatalog, [
+        { id: "fixture", pages: [], settingsPanels: [panel, panel] },
+      ]),
+    ).toThrowError("Duplicate frontend Settings panel code contribution");
   });
 });

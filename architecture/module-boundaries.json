@@ -26,8 +26,8 @@
       { "prefix": "app.notes", "owner": "courses" },
       { "prefix": "app.assistant", "owner": "assistant" },
       { "prefix": "app.inbox", "owner": "inbox" },
-      { "prefix": "app.integrations", "owner": "inbox" },
       { "prefix": "app.documents", "owner": "documents" },
+      { "prefix": "app.access", "owner": "platform" },
       { "prefix": "app.ai", "owner": "platform" },
       { "prefix": "app.codex_runtime", "owner": "platform" },
       { "prefix": "app.core", "owner": "platform" },
@@ -98,17 +98,6 @@
     "public_contracts": {
       "calendar": ["features/calendar/public"]
     },
-    "legacy_exceptions": [
-      {
-        "importer": "frontend/src/features/settings/SettingsPage.tsx",
-        "imported": "features/inbox/api",
-        "remove_in": "M21G"
-      },
-      {
-        "importer": "frontend/src/features/settings/SettingsPage.tsx",
-        "imported": "features/inbox/types",
-        "remove_in": "M21G"
-      }
-    ]
+    "legacy_exceptions": []
   }
 }

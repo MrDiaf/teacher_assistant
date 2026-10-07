@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import imaplib
 import os
 import stat
@@ -13,20 +14,22 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.errors import InvalidMailConnectionError, MailConnectionError, MailStorageError
-from app.inbox.mail_storage import MailStorage
-from app.inbox.models import MailCleanupAudit, MailMessage, MailQuarantine
-from app.inbox.service import InboxService
-from app.integrations.credentials import IntegrationCredentialStore, MailCredential
-from app.integrations.mail.client import ImapMailboxClient, validate_public_mail_host
-from app.integrations.mail.parser import MAX_PARTS, parse_mail, sanitize_html
-from app.integrations.mail.schemas import (
+from app.database.session import session_factory
+from app.inbox.errors import InvalidMailConnectionError, MailConnectionError, MailStorageError
+from app.inbox.integrations.credentials import IntegrationCredentialStore, MailCredential
+from app.inbox.integrations.mail.client import ImapMailboxClient, validate_public_mail_host
+from app.inbox.integrations.mail.parser import MAX_PARTS, parse_mail, sanitize_html
+from app.inbox.integrations.mail.schemas import (
     MailboxConfiguration,
     MailboxSnapshot,
     MailParseError,
     RemoteMail,
 )
-from app.integrations.models import MailTlsMode
+from app.inbox.integrations.mail.sync import MailSyncService
+from app.inbox.integrations.models import MailTlsMode
+from app.inbox.mail_storage import MailStorage
+from app.inbox.models import MailCleanupAudit, MailMessage, MailQuarantine
+from app.inbox.service import InboxService
 
 
 def message_bytes(
@@ -270,6 +273,33 @@ async def test_connection_failure_keeps_imported_mail_and_sets_safe_backoff_stat
     assert "office@example.edu" not in str(status)
 
 
+async def test_scheduler_and_manual_checks_share_one_process_lock(
+    client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await connect(client, monkeypatch)
+    active = 0
+    maximum_active = 0
+
+    async def slow_fetch(self, configuration, credential, **kwargs):
+        nonlocal active, maximum_active
+        active += 1
+        maximum_active = max(maximum_active, active)
+        await asyncio.sleep(0.02)
+        active -= 1
+        return MailboxSnapshot(42, [])
+
+    monkeypatch.setattr(ImapMailboxClient, "fetch", slow_fetch)
+    async with session_factory() as first_session, session_factory() as second_session:
+        first, second = await asyncio.gather(
+            MailSyncService(first_session).sync(),
+            MailSyncService(second_session).sync(),
+        )
+
+    assert first.imported_count == second.imported_count == 0
+    assert maximum_active == 1
+
+
 async def test_local_state_and_confirmed_single_delete_do_not_call_remote_mailbox(
     client: AsyncClient,
     session: AsyncSession,
@@ -288,6 +318,9 @@ async def test_local_state_and_confirmed_single_delete_do_not_call_remote_mailbo
     await client.post("/api/v1/integrations/mail/check")
     messages = (await client.get("/api/v1/inbox")).json()
     first, second = messages
+    search = (await client.get("/api/v1/inbox", params={"search": "Second"})).json()
+    assert len(search) == 1
+    assert search[0]["subject"] == "Second"
     updated = await client.patch(
         f"/api/v1/inbox/{first['id']}", json={"is_read": True, "is_archived": True}
     )

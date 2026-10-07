@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     mail_max_total_storage_mb: int = Field(default=2048, ge=10, le=102400)
     document_storage_root: Path = Path("/data/document_projects")
     document_max_source_mb: int = Field(default=100, ge=1, le=1024)
+    # Proxies whose X-Forwarded-For entry is believed when finding a sign-in
+    # client's address: loopback plus Docker's default bridge range (Vite and
+    # the host gateway that Tailscale Funnel reaches the app through).
+    access_trusted_proxy_networks: str = "127.0.0.0/8,::1/128,172.16.0.0/12"
 
     @property
     def course_max_upload_bytes(self) -> int:

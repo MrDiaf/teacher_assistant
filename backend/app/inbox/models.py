@@ -25,7 +25,7 @@ from app.database.base import Base, TimestampMixin
 from app.database.types import enum_values
 
 if TYPE_CHECKING:
-    from app.integrations.models import IntegrationConnection
+    from app.inbox.integrations.models import IntegrationConnection
 
 
 class MailAddressKind(str, enum.Enum):

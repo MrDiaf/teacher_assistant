@@ -26,14 +26,15 @@ import path, component name, router name, or executable.
 | Concern | Declaration or public entry | Platform assembly consumer |
 | --- | --- | --- |
 | Shared identities, order, dependencies, capabilities, routes, pages, Settings panels, and lifecycle IDs | Mirrored `backend/app/platform/modules/catalog.json` and `frontend/src/platform/modules/catalog.json` | Strict `contract.py`/`contract.ts` parsers; `make check-module-contract` also compares both files with the ownership manifest |
-| Frontend pages | `frontend/src/platform/entry.ts` for Platform pages and `frontend/src/features/<owner>/entry.ts` for feature pages | `frontendCatalog.ts` statically imports every production entry; `App.tsx` passes all pages to `RegisteredApplication`, while `ModuleHost.tsx` passes a dependency-selected page set to the same shell |
+| Frontend pages and Settings panels | `frontend/src/platform/entry.ts` for Platform pages and `frontend/src/features/<owner>/entry.ts` for feature pages/panels | `frontendCatalog.ts` statically imports every production entry; `App.tsx` passes all pages and panels to `RegisteredApplication`, while `ModuleHost.tsx` passes dependency-selected contributions to the same shell |
 | Backend routes and lifecycle hooks | `backend/app/platform/entry.py` and `backend/app/<owner>/entry.py` | `backend_catalog.py` statically imports every production entry; the shared `app.platform.application` factory hosts either the full set from `app/main.py` or a dependency-selected set from `app/module_host.py` |
 | Test-only page/router assembly | A synthetic validated catalog plus an explicit tuple of test entries | Call `assembleFrontendPages` or `assemble_backend_modules` directly; do not mutate the production catalogs or global registered entry sets |
 
-The Settings-panel IDs in the metadata currently reserve and validate identity
-and order only. The existing mailbox panel remains directly hosted by Settings;
-M21G owns its code contribution and M21H owns module switches. Do not treat
-`enabled_by_default` as a runtime module switch before M21H.
+Settings-panel metadata is bound to explicit code contributions with the same
+missing, unknown, duplicate-ID, and duplicate-order validation as pages. The
+shared Settings page renders only the contributions supplied by composition;
+Inbox owns the mailbox panel and Platform owns the AI panel. M21H owns module
+switches, so do not treat `enabled_by_default` as a runtime switch before then.
 
 ### Adding an entry in an owner-selected milestone
 
@@ -46,18 +47,21 @@ M21G owns its code contribution and M21H owns module switches. Do not treat
    binds its metadata ID to an explicitly imported React component and icon. A
    backend route binds its metadata ID to an explicitly imported `APIRouter`,
    normally under `/api/v1`.
-3. Add the public entry to the corresponding static tuple in
+3. Bind any Settings panel as an explicit `settingsPanels` contribution in its
+   owner's frontend entry. Keep all panel-specific state, API calls, and error
+   handling in that owner; the shared Settings page only renders contributions.
+4. Add the public entry to the corresponding static tuple in
    `frontendCatalog.ts` and/or `backend_catalog.py`. Do not add dynamic discovery,
    import strings, a service locator, or business logic to either catalog.
-4. For a lifecycle hook, bind the declared ID to an async startup callback with
+5. For a lifecycle hook, bind the declared ID to an async startup callback with
    a unique global order. Startup may return an idempotent async cleanup; use
    `background_task_lifecycle` for a cooperative scheduler. Cleanups run in
    reverse successful-start order and each has a positive, finite timeout
    (five seconds by default). Private roots must start before jobs that use them.
-5. Update `architecture/module-boundaries.json` with ownership, declared
+6. Update `architecture/module-boundaries.json` with ownership, declared
    dependencies, and the exact public-entry path. Do not add a broad exception
    or allow a business feature to import Platform assembly internals.
-6. Add metadata, missing/unknown/duplicate binding, page/router, and lifecycle
+7. Add metadata, missing/unknown/duplicate binding, page/panel/router, and lifecycle
    tests as applicable. Run `make check-module-contract`,
    `make check-boundaries`, and the relevant full regression commands.
 
@@ -66,8 +70,9 @@ keeps every current module enabled. The focused host accepts only an explicit
 allowlisted module ID, closes its declared dependency set, and assembles only
 matching real entries. `documents` hosts Platform plus Documents; `calendar`
 hosts Platform plus Calendar; `courses` adds Courses; and `assistant` adds
-Assistant over its real Calendar/Courses providers. Each focused UI presents
-only the selected page.
+Assistant over its real Calendar/Courses providers. `inbox` hosts Inbox plus
+the Platform Settings page needed to render its mailbox contribution. Other
+focused UIs present only the selected page.
 
 The root `compose.module.yml` override retains the normal images/source mounts
 but selects the focused host through configuration. Its distinct Compose project,
@@ -87,9 +92,10 @@ route or response provider.
 - `app.platform.modules.backend_contract` publishes route, lifecycle, and module
   code-entry types plus the assembly/lifespan functions.
 - `app.platform.recovery` publishes the bounded storage-recovery declaration.
-  Documents supplies its stable archive identities and limits through its public
-  entry; Platform retains coordinated archive/restore behavior and no live path,
-  session, repository, or executable callback appears in the declaration.
+  Documents, Courses, and Inbox supply stable archive identities and limits
+  through their public entries; Platform retains coordinated archive/restore
+  behavior and no live path, credential, session, repository, or executable
+  callback appears in a declaration.
 - `app.platform.ai` publishes model listing/validation, authentication, Codex
   execution, and bounded private-workspace interfaces. Platform-owned
   `/api/v1/ai/auth*` routes and the Settings panel use the same auth manager as
@@ -103,9 +109,8 @@ route or response provider.
   infrastructure. Configuration, errors, database sessions, and models remain
   infrastructure rather than unrestricted feature service APIs.
 
-The Documents and Courses recovery contributions are implemented; mail storage
-ownership remains with M21G. Calendar's
-restricted Assistant port binds internally to the coordinator's transaction
+The Documents, Courses, and Inbox recovery contributions are implemented.
+Calendar's restricted Assistant port binds internally to the coordinator's transaction
 without exposing a session, repository, raw SQL, physical path, or credential.
 
 Platform owns configuration/database availability and safe diagnostic errors.
@@ -119,9 +124,8 @@ The business graph gives Platform no feature dependency. Its composition layer
 may import only the exact module `entry.py`/`entry.ts` files declared in the
 boundary manifest; that root wiring is not permission for other Platform code
 to reach feature internals. Feature code consumes the Platform UI, persistence,
-API, and model-selection façades; Settings still imports Inbox internals.
-Mail Settings separation belongs to M21G. Inbox selectors remain deliberately
-mixed in the legacy stylesheet until M21G; Assistant, Calendar, Courses, and
+API, and model-selection façades. Settings owns only the generic contribution
+host and imports no Inbox internals. Inbox, Assistant, Calendar, Courses, and
 Documents styles are feature-owned.
 
 ## Current commands
@@ -142,6 +146,10 @@ make dev-module MODULE=courses
 make test-module MODULE=courses
 make dev-module MODULE=documents
 make test-module MODULE=documents
+make dev-module MODULE=inbox
+make test-module MODULE=inbox
+make logs-module MODULE=inbox
+make down-module MODULE=inbox
 make logs-module MODULE=documents
 make down-module MODULE=documents
 make e2e
@@ -150,7 +158,7 @@ make migrate
 make data-relocation-test
 ```
 
-Only `assistant`, `calendar`, `courses`, and `documents` are currently allowlisted; unknown and multiple
+Only `assistant`, `calendar`, `courses`, `documents`, and `inbox` are currently allowlisted; unknown and multiple
 IDs fail before Compose starts. The development defaults are UI `15173` and API `18000` and may
 be overridden with `MODULE_FRONTEND_PORT`/`MODULE_BACKEND_PORT`. The focused
 test command verifies dependency closure, real entries, routes, lifecycle
@@ -158,5 +166,7 @@ selection, shell rendering, and invalid-ID rejection. Calendar adds scoped API,
 provider/consumer, and independently seeded browser coverage without private
 mounts; Assistant adds mocked-Codex runtime/contract coverage plus a bounded
 fixture browser scenario; Documents adds CRUD/storage, contract-checked fake
-behavior, and real/fake browser scenarios with only isolated Documents storage.
+behavior, and real/fake browser scenarios with only isolated Documents storage;
+Inbox adds fake-IMAP API/storage, contributed Settings, and a browser scenario
+with only isolated credential and attachment storage.
 See the [M21A baseline](../baseline.md).

@@ -2,51 +2,67 @@
 
 ## Ownership and current locations
 
-Inbox owns mail connection metadata, renewable credential storage, verified
-TLS/read-only IMAP client, MIME parsing/sync, cursor/scheduler, local messages,
-attachments/quarantine/cleanup, mailbox Settings content, UI/styles, and tests.
-Current backend code is split across `backend/app/inbox/` and
-`backend/app/integrations/`; frontend code is in `features/inbox/`, while its
-settings form currently lives in Platform's `features/settings/`. Mail tables
-come from migration 0020. Attachments and credentials use separate private
-roots; credentials are excluded from backup.
+Inbox owns mail connection metadata, renewable credential storage, the verified
+TLS/read-only IMAP adapter, MIME parsing and synchronization, cursor and
+scheduler behavior, local messages, attachments, quarantine and cleanup,
+mailbox Settings content, UI/styles, recovery metadata, and tests.
 
-## Required public contracts
+Backend implementation is under `backend/app/inbox/`, including the internal
+`integrations/` adapter/service/repository layers. Frontend implementation is
+under `frontend/src/features/inbox/`. Mail tables come from migration 0020.
+Attachments and credentials use separate private roots; credentials are never
+returned after submission and are excluded from coordinated backups.
 
-- `backend/app/inbox/entry.py` and `frontend/src/features/inbox/entry.ts`
-  contribute the existing routes and Inbox page through Platform composition.
-  The backend entry also contributes both private-root initializers and the
-  existing mail scheduler. The mailbox Settings panel and recovery metadata
-  remain pending.
-- The Settings contribution exposes rendered UI/actions, never the stored app
-  password. Platform hosts it but contains no mail business logic.
-- The recovery contribution identifies bounded metadata/attachment content to
-  the Platform coordinator without revealing physical paths to other features.
+## Public contracts
 
-No other feature consumes Inbox data. Inbox owns TLS/read-only enforcement,
-bounded parsing, remote immutability, cursor/deduplication, and safe mail errors.
-Connection/sync/message services own transactions. Credential replacement and
-attachment create/delete retain filesystem compensation and recoverable cleanup.
+- `backend/app/inbox/entry.py` contributes Inbox routes, credential and
+  attachment root initialization, the mail scheduler, and the bounded recovery
+  declaration used by Platform.
+- `frontend/src/features/inbox/entry.ts` contributes both the Inbox page and
+  `MailInboxSettingsPanel` to the shared Platform host. The same entry is used
+  by the full and focused applications.
+- The Settings contribution owns setup, health, test, check-now, reconnect, and
+  disconnect behavior. Platform only validates, orders, and renders contributed
+  panels.
+- The recovery declaration publishes stable manifest/archive/root identities,
+  format introduction, and safety limits. It exposes no live path, credential,
+  repository, session, or executable callback.
 
-## Dependencies and migration debt
+No other business feature consumes Inbox data. Inbox owns TLS/read-only
+enforcement, bounded parsing, remote immutability, cursor/deduplication, and
+safe mail errors. Connection, synchronization, and message services own their
+transactions. Credential replacement and attachment create/delete retain
+filesystem compensation and recoverable cleanup.
 
-Inbox depends only on Platform. `inbox` and `integrations` imports in both
-directions are internal to this one owner, not a cross-module cycle. Imports of
-Calendar's generic enum helper is M21B debt. Platform `main.py` consumes routes,
-private-root setup, and the scheduler through the public entry. Settings imports
-Inbox API/types directly until M21G. CSS and shared fixtures move in M21G.
+## Dependencies and boundaries
+
+Inbox depends only on Platform. Platform composition imports the exact Inbox
+public entries; Platform Settings and recovery coordination contain no Inbox
+business logic. The architecture manifest has no Inbox legacy exception and no
+feature has access to mail credentials, messages, attachments, or internals.
+
+Inbox styles are loaded by its frontend entry from
+`frontend/src/features/inbox/styles.css`. Backend tests live under
+`backend/tests/inbox/` with a scoped real-host fixture and isolated credential
+and attachment roots. The focused browser stack mounts only its isolated Inbox
+private storage.
 
 ## Current commands
 
 ```bash
 make dev
 make check-boundaries
-docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml run --build --rm backend pytest -q tests/test_mail_inbox.py
-docker compose -f compose.yml -f compose.dev.yml run --build --rm --no-deps frontend npm run test -- src/features/inbox src/features/settings
+make check-module-contract
+make dev-module MODULE=inbox
+make test-module MODULE=inbox
+make logs-module MODULE=inbox
+make down-module MODULE=inbox
 make test
 make e2e
+make lint
 make data-relocation-test
 ```
 
-The backend/provider tests use local fakes and no owner credential. These are
-not yet isolated module-host commands. See the [M21A baseline](../baseline.md).
+The focused tests use local fake IMAP and real local Inbox API/storage. They do
+not use owner credentials or contact a real provider. See the
+[M21A baseline](../baseline.md) for the project-wide baseline.

@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_session
-from app.integrations.mail.sync import MailSyncService
-from app.integrations.schemas import (
+from app.inbox.integrations.mail.sync import MailSyncService
+from app.inbox.integrations.schemas import (
     MailCheckResponse,
     MailConnectionInput,
     MailConnectionResponse,
 )
-from app.integrations.service import MailIntegrationService
+from app.inbox.integrations.service import MailIntegrationService
 
 router = APIRouter()
 SessionDependency = Annotated[AsyncSession, Depends(get_session)]

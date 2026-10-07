@@ -6,9 +6,9 @@ dependencies, and the checkbox status of every milestone. Full instructions for
 each open milestone live in its own file under
 [`guidelines/milestones/`](guidelines/milestones/).
 
-**Active milestone: M21G.** The owner selected M21E through M21I on 2026-09-30,
-to be completed in order. M21E and M21F are complete. A milestone becomes
-active only when the owner explicitly selects it.
+**Active milestone: none.** M21G is complete. M21H is next in the sequence the
+owner selected on 2026-09-30, but work does not begin until the owner explicitly
+asks for it.
 
 ## Rules for this file
 
@@ -62,13 +62,13 @@ decision.
 
 [Milestone file](guidelines/milestones/m21g-inbox-and-settings-boundary.md)
 
-- [ ] Inbox and mailbox Settings actions pass through one real module entry in full and focused apps
-- [ ] Mail credentials never return to the browser or enter logs, diagnostics, Codex, Git, or backups
-- [ ] Credential, TLS/auth, malformed-mail, UIDVALIDITY, race, and cleanup failures stay recoverable
-- [ ] Local read/archive/delete never modifies the remote mailbox
-- [ ] Settings holds no Inbox business logic; panels stay accessible; placeholders stay placeholders
-- [ ] No unscheduled legacy boundary allowance remains for migrated features
-- [ ] Focused, contract, smoke, accessibility, lint/build, Docker, backup/restore, and diff checks pass
+- [x] Inbox and mailbox Settings actions pass through one real module entry in full and focused apps
+- [x] Mail credentials never return to the browser or enter logs, diagnostics, Codex, Git, or backups
+- [x] Credential, TLS/auth, malformed-mail, UIDVALIDITY, race, and cleanup failures stay recoverable
+- [x] Local read/archive/delete never modifies the remote mailbox
+- [x] Settings holds no Inbox business logic; panels stay accessible; placeholders stay placeholders
+- [x] No unscheduled legacy boundary allowance remains for migrated features
+- [x] Focused, contract, smoke, accessibility, lint/build, Docker, backup/restore, and diff checks pass
 
 ### M21H — Module controls and data-preserving lifecycle
 

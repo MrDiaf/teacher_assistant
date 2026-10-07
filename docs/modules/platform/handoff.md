@@ -1,6 +1,6 @@
 # Platform handoff
 
-Current state: M21B-M21F are complete. Matching strict
+Current state: M21B-M21G are complete. Matching strict
 Python and TypeScript catalogs define stable module/page order, dependency
 capabilities, route identities, Settings contribution identities, and lifecycle
 identities without import paths or executable names.
@@ -27,8 +27,10 @@ both mirrored metadata catalogs and closed ID types, bind code in the owner
 update the exact ownership/dependency/public-entry boundary declarations, and
 add contract/composition coverage. Production requires every registered entry;
 selective tests instead use a matching synthetic catalog and explicit entry
-tuple. Settings-panel metadata is validated but remains code-unbound until M21G;
-`enabled_by_default` is not a runtime switch before M21H.
+tuple. Settings-panel metadata is bound to static owner contributions. Platform
+Settings renders only supplied panels; Inbox owns its mailbox panel and
+Platform owns its AI panel. `enabled_by_default` is not a runtime switch before
+M21H.
 
 Each public backend entry now binds its declared lifecycle identities to
 explicit startup functions. Platform runs only the supplied entries in stable
@@ -39,22 +41,23 @@ The full app supplies every registered entry, initializes existing private roots
 before starting the ICS/mail schedulers, and retains the existing Assistant and
 Codex shutdown behavior. Selective test assembly starts no unselected hook.
 
-Documents now re-exports a typed recovery contribution containing only its
-stable manifest/archive/root identities, format introduction, and safety limits.
-Platform's existing coordinator consumes it for archive creation, manifest
-verification, format-2 compatibility, restore, and rollback; quiescence,
-PostgreSQL coordination, restore order, and live paths remain Platform-owned.
+Documents, Courses, and Inbox export typed recovery contributions containing
+only stable manifest/archive/root identities, format introductions, and safety
+limits. Platform's coordinator consumes them for archive creation, manifest
+verification, compatibility, restore, and rollback; quiescence, PostgreSQL
+coordination, restore order, credentials, and live paths remain Platform-owned.
 
 Platform now owns the shared FastAPI application factory used by both the full
 catalog and focused host. Dependency-closed selection accepts only an explicit
 allowlisted module ID. Documents assembles Platform plus Documents; Calendar
-assembles Platform plus Calendar and its ICS refresh lifecycle. The frontend
-uses the same `RegisteredApplication` shell with matching real page entries.
+assembles Platform plus Calendar and its ICS refresh lifecycle; Inbox assembles
+Platform plus Inbox and its mail scheduler. The frontend uses the same
+`RegisteredApplication` shell with matching real page and Settings entries.
 Ordinary startup remains the complete catalog and contains no fixture provider.
 
 Root `dev-module`, `logs-module`, `down-module`, and `test-module` commands use
 the existing images/configuration plus bounded Compose overrides. Assistant,
-Calendar, Courses, and Documents are the supported IDs. Each development stack uses ports
+Calendar, Courses, Documents, and Inbox are the supported IDs. Each development stack uses ports
 `15173`/`18000`, a separate Compose project, isolated PostgreSQL, and
 project-scoped private-data volumes; invalid IDs fail before Compose starts.
 
@@ -63,15 +66,16 @@ and model-selection primitives through narrow Platform façades. Persistence no
 longer imports Calendar or Courses types, the version-1 storage envelope is
 unchanged, and focused tests cover legacy state restoration. Root tokens,
 shell/navigation, accessibility, responsive-shell, and placeholder styling now
-have a Platform-owned stylesheet; feature CSS remains in the legacy stylesheet.
+have a Platform-owned stylesheet; each implemented feature owns its CSS.
 Generic enum serialization moved out of Calendar and into Platform database
 infrastructure. Thin backend Platform façades publish the shared AI/runtime
 and diagnostic interfaces completed in M21F. No M21B boundary
 exception remains. The backend Platform allowance now names exact consumed
 configuration, error, database, AI, diagnostic, and registration modules;
 negative fixtures reject feature imports of backend assembly or frontend shell
-internals. Documents, Calendar, Courses, and Assistant own scoped test/browser
-coverage and feature CSS; shared AI and diagnostic UI belongs to Platform.
+internals. Documents, Calendar, Courses, Assistant, and Inbox own scoped
+test/browser coverage and feature CSS; shared AI and diagnostic UI belongs to
+Platform.
 
 Verification: [M21A baseline](../baseline.md). Shared cautions and active
 application status remain in the root `handoff.md`.
@@ -106,5 +110,18 @@ authentication without Assistant. The Assistant focused host closes over real
 Calendar/Courses providers; Assistant styles/tests are locally owned. No M21F
 boundary exception remains.
 
-Next step: M21G is selected and owns Inbox plus contributed Settings
-boundaries. M22 remains inactive until M21I is complete.
+M21G consolidated the former top-level mail integration package under Inbox,
+bound the mailbox Settings UI through Inbox's public entry, scoped its styles
+and tests, and added a typed recovery contribution consumed by Platform. The
+focused Inbox host uses real local API/storage with fake IMAP and includes the
+shared Settings page for the contributed panel. Both backend and frontend
+legacy exception lists are now empty.
+
+M21G verification on 2026-10-01 passed 64 backend, 47 frontend, and one browser
+test in the focused command; 254 backend and 122 frontend tests in the full
+suite; all 19 full browser/accessibility scenarios; lint; full and focused
+builds; coordinated relocation/restore; focused Docker health; and diff
+hygiene.
+
+Next step: no milestone is active. M21H is next after explicit owner selection.
+M22 remains inactive until M21I is complete.

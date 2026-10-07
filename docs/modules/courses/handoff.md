@@ -35,5 +35,5 @@ milestones rather than being copied here.
 
 M21F moved Courses' shared AI/runtime and diagnostic use behind Platform
 interfaces. Notes summary/prettify no longer imports Assistant internals, and
-the diagnostic action is Platform-owned. Next Courses work: none; M21G owns the
-Inbox and contributed Settings boundary.
+the diagnostic action is Platform-owned. M21G subsequently completed the Inbox
+and contributed Settings boundary. Next Courses work: none is active.

@@ -10,7 +10,7 @@ from pathlib import Path, PurePosixPath
 
 from starlette.concurrency import run_in_threadpool
 
-from app.core.errors import MailAttachmentUnavailableError, MailStorageError
+from app.inbox.errors import MailAttachmentUnavailableError, MailStorageError
 from app.inbox.models import MailAttachment
 
 

@@ -1,8 +1,17 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ModuleHost from "../../ModuleHost";
-import { assembleModuleHostPages } from "./moduleHost";
+import {
+  assembleModuleHostPages,
+  assembleModuleHostSettingsPanels,
+} from "./moduleHost";
 
 afterEach(() => {
   cleanup();
@@ -45,6 +54,24 @@ describe("shared module host", () => {
         moduleId,
       })),
     ).toEqual([{ id: "assistant", moduleId: "assistant" }]);
+  });
+
+  it("uses the real Inbox page and Settings contribution", () => {
+    expect(
+      assembleModuleHostPages("inbox").map(({ id, moduleId }) => ({
+        id,
+        moduleId,
+      })),
+    ).toEqual([
+      { id: "inbox", moduleId: "inbox" },
+      { id: "settings", moduleId: "platform" },
+    ]);
+    expect(
+      assembleModuleHostSettingsPanels("inbox").map(({ id, moduleId }) => ({
+        id,
+        moduleId,
+      })),
+    ).toEqual([{ id: "mail-inbox", moduleId: "inbox" }]);
   });
 
   it.each(["", "unknown", "../documents", "calendar,documents"])(
@@ -175,6 +202,60 @@ describe("shared module host", () => {
       await screen.findByRole("heading", {
         name: "Use your ChatGPT subscription",
       }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders Inbox and its mailbox panel through the shared focused host", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        const url = String(input);
+        const body = url.endsWith("/api/v1/ai/auth")
+          ? {
+              authenticated: false,
+              auth_type: null,
+              email: null,
+              plan_type: null,
+            }
+          : url.endsWith("/api/v1/integrations/mail")
+            ? {
+                connected: false,
+                status: null,
+                host: null,
+                port: null,
+                tls_mode: null,
+                mailbox: null,
+                username: null,
+                last_checked_at: null,
+                last_success_at: null,
+                next_check_at: null,
+                safe_error_code: null,
+                safe_error: null,
+                source_warning: null,
+                quarantined_count: 0,
+              }
+            : [];
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }),
+    );
+
+    render(<ModuleHost moduleId="inbox" />);
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "Main navigation" }),
+      ).getByRole("button", { name: "Inbox" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("button", { name: "Calendar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Courses" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Documents" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Assistant" })).toBeNull();
+
+    screen.getByRole("button", { name: "Settings" }).click();
+    expect(
+      await screen.findByRole("heading", { name: "Mail inbox" }),
     ).toBeInTheDocument();
   });
 });

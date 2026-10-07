@@ -1,7 +1,7 @@
 COMPOSE := docker compose -f compose.yml -f compose.dev.yml
 TEST_COMPOSE := docker compose -p teacher-assistant-test -f compose.yml -f compose.test.yml
 E2E_COMPOSE := docker compose -p teacher-assistant-e2e -f compose.e2e.yml
-SUPPORTED_MODULE_HOSTS := assistant calendar courses documents
+SUPPORTED_MODULE_HOSTS := assistant calendar courses documents inbox
 MODULE_BACKEND_PORT ?= 18000
 MODULE_FRONTEND_PORT ?= 15173
 MODULE_COMPOSE = MODULE_HOST=$(MODULE) BACKEND_PORT=$(MODULE_BACKEND_PORT) \
@@ -20,14 +20,17 @@ MODULE_BACKEND_TESTS_calendar := tests/test_module_host.py tests/test_module_reg
 MODULE_BACKEND_TESTS_courses := tests/test_module_host.py tests/test_module_registration.py tests/courses tests/assistant/test_assistant_api.py tests/test_data_archive.py
 MODULE_BACKEND_TESTS_documents := tests/test_module_host.py tests/test_module_registration.py tests/documents
 MODULE_BACKEND_TESTS_assistant := tests/test_module_host.py tests/test_module_registration.py tests/test_platform_interfaces.py tests/assistant tests/test_codex_runtime.py tests/test_diagnostics.py tests/courses/test_note_summaries.py tests/courses/test_note_prettify.py
+MODULE_BACKEND_TESTS_inbox := tests/test_module_host.py tests/test_module_registration.py tests/inbox tests/test_data_archive.py
 MODULE_FRONTEND_TESTS_calendar := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/calendar src/features/courses/CourseCalendar.test.tsx
 MODULE_FRONTEND_TESTS_courses := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/courses
 MODULE_FRONTEND_TESTS_documents := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/documents
 MODULE_FRONTEND_TESTS_assistant := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/features/assistant src/features/ai src/features/settings/SettingsPage.test.tsx
+MODULE_FRONTEND_TESTS_inbox := src/platform/modules/moduleHost.test.tsx src/platform/modules/contract.test.ts src/platform/modules/frontendCatalog.test.tsx src/features/inbox src/features/settings/SettingsPage.test.tsx
 MODULE_E2E_TEST_calendar := tests/calendar.spec.ts
 MODULE_E2E_TEST_courses := tests/courses.spec.ts
 MODULE_E2E_TEST_documents := tests/documents.spec.ts
 MODULE_E2E_TEST_assistant := tests/assistant.spec.ts
+MODULE_E2E_TEST_inbox := tests/inbox.spec.ts
 require-supported-module = \
 	$(if $(filter 1,$(words $(strip $(MODULE)))),,$(error MODULE must name exactly one supported module: $(SUPPORTED_MODULE_HOSTS))) \
 	$(if $(filter $(SUPPORTED_MODULE_HOSTS),$(strip $(MODULE))),,$(error Unsupported MODULE '$(MODULE)'; supported modules: $(SUPPORTED_MODULE_HOSTS)))

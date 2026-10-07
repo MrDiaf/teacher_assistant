@@ -1,16 +1,31 @@
 # Inbox handoff
 
-Current state: the M20 Inbox and mailbox Settings workflows are preserved.
-M21A grouped `inbox` and `integrations` under one owner and recorded current
-Settings/composition coupling; it changed no credential, mail, or remote state.
-M21B now routes Inbox API/page composition through explicit public entries. Its
-backend entry registers the unchanged credential/attachment root setup and mail
-scheduler lifecycle.
+Current state: M21G is complete. Mail metadata, credentials, IMAP adapters,
+parsing/synchronization, local messages, attachments, cleanup, scheduler,
+errors, recovery declaration, UI, Settings contribution, styles, and tests are
+all owned under the Inbox module. The old top-level `app.integrations` package
+and direct Settings-to-Inbox imports are gone.
 
-Verification: [M21A baseline](../baseline.md). Feature evidence remains in
-[M20](../../../legacy/milestones/m20-forwarded-mail-inbox.md). A real provider check
-was not run because no owner credential is used in ordinary verification.
+The full and focused hosts use the same real Inbox public entries. The focused
+UI contains Inbox plus the shared Settings page so the owner can exercise the
+Inbox-contributed mailbox panel. Platform validates and renders the panel but
+contains no mailbox behavior. Dashboard and Study Plan remain unchanged shell
+placeholders.
 
-Next Inbox work: M21G consolidates public entries and contributed Settings after
-M21F. The application-wide next step is M21B composition-test and boundary
-tightening.
+Credential privacy and remote immutability remain enforced: submitted secrets
+are stored separately with private permissions, omitted from API responses,
+diagnostics, Codex context, and backups, and local read/archive/delete never
+issues a remote mutating operation. Missing credentials, TLS/auth failures,
+malformed or oversized mail, UIDVALIDITY resets, scheduler/manual races, and
+attachment cleanup failures have focused recovery coverage.
+
+Verification on 2026-10-01: `make test-module MODULE=inbox` passed 64 backend,
+47 frontend, and one browser/accessibility scenario in about 38 seconds. `make
+test` passed 254 backend and 122 frontend tests plus architecture, contract, and
+data-safety gates. `make e2e` passed all 19 scenarios; lint, full and focused
+production builds, coordinated relocation/restore, live focused Docker health,
+and diff hygiene passed. No real mailbox provider was contacted.
+
+Next Inbox work: none is active. M21H may add data-preserving module controls
+after explicit owner selection; it must retain the current credential,
+read-only, lifecycle, and recovery guarantees.

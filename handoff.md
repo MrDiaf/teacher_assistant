@@ -1,6 +1,6 @@
 # Teacher Assistant development handoff
 
-Updated: 2026-09-30
+Updated: 2026-10-01
 
 ## Start here
 
@@ -64,8 +64,11 @@ tests, schema, or Makefile target changed.
 - M21F is complete. Assistant owns its errors, styles, focused tests, and UI
   orchestration components; shared AI authentication/runtime/workspaces and
   sanitized diagnostics are Platform contracts available independently.
+- M21G is complete. Inbox owns its internal mail integration layers, errors,
+  styles, tests, recovery declaration, and mailbox Settings contribution. Both
+  architecture legacy-exception lists are empty.
 - The owner selected M21E through M21I on 2026-09-30, to be completed in order.
-  M21G is the active milestone.
+  No milestone is active; M21H is next and requires an explicit request.
 - No feature behavior, schema, storage identity, private data, or visible design
   was changed by M21C/M21D/M21E. M22 was not started.
 - The M21A pre-refactor baseline revision is `dcada0a` (`refactoring immense`).
@@ -367,12 +370,42 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   host started successfully, both ports responded, and a fresh database reached
   `20260908_0021 (head)`. `git diff --check` passed.
 
+## M21G final result
+
+- Mail connection metadata, credential storage, IMAP client/parser/sync,
+  messages, attachments, cleanup, scheduler, and errors now live under
+  `app.inbox`. The retired top-level `app.integrations` package is gone.
+- Inbox's frontend entry contributes both the Inbox page and the complete
+  mailbox Settings panel. The generic Settings host only orders and renders
+  supplied panels; setup, status, test, check-now, reconnect, disconnect, and
+  sanitized errors remain Inbox-owned.
+- The same real entries drive the full and focused hosts. The focused Inbox UI
+  includes the Platform Settings page for its contribution and uses isolated
+  PostgreSQL, credential, and attachment storage with fake IMAP.
+- Inbox exports bounded recovery metadata for its established mail attachment
+  archive. Platform retains coordinated quiescence, database dump/restore,
+  checksums, restore order, and rollback. Renewable credentials remain outside
+  backup bundles.
+- Focused coverage preserves TLS and read-only IMAP, secret omission/private
+  permissions, malformed and oversized mail recovery, UIDVALIDITY reset,
+  scheduler/manual locking, cleanup retry/audit, and proof that local
+  read/archive/delete never mutates the remote mailbox.
+- Inbox selectors and browser/tests are feature-owned. The two remaining
+  frontend legacy exceptions were removed; backend and frontend exception
+  counts are both zero.
+- Verification on 2026-10-01: `make test-module MODULE=inbox` passed 64 backend,
+  47 frontend, and one browser/accessibility scenario in about 38 seconds;
+  `make test` passed 254 backend and 122 frontend tests plus boundary, contract,
+  and data-safety gates; `make e2e` passed all 19 scenarios. Lint, full and
+  focused frontend builds, coordinated relocation/restore, focused Docker
+  startup and health, and diff hygiene passed.
+
 ## Shared cautions
 
-- M21C through M21F are complete; M21G-M21I are selected and remain to be done
-  in order. Documents, Calendar, Courses, and Assistant own their feature CSS
-  and are supported focused hosts. Inbox CSS and its module-host ID remain M21G
-  work; Settings module controls remain M21H work.
+- M21C through M21G are complete; M21H-M21I are selected and remain to be done
+  in order. Documents, Calendar, Courses, Assistant, and Inbox own their feature
+  CSS and are supported focused hosts. Settings module controls remain M21H
+  work.
 - Feature stylesheets load before the shared sheets. The earlier Calendar and
   Documents extractions left five elements where a shared rule now wins an
   equal-specificity tie it used to lose (for example `.create-event-button`
@@ -385,15 +418,14 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
   pytest rejects duplicates when the full suite collects them.
 - M22-M24 remain unimplemented: Documents has no editor, compilation, preview,
   or Codex compilation advice.
-- The exact boundary manifest is a burn-down list. Remove entries as owning
-  milestones migrate them; never broaden an exception to accommodate new code.
+- The exact boundary manifest has no legacy exceptions. Keep it that way; never
+  add or broaden an exception to accommodate new code.
 - Assistant confirmation binds Calendar's restricted port to one shared
   SQLAlchemy transaction for proposal/job/action and Calendar changes. Preserve
   this atomicity; never expose the session.
 - `backend/tests/conftest.py` still resets all tables/private roots for the
-  assembled suite. Documents, Calendar, Courses, and Assistant override it with
-  scoped fixtures in their owned subtrees. Other owner-specific fixtures,
-  remaining feature CSS, and recovery contributions are later-milestone debt.
+  assembled suite. Documents, Calendar, Courses, Assistant, and Inbox override
+  it with scoped fixtures in their owned subtrees.
 - `alembic check` reports deliberately retained retired integration tables and
   four known enum/VARCHAR length differences. It reports no Documents drift.
 - A real mailbox-provider check was not run; local fakes cover TLS/read-only,
@@ -413,12 +445,12 @@ and diff hygiene. The same session's isolated E2E and recovery baselines passed.
 
 ## Exact next step
 
-M21G is active (`guidelines/milestones/m21g-inbox-and-settings-boundary.md`).
-M21F is complete and all seven criteria are verified. The owner selected
-M21E-M21I; M21H and M21I follow M21G. Do not start M22.
+No milestone is active. M21G is complete and all seven criteria are verified.
+M21H is next in the selected sequence, but do not begin it without an explicit
+owner request. Do not start M22.
 
 Recommended next prompt:
 
 ```text
-Continue with M21G.
+Implement M21H.
 ```

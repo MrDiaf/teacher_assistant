@@ -6,4 +6,5 @@ import "./styles.css";
 export const coursesModuleEntry = {
   id: "courses",
   pages: [{ id: "courses", icon: "courses", component: CoursesPage }],
+  settingsPanels: [],
 } as const satisfies FrontendModuleEntry;

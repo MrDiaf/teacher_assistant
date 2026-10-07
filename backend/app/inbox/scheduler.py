@@ -5,9 +5,9 @@ import logging
 from datetime import UTC, datetime
 
 from app.database.session import session_factory
+from app.inbox.integrations.mail.sync import MailSyncService
+from app.inbox.integrations.repository import IntegrationRepository
 from app.inbox.service import InboxService
-from app.integrations.mail.sync import MailSyncService
-from app.integrations.repository import IntegrationRepository
 
 SCHEDULER_TICK_SECONDS = 30
 logger = logging.getLogger(__name__)

@@ -96,6 +96,24 @@ def test_assistant_host_closes_over_real_calendar_and_courses_providers() -> Non
     assert "/api/v1/document-projects" not in paths
 
 
+def test_inbox_host_uses_real_routes_and_mail_lifecycle_only() -> None:
+    entries = assemble_module_host("inbox")
+
+    assert [entry.id for entry in entries] == ["platform", "inbox"]
+    assert [
+        contribution.id for entry in entries for contribution in entry.lifecycle
+    ] == ["codex-auth", "mail-credential-root", "mail-storage-root", "mail-sync"]
+
+    paths = {route.path for route in create_module_host("inbox").routes}
+    assert "/api/v1/inbox" in paths
+    assert "/api/v1/integrations/mail" in paths
+    assert "/api/v1/mail-attachments/{attachment_id}/content" in paths
+    assert "/api/v1/calendars" not in paths
+    assert "/api/v1/courses" not in paths
+    assert "/api/v1/document-projects" not in paths
+    assert "/api/v1/assistant/conversations" not in paths
+
+
 def test_documents_host_mounts_real_routes_and_omits_unselected_feature_routes() -> None:
     application = create_module_host("documents")
     paths = {route.path for route in application.routes}

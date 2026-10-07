@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
-from app.integrations.models import IntegrationStatus, MailTlsMode
+from app.inbox.integrations.models import IntegrationStatus, MailTlsMode
 
 
 class MailConnectionInput(BaseModel):

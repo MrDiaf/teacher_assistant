@@ -11,13 +11,13 @@ from email.utils import getaddresses, parsedate_to_datetime
 from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
-from app.inbox.models import MailAddressKind
-from app.integrations.mail.schemas import (
+from app.inbox.integrations.mail.schemas import (
     MailParseError,
     ParsedAddress,
     ParsedAttachment,
     ParsedMail,
 )
+from app.inbox.models import MailAddressKind
 
 MAX_PARTS = 100
 MAX_MIME_DEPTH = 20

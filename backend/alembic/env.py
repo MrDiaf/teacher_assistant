@@ -5,6 +5,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+from app.access import models as access_models  # noqa: F401
 from app.assistant import models as assistant_models  # noqa: F401
 from app.calendar import models  # noqa: F401
 from app.core.config import get_settings
@@ -15,7 +16,7 @@ from app.database.base import Base
 from app.diagnostics import models as diagnostic_models  # noqa: F401
 from app.documents import models as document_models  # noqa: F401
 from app.inbox import models as inbox_models  # noqa: F401
-from app.integrations import models as integration_models  # noqa: F401
+from app.inbox.integrations import models as integration_models  # noqa: F401
 from app.notes import models as note_models  # noqa: F401
 from app.notes import summary_models as note_summary_models  # noqa: F401
 

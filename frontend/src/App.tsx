@@ -1,7 +1,10 @@
 import { useState } from "react";
 
 import type { PageId } from "./platform/modules/contract";
-import { registeredPages } from "./platform/modules/frontendCatalog";
+import {
+  registeredPages,
+  registeredSettingsPanels,
+} from "./platform/modules/frontendCatalog";
 import { getActiveModule, setActiveModule } from "./platform/persistence";
 import { RegisteredApplication } from "./platform/shell";
 
@@ -19,6 +22,7 @@ export default function App() {
       activePage={activeModule}
       onNavigate={navigate}
       pages={registeredPages}
+      settingsPanels={registeredSettingsPanels}
     />
   );
 }

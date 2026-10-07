@@ -8,10 +8,10 @@ import socket
 import ssl
 from collections.abc import Callable
 
-from app.core.errors import InvalidMailConnectionError, MailConnectionError
-from app.integrations.credentials import MailCredential
-from app.integrations.mail.schemas import MailboxConfiguration, MailboxSnapshot, RemoteMail
-from app.integrations.models import MailTlsMode
+from app.inbox.errors import InvalidMailConnectionError, MailConnectionError
+from app.inbox.integrations.credentials import MailCredential
+from app.inbox.integrations.mail.schemas import MailboxConfiguration, MailboxSnapshot, RemoteMail
+from app.inbox.integrations.models import MailTlsMode
 
 HOST_PATTERN = re.compile(r"^(?=.{1,253}$)(?!-)(?:[A-Za-z0-9-]{1,63}\.)*[A-Za-z0-9-]{1,63}$")
 

@@ -11,14 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.core.errors import ApplicationError
+from app.inbox.integrations.mail.client import ImapMailboxClient
+from app.inbox.integrations.mail.parser import parse_mail
+from app.inbox.integrations.mail.schemas import MailParseError
+from app.inbox.integrations.models import IntegrationStatus
+from app.inbox.integrations.repository import IntegrationRepository
+from app.inbox.integrations.service import MailIntegrationService
 from app.inbox.mail_storage import MailStorage
 from app.inbox.repository import InboxRepository
-from app.integrations.mail.client import ImapMailboxClient
-from app.integrations.mail.parser import parse_mail
-from app.integrations.mail.schemas import MailParseError
-from app.integrations.models import IntegrationStatus
-from app.integrations.repository import IntegrationRepository
-from app.integrations.service import MailIntegrationService
 
 logger = logging.getLogger(__name__)
 _sync_lock = asyncio.Lock()

@@ -6,8 +6,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.inbox.integrations.models import IntegrationConnection, MailSyncCursor
 from app.inbox.models import MailQuarantine
-from app.integrations.models import IntegrationConnection, MailSyncCursor
 
 
 class IntegrationRepository:

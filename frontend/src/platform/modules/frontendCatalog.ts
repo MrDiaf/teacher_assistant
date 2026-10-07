@@ -8,6 +8,7 @@ import { moduleCatalog } from "./catalog";
 import type { ModuleId, PageId } from "./contract";
 import {
   assembleFrontendPages,
+  assembleFrontendSettingsPanels,
   type FrontendModuleEntry,
 } from "./frontendContract";
 
@@ -21,6 +22,11 @@ export const frontendModuleEntries = [
 ] as const satisfies readonly FrontendModuleEntry<ModuleId, PageId>[];
 
 export const registeredPages = assembleFrontendPages<ModuleId, PageId>(
+  moduleCatalog,
+  frontendModuleEntries,
+);
+
+export const registeredSettingsPanels = assembleFrontendSettingsPanels(
   moduleCatalog,
   frontendModuleEntries,
 );
